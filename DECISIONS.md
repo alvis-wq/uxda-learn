@@ -18,3 +18,13 @@
 - `check-db` uses a real temp user and sentinel rows — "0 rows from an empty table" would prove nothing.
 - Added `npm run db:check` script for `scripts/check-db.ts` — consistent with other db:* scripts.
 - Scripts use their own service-role client (`scripts/lib/supabase.ts`) — app-side admin client imports `server-only`, which throws outside the React server bundle.
+- Content schemas are strict (unknown keys rejected) — catches typos like `point:` that would otherwise silently drop data.
+- `content_hash` covers public fields only; key changes detected by comparing `challenge_keys` — users can read `content_hash`, and a hash including answers could be brute-forced for small quizzes.
+- Status excluded from the hash — publishing/archiving isn't a content change, so it doesn't bump `version`.
+- `status` defaults to `draft` when omitted — safer than the DB default `published`.
+- Added optional `summary` and `due_at` frontmatter (DB has the columns); summary falls back to the brief's first paragraph.
+- Multi-answer keys stored sorted — stable comparison and grading.
+- gray-matter parses with the `yaml` package — one YAML parser for categories and frontmatter.
+- Sync uses sequential supabase-js writes (not one transaction) — idempotent: a partial run is completed by the next run.
+- New ai-workflow quizzes are `draft` — Alvis reviews new content before publishing (same rule as seed challenges and /new-challenge).
+- Quiz single-answer positions varied — all-"b" answers were guessable.

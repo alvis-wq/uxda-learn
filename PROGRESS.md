@@ -41,6 +41,31 @@ fallback); generate types; write `seed-admins` and `check-db`.
 **Checks:** migration applied ✅ · types generated ✅ · `db:check` 22/22 ✅ · `npm run check` ✅
 (5 unit tests).
 
+## Phase 2 — Content pipeline
+**Plan:** Zod schemas per content-format.md; loader; validator with cross-file rules; pure sync
+planner + sync script; convert the 7 seed challenges; write 2 ai-workflow quizzes; fixture tests.
+
+**Status: done.**
+- `src/lib/content/`: `schema.ts` (strict Zod — unknown keys are errors), `load.ts`,
+  `validate.ts`, `transform.ts` (public row vs. private key row, content hash), `sync-plan.ts`
+  (pure diff), `index.ts`.
+- `content:validate` checks: schema, unknown category, duplicate category/challenge slugs,
+  slug = filename, points = questions + rubric, unique question/rubric/option ids, answers are
+  real option ids, quiz = auto-graded only and no submission, figma/screenshot types have the
+  matching submission field, review-needing challenges have rubric + grader_notes.
+- `content:sync` (`--dry-run` supported): upserts categories/challenges; answers + grader notes
+  only into `challenge_keys`; version bumps when public content or the key changes; status-only
+  change doesn't bump; removed content → archived (never deleted).
+- Content: 7 wireframing challenges from `docs/seed-challenges.md` (5 published; `spot-the-plant`
+  and `peer-review-swap` draft as specified, with `TODO_FIGMA_URL` placeholder) + 2 ai-workflow
+  quizzes `ai-output-red-flags`, `verify-before-you-trust` (draft — for Alvis to review).
+- All challenges are at v2 in the DB: a summary-derivation fix changed every public hash right
+  after the first sync. No submissions exist, so nothing is affected.
+
+**Checks:** 27 unit tests ✅ (valid + invalid fixtures, transform, sync plan) ·
+`content:validate` ✅ (invalid fixture → 13 errors, exit 1) · sync run twice → second run
+`0 change(s)` ✅ · no `answer` keys in `challenges` rows (SQL check) ✅ · `npm run check` ✅.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).

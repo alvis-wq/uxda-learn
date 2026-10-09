@@ -1,0 +1,10 @@
+categories:
+  - slug: basics
+    title: Basics
+    audience: all
+    description: Everyone.
+    sort_order: 10
+  - slug: strat-only
+    title: Strategist only
+    audience: strategist
+    sort_order: 20
