@@ -19,6 +19,28 @@ package scripts; update `.gitignore`; create PROGRESS/DECISIONS.
 
 **Checks:** `npm run build` ✅ · `npm run check` ✅ (typecheck, lint, 2 unit tests).
 
+## Phase 1 — Database
+**Plan:** turn `docs/schema.sql` into a migration; apply it (CLI can't connect → Management API
+fallback); generate types; write `seed-admins` and `check-db`.
+
+**Status: done.**
+- `supabase/migrations/20261009000000_init.sql` = schema.sql + explicit grants: client roles
+  start from zero; `authenticated` gets SELECT on profiles/categories/challenges/submissions/
+  evaluations and UPDATE(show_on_leaderboard) on profiles only; `challenge_keys` and
+  `admin_allowlist` have no grants and no policies; `get_leaderboard`/`is_admin` not executable
+  by anon.
+- `npm run db:push` applies pending migrations via the Management API in one transaction each,
+  recording them in `supabase_migrations.schema_migrations` (same table as the CLI).
+- `npm run db:types` → `src/lib/database.types.ts` (Management API type generation).
+- `npm run seed:admins` → allowlisted `ADMIN_EMAILS`, promotes existing matching profiles.
+- `npm run db:check` (`scripts/check-db.ts`): tables exist, RLS on every public table, anon and a
+  real signed-in temp user get `42501` on `challenge_keys`/`admin_allowlist` (with a sentinel row
+  present), published challenge readable, user can't set `is_admin`, non-UXDA signup rejected.
+  Temp user + sentinel rows are removed afterwards.
+
+**Checks:** migration applied ✅ · types generated ✅ · `db:check` 22/22 ✅ · `npm run check` ✅
+(5 unit tests).
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).
