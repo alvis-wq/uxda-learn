@@ -28,3 +28,12 @@
 - Sync uses sequential supabase-js writes (not one transaction) — idempotent: a partial run is completed by the next run.
 - New ai-workflow quizzes are `draft` — Alvis reviews new content before publishing (same rule as seed challenges and /new-challenge).
 - Quiz single-answer positions varied — all-"b" answers were guessable.
+- Test login uses a service-role magic-link token verified server-side, not `TEST_USER_PASSWORD` — test users live in the real project; a known password (esp. for test-admin) would let anyone with the public anon key sign in, bypassing the app's production guard. `TEST_USER_PASSWORD` is now unused.
+- Test-login guard checked in both the login page (UI) and the server action — the action is the real gate; unit-tested with NODE_ENV=production.
+- Proxy uses `getClaims()`; pages use `getUser()` — cheap check per request, authoritative check where data is read.
+- `/auth/error` is public alongside `/login` and `/auth/callback` — users rejected by the domain trigger have no session and must be able to see why.
+- `next` redirect param restricted to same-origin paths (`safeNext`) — prevents open redirects through login.
+- Callback re-checks the email domain after code exchange — defence in depth on top of the DB trigger.
+- Onboarding writes via service role with `track IS NULL` in the WHERE clause — atomic "only once" rule, no client update grant on `track`.
+- Page titles inside cards are `<h1>`s — shadcn CardTitle is a div; headings needed for a11y and role-based tests.
+- E2E resets the test strategist's track via service role before running — makes the onboarding test repeatable.

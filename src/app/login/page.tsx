@@ -1,0 +1,48 @@
+import type { Metadata } from "next";
+import { FlaskConical } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { safeNext } from "@/lib/auth/paths";
+import { isTestLoginEnabled } from "@/lib/auth/test-login";
+import { GoogleSignInForm, TestLoginForm } from "./login-forms";
+
+export const metadata: Metadata = { title: "Sign in · UXDA Learn" };
+
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const raw = (await searchParams).next;
+  const next = safeNext(typeof raw === "string" ? raw : undefined);
+  const nextParam = next === "/" ? undefined : next;
+
+  return (
+    <main className="flex flex-1 items-center justify-center px-4 py-12">
+      <div className="grid w-full max-w-sm gap-6">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="bg-brand mx-auto mb-2 size-10 rounded-lg" aria-hidden />
+            <CardTitle className="text-xl">
+              <h1>UXDA Learn</h1>
+            </CardTitle>
+            <CardDescription>Sign in with your UXDA Google account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GoogleSignInForm next={nextParam} />
+          </CardContent>
+        </Card>
+
+        {isTestLoginEnabled() && (
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <FlaskConical className="size-4" aria-hidden />
+                Test login
+              </CardTitle>
+              <CardDescription>Development only. Signs in as a test user.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TestLoginForm next={nextParam} />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </main>
+  );
+}

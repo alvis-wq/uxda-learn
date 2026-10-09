@@ -1,5 +1,14 @@
 # Progress
 
+## Current state (after Phase 3)
+Phases 0–3 done: Next.js app scaffolded; DB schema live on Supabase with RLS + explicit grants;
+content pipeline syncing 9 categories / 9 challenges; auth (Google OAuth flow, proxy gating,
+onboarding, guarded dev test login) working end to end via test login.
+**Next step:** Phase 4 — learner experience (home with categories/progress, category page,
+challenge page with uploads, submit server action with auto-grading).
+**Needs Alvis:** enable the Google provider in Supabase (see Known issues) — real Google
+sign-in can't work until then.
+
 ## Phase 0 — Bootstrap
 **Plan:** verify env vars; install Supabase CLI and link; scaffold Next.js into the existing
 folder without overwriting; set up shadcn/ui, Vitest, Playwright and the libraries; add
@@ -66,6 +75,32 @@ planner + sync script; convert the 7 seed challenges; write 2 ai-workflow quizze
 `content:validate` ✅ (invalid fixture → 13 errors, exit 1) · sync run twice → second run
 `0 change(s)` ✅ · no `answer` keys in `challenges` rows (SQL check) ✅ · `npm run check` ✅.
 
+## Phase 3 — Auth
+**Plan:** Supabase SSR clients (server/browser/admin); `src/proxy.ts` gating every route except
+`/login` + `/auth/callback` (+ `/auth/error`); Google OAuth server action with
+`hd=theuxda.com`, `prompt=select_account`; callback route; friendly domain error page;
+sign-out; one-time onboarding (server action, only while `track` is null); guarded test login
+for test-strategist/-designer/-admin; unit + E2E tests.
+
+**Status: done.**
+- `src/lib/supabase/{server,client,admin,proxy}.ts`; admin client is `server-only`.
+- `src/proxy.ts` refreshes the session (`getClaims`) and redirects signed-out users to
+  `/login?next=…` (open-redirect safe via `safeNext`); signed-in users skip `/login`.
+- Pages verify the user again with `getUser()` (`src/lib/auth/session.ts`);
+  `(app)/layout.tsx` requires an onboarded profile, else → `/onboarding`.
+- `/auth/callback`: maps Supabase's "Database error saving new user" (trigger rejecting a
+  non-UXDA email) to `/auth/error?reason=domain`; also re-checks the domain after exchange.
+- Onboarding: `chooseTrack` server action → service role update `WHERE id = user AND track IS NULL`.
+- Test login (`ENABLE_TEST_LOGIN=true` AND `NODE_ENV !== 'production'`, checked in the page
+  and in the server action): service-role magic-link token verified server-side; no passwords.
+  test-admin gets `is_admin=true`.
+- Header with name/track, light/dark toggle, sign out. Page titles are real `h1`s.
+
+**Checks:** E2E 3/3 ✅ (redirect to /login; test user logs in → onboarding → home → sign out;
+non-UXDA error page) — run twice, stable · unit 44/44 ✅ incl. "test login disabled when
+`NODE_ENV=production`" for both the guard function and the server action · `npm run build` ✅ ·
+`npm run check` ✅ · manual: `next start` with `ENABLE_TEST_LOGIN=true` shows no test login.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).
@@ -73,3 +108,16 @@ planner + sync script; convert the 7 seed challenges; write 2 ai-workflow quizze
   Management API fallback from BUILD_PLAN Phase 1. Direct Postgres (port 5432) is not
   reachable from the cloud session either. Fix: use a personal access token with full
   project access (Owner/Admin) if CLI `link`/`db push` are wanted.
+- **Google provider is not enabled in Supabase** (`/auth/v1/settings` → `google: false`), so
+  "Sign in with Google" currently fails. Needs SETUP.md step 3 (Google OAuth client, Internal
+  consent screen, paste client ID/secret into Supabase → Auth → Providers → Google) and
+  Redirect URLs `http://localhost:3000/**` (+ deployed URL later). Can't be done from here
+  (requires creating an OAuth client — a stop condition), and the access token can't read or
+  change auth config (403). Everything else is tested via test login.
+- Real Google OAuth round-trip is therefore untested; the callback's error mapping is tested
+  with the exact query Supabase sends.
+- `ui.shadcn.com` is blocked by the session's network policy; new shadcn components must be
+  added by hand (or allow that host in the environment's network settings).
+- Hardening idea (not done, security-model change → Alvis to decide): the email provider is
+  enabled with confirmation required. Since sign-in is Google-only, consider turning off email
+  signups in Supabase; test login uses admin-generated links and would need re-checking.
