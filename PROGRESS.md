@@ -289,7 +289,18 @@ via `TEST_SUPABASE_*`, skipped when unset; full suite green.
 - Test users (test-strategist/-designer/-admin) exist in the main project from earlier test runs
   (no passwords, hidden from the leaderboard; test-admin is an admin). Remove them in Supabase →
   Auth → Users if you don't want them there; dev test login against the main project recreates them.
-- `ALLOWED_EMAIL_DOMAIN` in `.env.example` is informational only (domain is enforced in code + DB).
 - Hardening idea (not done, security-model change → Alvis to decide): the email provider is
   enabled with confirmation required. Since sign-in is Google-only, consider turning off email
   signups in Supabase; test login uses admin-generated links and would need re-checking.
+
+## Post-handover — configurable sign-in domain
+- Login domain is uxdesignagency.com (was hardcoded theuxda.com). Now driven by
+  `ALLOWED_EMAIL_DOMAINS` (comma-separated): new migration `20261009120000_allowed_email_domains`
+  adds `allowed_email_domains` (RLS on, no client access) and makes `handle_new_user` check it;
+  `npm run seed:domains` syncs the env var into the table. The env var also drives the Google
+  `hd` hint, the auth-callback re-check, test user emails and the domain error copy.
+- Applied to the main project: `db:push` ✅, `db:types` ✅, `seed:domains` ✅ (uxdesignagency.com),
+  `seed:admins` ✅ (alvis@uxdesignagency.com allowlisted), `db:check` ✅ (incl. allowed-domain
+  signup accepted, other domains rejected). A @theuxda.com signup is now rejected.
+- `admin_allowlist` still contains the old `alvis@theuxda.com` row; harmless (that domain can no
+  longer sign up). Delete it in Supabase if you want it gone.

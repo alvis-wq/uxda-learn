@@ -26,6 +26,18 @@ export type Database = {
         }
         Relationships: []
       }
+      allowed_email_domains: {
+        Row: {
+          domain: string
+        }
+        Insert: {
+          domain: string
+        }
+        Update: {
+          domain?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           archived: boolean

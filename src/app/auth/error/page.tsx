@@ -3,13 +3,14 @@ import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatAllowedDomains } from "@/lib/auth/domain";
 
 export const metadata: Metadata = { title: "Sign-in problem · UXDA Learn" };
 
 const MESSAGES: Record<string, { title: string; body: string }> = {
   domain: {
     title: "This account can't be used here",
-    body: "UXDA Learn is only for UXDA team members. Please sign in with your @theuxda.com Google account.",
+    body: "UXDA Learn is only for UXDA team members. Please sign in with your {domains} Google account.",
   },
   profile: {
     title: "Your profile isn't ready",
@@ -25,9 +26,18 @@ const MESSAGES: Record<string, { title: string; body: string }> = {
   },
 };
 
+function allowedDomainsLabel(): string {
+  try {
+    return formatAllowedDomains();
+  } catch {
+    return "UXDA";
+  }
+}
+
 export default async function AuthErrorPage({ searchParams }: PageProps<"/auth/error">) {
   const reason = (await searchParams).reason;
   const message = MESSAGES[typeof reason === "string" ? reason : ""] ?? MESSAGES.oauth;
+  const body = message.body.replace("{domains}", allowedDomainsLabel());
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
@@ -37,7 +47,7 @@ export default async function AuthErrorPage({ searchParams }: PageProps<"/auth/e
           <CardTitle className="text-xl">
             <h1>{message.title}</h1>
           </CardTitle>
-          <CardDescription>{message.body}</CardDescription>
+          <CardDescription>{body}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">

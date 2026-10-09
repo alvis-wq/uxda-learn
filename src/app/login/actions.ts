@@ -3,9 +3,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { ALLOWED_EMAIL_DOMAIN } from "@/lib/auth/domain";
+import { googleHostedDomainHint } from "@/lib/auth/domain";
 import { safeNext } from "@/lib/auth/paths";
-import { isTestLoginEnabled, TEST_USERS } from "@/lib/auth/test-login";
+import { isTestLoginEnabled, testUser } from "@/lib/auth/test-login";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,12 +26,19 @@ export async function signInWithGoogle(_prev: LoginState, formData: FormData): P
   const callback = new URL("/auth/callback", await siteOrigin());
   if (next !== "/") callback.searchParams.set("next", next);
 
+  let hd: string;
+  try {
+    hd = googleHostedDomainHint();
+  } catch {
+    return { error: "Sign-in isn't configured on this server (ALLOWED_EMAIL_DOMAINS)." };
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: callback.toString(),
       // hd is only a hint to Google's account picker; the DB trigger is the real gate.
-      queryParams: { hd: ALLOWED_EMAIL_DOMAIN, prompt: "select_account" },
+      queryParams: { hd, prompt: "select_account" },
     },
   });
   if (error || !data.url) {
@@ -53,7 +60,12 @@ export async function testLogin(_prev: LoginState, formData: FormData): Promise<
   }
   const parsed = testLoginSchema.safeParse({ role: formData.get("role") });
   if (!parsed.success) return { error: "Unknown test user." };
-  const user = TEST_USERS[parsed.data.role];
+  let user: ReturnType<typeof testUser>;
+  try {
+    user = testUser(parsed.data.role);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Test users aren't configured." };
+  }
 
   const admin = createAdminClient();
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({

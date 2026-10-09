@@ -3,9 +3,9 @@ import { parseAdminEmails } from "./admin-emails";
 
 describe("parseAdminEmails", () => {
   it("splits, trims, lowercases and dedupes", () => {
-    expect(parseAdminEmails(" Alvis@theuxda.com, bob@theuxda.com;alvis@THEUXDA.com ")).toEqual([
-      "alvis@theuxda.com",
-      "bob@theuxda.com",
+    expect(parseAdminEmails(" Alvis@uxdesignagency.com, bob@uxdesignagency.com;alvis@UXDESIGNAGENCY.com ")).toEqual([
+      "alvis@uxdesignagency.com",
+      "bob@uxdesignagency.com",
     ]);
   });
 

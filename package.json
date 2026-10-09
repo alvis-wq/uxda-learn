@@ -18,6 +18,7 @@
     "content:validate": "tsx scripts/content-validate.ts",
     "content:sync": "tsx scripts/content-sync.ts",
     "seed:admins": "tsx scripts/seed-admins.ts",
+    "seed:domains": "tsx scripts/seed-domains.ts",
     "eval:pull": "tsx scripts/eval-pull.ts",
     "eval:push": "tsx scripts/eval-push.ts"
   },

@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { resetTrack } from "./helpers";
+import { formatAllowedDomains } from "../src/lib/auth/domain";
+import { resetTrack, TEST_EMAILS } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
-
-const STRATEGIST = "test-strategist@theuxda.com";
 
 test.describe("auth", () => {
   test("unauthenticated visitors are sent to /login", async ({ page }) => {
@@ -17,7 +16,7 @@ test.describe("auth", () => {
   });
 
   test("test user logs in, completes onboarding and reaches home", async ({ page }) => {
-    await resetTrack(STRATEGIST);
+    await resetTrack(TEST_EMAILS.strategist);
 
     await page.goto("/login");
     await page.getByRole("button", { name: "Strategist" }).click();
@@ -50,6 +49,6 @@ test.describe("auth", () => {
     await page.goto("/auth/callback?error=server_error&error_description=Database+error+saving+new+user");
     await expect(page).toHaveURL(/\/auth\/error\?reason=domain$/);
     await expect(page.getByRole("heading", { name: "This account can't be used here" })).toBeVisible();
-    await expect(page.getByText("@theuxda.com")).toBeVisible();
+    await expect(page.getByText(formatAllowedDomains(), { exact: false })).toBeVisible();
   });
 });

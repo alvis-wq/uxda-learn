@@ -8,6 +8,12 @@ create type submission_status as enum
 
 create table admin_allowlist (email text primary key);
 
+-- Synced from ALLOWED_EMAIL_DOMAINS by `npm run seed:domains`; checked by handle_new_user.
+create table allowed_email_domains (
+  domain text primary key
+    check (domain = lower(domain) and domain ~ '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$')
+);
+
 create table profiles (
   id uuid primary key references auth.users on delete cascade,
   email text not null unique,
@@ -101,8 +107,11 @@ $$;
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if split_part(lower(new.email), '@', 2) <> 'theuxda.com' then
-    raise exception 'Only @theuxda.com accounts are allowed';
+  if not exists (
+    select 1 from allowed_email_domains d
+    where d.domain = split_part(lower(new.email), '@', 2)
+  ) then
+    raise exception 'Email domain is not allowed';
   end if;
   insert into profiles (id, email, full_name, avatar_url, is_admin)
   values (
@@ -138,6 +147,7 @@ $$;
 
 -- RLS ----------------------------------------------------------------------
 alter table admin_allowlist enable row level security;   -- no policies
+alter table allowed_email_domains enable row level security;   -- no policies
 alter table profiles        enable row level security;
 alter table categories      enable row level security;
 alter table challenges      enable row level security;

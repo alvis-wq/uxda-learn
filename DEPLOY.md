@@ -19,7 +19,7 @@ npm start          # serves on $PORT (default 3000)
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Required** (build + runtime) | Publishable/anon key — safe in the browser |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Required** (runtime, server-only) | Secret key. Never expose; mark as secret in the host. Rotate in Supabase if leaked |
 | `ENABLE_TEST_LOGIN` | **Must be unset or `false`** | Test login is also hard-disabled when `NODE_ENV=production` |
-| `ALLOWED_EMAIL_DOMAIN` | Not used at runtime | Informational; the domain is enforced in code + DB trigger |
+| `ALLOWED_EMAIL_DOMAINS` | **Required** (runtime, server-only) | e.g. `uxdesignagency.com` (comma-separated for several). Must match the DB's `allowed_email_domains` — run `npm run seed:domains` after changing it |
 | `SUPABASE_PROJECT_REF`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `ADMIN_EMAILS` | Not needed | Only for local scripts (migrations, types, seeding) |
 | `TEST_SUPABASE_*` | **Never** | Test project for E2E/integration only |
 
@@ -50,6 +50,7 @@ Run from a machine with the main project's `.env.local`:
 
 ```bash
 npm run db:push          # migrations
+npm run seed:domains     # ALLOWED_EMAIL_DOMAINS → allowed_email_domains (sign-up gate)
 npm run db:check         # RLS / private tables / signup domain guard
 npm run seed:admins      # Alvis (and any other ADMIN_EMAILS) become admins on first sign-in
 npm run content:sync     # publish content
@@ -58,8 +59,8 @@ npm run content:sync     # publish content
 ## Smoke test after deploying
 
 1. `/login` loads and shows **only** "Sign in with Google" (no "Test login" card).
-2. Sign in with an @theuxda.com account → onboarding → home lists categories.
-3. Sign in with a non-UXDA Google account → "This account can't be used here".
+2. Sign in with an account on an `ALLOWED_EMAIL_DOMAINS` domain → onboarding → home lists categories.
+3. Sign in with any other Google account → "This account can't be used here".
 4. Submit a published quiz → it's graded and shows "Completed".
 5. Upload a screenshot on a screenshot challenge → "Awaiting review".
 6. As a non-admin, open `/admin` → "Access denied" (HTTP 403).
