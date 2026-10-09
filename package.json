@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "check": "npm run typecheck && npm run lint && npm run test",
     "test:e2e": "playwright test",
     "db:push": "tsx scripts/db-push.ts",

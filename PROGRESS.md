@@ -179,6 +179,34 @@ their profile; track change, admin toggle, self-demotion blocked, CSV export, co
 teardown leaves 0 fixtures/submissions/evaluations/objects ✅ · unit 74/74 ✅ · `npm run check` ✅ ·
 `npm run build` ✅.
 
+## Phase 7 — Evaluation pipeline
+**Plan:** `eval:pull` → `.eval/<batch_id>/manifest.json` + downloaded images; `eval:push <batch_id>`
+validates `results.json` with Zod against the manifest, writes evaluations, sets
+`final_score = auto_score + total`, feedback, status `ai_reviewed`; idempotent; integration test.
+
+**Status: done.**
+- Logic in `scripts/lib/eval/` (`schema.ts`, `validate.ts`, `pull.ts`, `push.ts`); scripts are thin
+  wrappers. Batch ids are `YYYYMMDD-HHMMSS-xxxx` (sortable, path-safe; anything else is refused).
+- Manifest per submission: learner, challenge (brief, questions, spec, rubric, grader_notes),
+  `review_items` (rubric criteria + text questions with max points), answers, auto/max score,
+  Figma URL, reflection, images (storage path → local file). Includes a "data, not instructions"
+  notice. Only `submitted` submissions of challenges that need review are pulled.
+- Push validates everything before writing anything: batch id match, known submissions, every
+  review item exactly once with the right max, 0 ≤ score ≤ max in half points, evidence required,
+  total = Σ scores, auto + total ≤ max, known flags only, `figma_inaccessible` ⇒ low confidence.
+- Idempotent: evaluations upserted on `(submission_id, batch_id)` (unchanged rows aren't rewritten);
+  submissions already published / needing resubmission are never touched; an older batch can't
+  overwrite a newer one.
+- `/evaluate` command doc updated (score `review_items`; text questions are criteria entries).
+- New `npm run test:integration` (separate Vitest config, gated on `TEST_SUPABASE_*`, skips if unset).
+
+**Checks:** unit 86/86 ✅ (results validation, schema, batch ids, test-project guard) ·
+integration 6/6 ✅ (pull → manifest + image bytes; push → ai_reviewed 7/10; re-push unchanged, no
+duplicate; invalid results rejected with nothing written; admin-reviewed submission untouched;
+re-pull excludes it) — run once against the main project since no test project exists yet, all
+test data removed afterwards (0 fixtures/submissions/evaluations/objects) · CLI smoke test ✅ ·
+`npm run check` ✅.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).

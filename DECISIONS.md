@@ -65,3 +65,10 @@
 - CSV has one row per user with per-challenge best scores (non-draft challenges) — the most useful single export; totals match the leaderboard rule.
 - Screenshot uploader disabled until hydrated — a file chosen before React attaches `onChange` is silently lost.
 - E2E specs each wipe test-user data in `beforeAll` — specs run in any order; serial within a file.
+- Eval logic lives in `scripts/lib/eval/` with thin CLI wrappers — testable without spawning processes.
+- Text questions are scored as `criteria` entries (id = question id) — results.json has no other place for them, and it keeps `final_score = auto_score + total` true for every challenge.
+- Manifest lists `review_items` explicitly — the evaluator gets the exact ids and max points to fill in instead of deriving them.
+- `eval:push` is all-or-nothing on validation — a half-applied batch is harder to reason about than a rejected file.
+- Push never modifies submissions an admin already published or sent back, and older batches can't overwrite newer ones — AI review must never undo a human decision.
+- Scores in half points, evidence required, `figma_inaccessible` ⇒ low confidence — enforce the calibration rules in evaluate.md mechanically.
+- Integration tests use a separate Vitest config (`npm run test:integration`) — `npm run check` stays fast and offline-safe.

@@ -11,5 +11,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "scripts/**/*.test.ts", "tests/**/*.test.ts"],
+    // Integration tests need a test Supabase project: `npm run test:integration`.
+    exclude: ["tests/integration/**", "node_modules/**"],
   },
 });

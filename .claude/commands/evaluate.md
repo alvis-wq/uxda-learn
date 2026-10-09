@@ -16,6 +16,9 @@ Review all pending submissions.
    - Score each rubric criterion using its levels (full / partial / none, or a value in
      between). Each score must cite **evidence**: what you saw and where.
    - Score text questions against grader_notes.
+   - Score exactly the items in the submission's `review_items` (rubric criteria AND text
+     questions): one `criteria` entry per item, same `id`, `max` = the item's `max`.
+     Scores are whole or half points.
    - Write feedback to the person: 2–4 sentences, specific, start with what worked,
      then the most important thing to improve. Friendly, direct, no fluff.
 3. Calibration rules:
@@ -50,6 +53,9 @@ Review all pending submissions.
   ]
 }
 ```
-6. Run `npm run eval:push -- <batch_id>`. Fix validation errors if any.
+   `total` must equal the sum of the criteria scores. The submission's final score becomes
+   `auto_score + total`. `figma_inaccessible` requires `confidence: "low"`.
+6. Run `npm run eval:push -- <batch_id>`. Fix validation errors if any (nothing is written
+   until the whole file is valid). Re-pushing the same batch is safe.
 7. Reply with a summary table: person, challenge, score / max, confidence, flags.
    List low-confidence and flagged items first so Alvis reviews those in /admin.
