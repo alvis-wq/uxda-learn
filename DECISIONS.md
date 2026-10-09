@@ -1,0 +1,81 @@
+# Decisions
+
+- Scaffolded create-next-app in a scratch dir and copied files in — create-next-app refuses non-empty folders; this guarantees nothing existing is overwritten.
+- Next.js `cacheComponents` / `partialPrefetching` turned off — every page is per-user and auth-gated, so a static shell buys little and session reads would need Suspense everywhere.
+- shadcn/ui initialised by hand (components.json + copied components) — `ui.shadcn.com` is blocked by the session's network policy; components are the standard new-york source using the `radix-ui` package.
+- Accent `#B5A2FF` used as `--primary` with dark foreground text — light lavender needs dark text for WCAG contrast.
+- `@types/node` pinned to ^22 — Vitest 5 peer-requires >=22 and the runtime is Node 22.
+- Scripts load `.env.local` via `process.loadEnvFile` — no dotenv dependency; existing env vars win (cloud sessions).
+- `typecheck` runs `next typegen` first — Next 16 route/layout prop types are generated globals.
+- Vitest config is `.mts` — Vitest 5 warns on ESM config loaded as CJS.
+- E2E runs against `next dev` — test login is disabled whenever `NODE_ENV=production`, which `next start` sets.
+- Playwright uses `/opt/pw-browsers/chromium` when present (override `PW_CHROMIUM_PATH`) — avoids browser downloads in cloud sessions.
+- Proxy (formerly middleware) lives in `src/proxy.ts` — Next 16 renamed the convention.
+- Migrations applied via Management API `database/query` (`npm run db:push`) — `supabase link`/`db push` fail: token lacks config-endpoint privileges and Postgres:5432 is unreachable from the session.
+- Applied migrations tracked in `supabase_migrations.schema_migrations` — same table the CLI uses, so switching back to `supabase db push` later just works.
+- Migration adds explicit GRANT/REVOKE on top of schema.sql — RLS alone shouldn't be the only layer, and it removes dependence on the project's default Data API grants.
+- `get_leaderboard`, `is_admin` execute revoked from anon/public — every page requires sign-in; no reason to expose them.
+- `check-db` uses a real temp user and sentinel rows — "0 rows from an empty table" would prove nothing.
+- Added `npm run db:check` script for `scripts/check-db.ts` — consistent with other db:* scripts.
+- Scripts use their own service-role client (`scripts/lib/supabase.ts`) — app-side admin client imports `server-only`, which throws outside the React server bundle.
+- Content schemas are strict (unknown keys rejected) — catches typos like `point:` that would otherwise silently drop data.
+- `content_hash` covers public fields only; key changes detected by comparing `challenge_keys` — users can read `content_hash`, and a hash including answers could be brute-forced for small quizzes.
+- Status excluded from the hash — publishing/archiving isn't a content change, so it doesn't bump `version`.
+- `status` defaults to `draft` when omitted — safer than the DB default `published`.
+- Added optional `summary` and `due_at` frontmatter (DB has the columns); summary falls back to the brief's first paragraph.
+- Multi-answer keys stored sorted — stable comparison and grading.
+- gray-matter parses with the `yaml` package — one YAML parser for categories and frontmatter.
+- Sync uses sequential supabase-js writes (not one transaction) — idempotent: a partial run is completed by the next run.
+- New ai-workflow quizzes are `draft` — Alvis reviews new content before publishing (same rule as seed challenges and /new-challenge).
+- Quiz single-answer positions varied — all-"b" answers were guessable.
+- Test login uses a service-role magic-link token verified server-side, not `TEST_USER_PASSWORD` — test users live in the real project; a known password (esp. for test-admin) would let anyone with the public anon key sign in, bypassing the app's production guard. `TEST_USER_PASSWORD` is now unused.
+- Test-login guard checked in both the login page (UI) and the server action — the action is the real gate; unit-tested with NODE_ENV=production.
+- Proxy uses `getClaims()`; pages use `getUser()` — cheap check per request, authoritative check where data is read.
+- `/auth/error` is public alongside `/login` and `/auth/callback` — users rejected by the domain trigger have no session and must be able to see why.
+- `next` redirect param restricted to same-origin paths (`safeNext`) — prevents open redirects through login.
+- Callback re-checks the email domain after code exchange — defence in depth on top of the DB trigger.
+- Onboarding writes via service role with `track IS NULL` in the WHERE clause — atomic "only once" rule, no client update grant on `track`.
+- Page titles inside cards are `<h1>`s — shadcn CardTitle is a div; headings needed for a11y and role-based tests.
+- E2E resets the test strategist's track via service role before running — makes the onboarding test repeatable.
+- `TEST_USER_PASSWORD` removed from `.env.example` and SETUP.md — unused since test login switched to admin-generated one-time tokens.
+- shadcn CLI used again for new components; its stray `cn` npm package removed and imports pointed at `@/lib/utils` — unknown third-party dependency.
+- Markdown via `react-markdown` + `remark-gfm` + Tailwind typography — conventional, no raw HTML rendering.
+- Multi-select questions are all-or-nothing — no partial-credit rule exists in the docs; simplest unambiguous grading.
+- Learners see only their total quiz score, not per-question correctness — with 3 attempts, per-question marks would reveal the key.
+- AI score/feedback hidden in the UI until published/needs_resubmission — admin approval is the gate; the row itself is the user's own (RLS) so this is presentation, not a secret.
+- New attempt allowed after `needs_resubmission` or a non-perfect published score, up to 3 — "best published attempt counts" implies retakes; blocked while awaiting review.
+- Screenshot paths are re-validated and checked for existence server-side — the client chooses paths, so it must not be trusted.
+- Orphaned uploads (removed before submit) stay in Storage — no delete policy for users; harmless and cheap. Cleanup can be a later admin script.
+- Admins can preview draft challenges but can't submit to them — useful for review, no polluted data.
+- E2E runs against the real project with an isolated fixture category and full cleanup of test-user data — only one Supabase project exists; content:sync would archive any leftover fixture.
+- Leaderboard tabs are `?track=` links rendered on the server — no client state, shareable URLs, works without JS.
+- Leaderboard visibility updated with the user's RLS client, not the service role — the DB already grants exactly that column; least privilege.
+- Ties share a rank (1, 2, 2, 4) — standard competition ranking, matches the SQL order (score, then completed).
+- Dashboard "pending reviews" counts submissions in `submitted` or `ai_reviewed` — both are "Awaiting review" to the learner.
+- Admin lives in its own `(admin)` route group, not under `(app)` — `(app)/loading.tsx` streams the response, so `forbidden()` there would render the 403 UI with a 200 status.
+- `forbidden()` via `experimental.authInterrupts` — gives a real 403 + dedicated page; the flag is documented and stable enough for one call site.
+- Admin reads use the admin's own RLS client; only writes use the service role — RLS stays a second check even inside /admin.
+- Every admin action re-checks `is_admin` from the DB — UI hiding and layouts aren't authorization.
+- Review is a compare-and-set (`WHERE status IN (submitted, ai_reviewed)`) — two admins (or a double click) can't double-review.
+- Final score in half-point steps, 0..max_score — rubric levels allow "in between" scores; finer precision adds nothing.
+- Requesting resubmission requires feedback — the learner must know what to change.
+- Admins can't remove their own admin flag — prevents locking the last admin out; another admin can.
+- Toggling admin doesn't touch `admin_allowlist` — the allowlist only seeds admins at signup / `seed:admins`.
+- CSV cells starting with = + - @ are prefixed with ' (numbers excepted) — spreadsheet formula injection via user-controlled names.
+- CSV has one row per user with per-challenge best scores (non-draft challenges) — the most useful single export; totals match the leaderboard rule.
+- Screenshot uploader disabled until hydrated — a file chosen before React attaches `onChange` is silently lost.
+- E2E specs each wipe test-user data in `beforeAll` — specs run in any order; serial within a file.
+- Eval logic lives in `scripts/lib/eval/` with thin CLI wrappers — testable without spawning processes.
+- Text questions are scored as `criteria` entries (id = question id) — results.json has no other place for them, and it keeps `final_score = auto_score + total` true for every challenge.
+- Manifest lists `review_items` explicitly — the evaluator gets the exact ids and max points to fill in instead of deriving them.
+- `eval:push` is all-or-nothing on validation — a half-applied batch is harder to reason about than a rejected file.
+- Push never modifies submissions an admin already published or sent back, and older batches can't overwrite newer ones — AI review must never undo a human decision.
+- Scores in half points, evidence required, `figma_inaccessible` ⇒ low confidence — enforce the calibration rules in evaluate.md mechanically.
+- Integration tests use a separate Vitest config (`npm run test:integration`) — `npm run check` stays fast and offline-safe.
+- E2E/integration tests target a separate project via `TEST_SUPABASE_*`, skip when unset, and refuse the main project by URL or ref — tests create users, submissions and uploads; that must never happen in production data.
+- Playwright overrides the dev server's Supabase env and never reuses an existing server — a reused server could be talking to the main project.
+- `--test-project` flag on scripts maps `TEST_SUPABASE_*` onto the normal vars — one code path, and the test project is set up with the same migrations.
+- Added `@axe-core/playwright` (dev only) — "basic a11y" verified by a tool, in light and dark mode, instead of by eye.
+- Responsive check is automated (no horizontal overflow at 375px) plus a visual screenshot review — overflow is the common mobile failure; tables hide secondary columns on small screens.
+- DEPLOY.md instead of a preview deploy — no Vercel CLI linked; the app is host-agnostic.
+- CI runs check + build with placeholder `NEXT_PUBLIC_SUPABASE_*` and no secrets — the build never contacts Supabase (verified with an empty env), so real keys would only add risk. E2E/integration stay out of CI until a test project + secrets are set up.

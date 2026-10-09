@@ -1,0 +1,22 @@
+{
+  "batch_id": "__BATCH_ID__",
+  "model": "fixture-model",
+  "results": [
+    {
+      "submission_id": "__SUBMISSION_ID__",
+      "criteria": [
+        {
+          "id": "quality",
+          "score": 7,
+          "max": 10,
+          "evidence": "Screenshot 1 shows the flow, but no error state.",
+          "comment": "Clear capture; the error state is missing."
+        }
+      ],
+      "total": 7,
+      "feedback": "Clear screenshot and an honest reflection. Next time, include the error state you mention.",
+      "confidence": "medium",
+      "flags": []
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-and-build:
+    name: Check and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Placeholders only — no real secrets in CI. Nothing at build time talks to Supabase;
+      # NEXT_PUBLIC_* values are inlined into the bundle, so they just need to be well-formed.
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+      NEXT_TELEMETRY_DISABLED: "1"
+      # TEST_SUPABASE_* are intentionally unset: E2E and integration tests stay skipped.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, lint and unit tests
+        run: npm run check
+
+      - name: Build
+        run: npm run build
