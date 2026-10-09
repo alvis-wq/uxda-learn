@@ -1,5 +1,6 @@
 # Build plan
 
+
 Execute phases in order. Work autonomously; the human is not watching.
 
 ## Execution loop (every phase)
@@ -32,7 +33,9 @@ design, naming, copy, error messages, refactors, test approach.
 - The same blocker persists after the loop above, or 2 phases in a row end blocked
 
 ## Phase 0 — Bootstrap
-- Verify all vars in `.env.example` exist in `.env.local` (stop if not).
+- Verify all vars in `.env.example` exist in `.env.local` or the process environment
+  (cloud sessions provide them as env vars). Install the Supabase CLI as a devDependency
+  and run `npx supabase link --project-ref $SUPABASE_PROJECT_REF`. Stop if anything is missing.
 - Scaffold Next.js (TypeScript, App Router, Tailwind, ESLint, `src/` dir) in the current
   folder without overwriting existing files. Init shadcn/ui. Add Vitest, Playwright, Zod,
   `@supabase/supabase-js`, `@supabase/ssr`, `gray-matter`, `yaml`, `tsx`.
@@ -44,6 +47,9 @@ design, naming, copy, error messages, refactors, test approach.
 
 ## Phase 1 — Database
 - Turn `docs/schema.sql` into a migration under `supabase/migrations/`; `npm run db:push`.
+- If `supabase db push` can't connect, apply the migration via the Supabase
+  Management API (`POST https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query`
+  with SUPABASE_ACCESS_TOKEN) and log it in DECISIONS.md.
 - `npm run db:types` → `src/lib/database.types.ts`.
 - `scripts/seed-admins.ts`: upsert `ADMIN_EMAILS` into `admin_allowlist`, and set
   `is_admin=true` on any matching existing profiles.
