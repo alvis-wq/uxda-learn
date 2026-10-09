@@ -262,6 +262,12 @@ via `TEST_SUPABASE_*`, skipped when unset; full suite green.
 
 **Checks:** see Final summary above.
 
+## Post-handover — CI
+- Added `.github/workflows/ci.yml`: `npm ci` → `npm run check` → `npm run build` on push and pull
+  request; Node 22 with npm cache; read-only token; placeholder env, no secrets; E2E/integration not
+  run. Verified locally with the exact workflow env (clean environment): check ✅ (86 tests),
+  build ✅.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).

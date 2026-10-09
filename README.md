@@ -94,6 +94,12 @@ Quiz-only challenges are graded and published the moment someone submits. Everyt
   E2E starts its own `next dev` on port 3100 pointed at the test project, installs an
   `[E2E] Test challenges` fixture category, and removes it and all test-user data afterwards.
 
+## CI
+
+`.github/workflows/ci.yml` runs `npm ci`, `npm run check` and `npm run build` on every push and
+pull request. It uses placeholder `NEXT_PUBLIC_SUPABASE_*` values and no secrets; integration
+and E2E tests aren't run there (they need the test Supabase project).
+
 ## Security model (summary)
 
 - RLS on every table plus explicit grants; `challenge_keys` and `admin_allowlist` have no client

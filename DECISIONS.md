@@ -78,3 +78,4 @@
 - Added `@axe-core/playwright` (dev only) — "basic a11y" verified by a tool, in light and dark mode, instead of by eye.
 - Responsive check is automated (no horizontal overflow at 375px) plus a visual screenshot review — overflow is the common mobile failure; tables hide secondary columns on small screens.
 - DEPLOY.md instead of a preview deploy — no Vercel CLI linked; the app is host-agnostic.
+- CI runs check + build with placeholder `NEXT_PUBLIC_SUPABASE_*` and no secrets — the build never contacts Supabase (verified with an empty env), so real keys would only add risk. E2E/integration stay out of CI until a test project + secrets are set up.
