@@ -12,6 +12,9 @@ const executablePath = existsSync(preinstalled) ? preinstalled : undefined;
 
 export default defineConfig({
   testDir: "./e2e",
+  // Fixture challenges in their own category; all test-user data is wiped before and after.
+  globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,

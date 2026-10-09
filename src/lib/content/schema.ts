@@ -85,6 +85,13 @@ export const rubricCriterionSchema = z.strictObject({
   levels: z.strictObject({ full: nonEmpty, partial: nonEmpty, none: nonEmpty }),
 });
 
+/** Questions as stored in challenges.questions (answers stripped). */
+export const publicQuestionSchema = z.discriminatedUnion("kind", [
+  singleQuestionSchema.omit({ answer: true }),
+  multiQuestionSchema.omit({ answer: true }),
+  textQuestionSchema,
+]);
+
 export const challengeFrontmatterSchema = z.strictObject({
   slug,
   title: nonEmpty,

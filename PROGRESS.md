@@ -101,6 +101,31 @@ non-UXDA error page) — run twice, stable · unit 44/44 ✅ incl. "test login d
 `NODE_ENV=production`" for both the guard function and the server action · `npm run build` ✅ ·
 `npm run check` ✅ · manual: `next start` with `ENABLE_TEST_LOGIN=true` shows no test login.
 
+## Phase 4 — Learner experience
+**Plan:** RLS-scoped learner data layer; home (visible categories + progress), category page
+(type, difficulty, points, status), challenge page (markdown brief, questions, direct-to-Storage
+screenshot upload, Figma URL, reflection); `submitChallenge` server action (validate, auto-grade,
+status); submission detail page; loading/error/empty states; E2E with isolated fixtures.
+
+**Status: done.**
+- Pure logic with tests: `lib/submissions/grading.ts` (multi = exact set), `rules.ts` (3 attempts;
+  blocked while awaiting review or at full points; best published score counts; AI results hidden
+  until approved), `input.ts` (Zod schema derived per challenge; image paths must be
+  `{user_id}/{slug}/{uuid}.{png|jpg|webp}`; https figma.com only; min words).
+- `submitChallenge` (service role after `getUser`): re-checks visibility/published/audience,
+  attempts, validates, verifies every screenshot exists in Storage, grades against
+  `challenge_keys`, inserts with attempt n+1 (unique constraint handles races). Quiz-only →
+  `published` immediately; anything reviewable → `submitted`.
+- Pages: `/`, `/categories/[slug]`, `/challenges/[slug]`, `/submissions/[id]` (own only, images via
+  signed URLs from the user's client). Admins can preview drafts (banner, no form).
+- E2E isolation: `e2e/fixtures/content` (category `e2e-tests`) installed in global setup and removed
+  in teardown; all test-user submissions/evaluations/uploads wiped before and after; test users are
+  hidden from the leaderboard by default.
+
+**Checks:** E2E 6/6 ✅ (quiz auto-grades → published 10/10; screenshot upload → "Awaiting review";
+other user's submission: 404 page, 0 rows via RLS, Storage sign/download denied) · teardown leaves
+0 fixture rows/submissions/objects ✅ · unit 64/64 ✅ · `npm run check` ✅ · `npm run build` ✅.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).
@@ -116,8 +141,6 @@ non-UXDA error page) — run twice, stable · unit 44/44 ✅ incl. "test login d
   change auth config (403). Everything else is tested via test login.
 - Real Google OAuth round-trip is therefore untested; the callback's error mapping is tested
   with the exact query Supabase sends.
-- `ui.shadcn.com` is blocked by the session's network policy; new shadcn components must be
-  added by hand (or allow that host in the environment's network settings).
 - Hardening idea (not done, security-model change → Alvis to decide): the email provider is
   enabled with confirmation required. Since sign-in is Google-only, consider turning off email
   signups in Supabase; test login uses admin-generated links and would need re-checking.

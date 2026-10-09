@@ -37,3 +37,14 @@
 - Onboarding writes via service role with `track IS NULL` in the WHERE clause — atomic "only once" rule, no client update grant on `track`.
 - Page titles inside cards are `<h1>`s — shadcn CardTitle is a div; headings needed for a11y and role-based tests.
 - E2E resets the test strategist's track via service role before running — makes the onboarding test repeatable.
+- `TEST_USER_PASSWORD` removed from `.env.example` and SETUP.md — unused since test login switched to admin-generated one-time tokens.
+- shadcn CLI used again for new components; its stray `cn` npm package removed and imports pointed at `@/lib/utils` — unknown third-party dependency.
+- Markdown via `react-markdown` + `remark-gfm` + Tailwind typography — conventional, no raw HTML rendering.
+- Multi-select questions are all-or-nothing — no partial-credit rule exists in the docs; simplest unambiguous grading.
+- Learners see only their total quiz score, not per-question correctness — with 3 attempts, per-question marks would reveal the key.
+- AI score/feedback hidden in the UI until published/needs_resubmission — admin approval is the gate; the row itself is the user's own (RLS) so this is presentation, not a secret.
+- New attempt allowed after `needs_resubmission` or a non-perfect published score, up to 3 — "best published attempt counts" implies retakes; blocked while awaiting review.
+- Screenshot paths are re-validated and checked for existence server-side — the client chooses paths, so it must not be trusted.
+- Orphaned uploads (removed before submit) stay in Storage — no delete policy for users; harmless and cheap. Cleanup can be a later admin script.
+- Admins can preview draft challenges but can't submit to them — useful for review, no polluted data.
+- E2E runs against the real project with an isolated fixture category and full cleanup of test-user data — only one Supabase project exists; content:sync would archive any leftover fixture.

@@ -32,7 +32,7 @@ supabase link --project-ref <your-ref>
 
 ## 4. Environment
 Copy `.env.example` → `.env.local` and fill in every value.
-Generate a random `TEST_USER_PASSWORD` (local only).
+Set `ENABLE_TEST_LOGIN=true` only for local development (never in production).
 
 ## 5. Claude Code
 - Make sure the Figma MCP is connected (needed later for `/evaluate`).
