@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
 import { loginAs } from "./helpers";
+import { requireTestProject } from "./project";
+
+requireTestProject();
 
 test.describe.configure({ mode: "serial" });
 test.beforeAll(cleanTestUserData);

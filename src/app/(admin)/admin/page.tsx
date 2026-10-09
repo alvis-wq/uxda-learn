@@ -45,8 +45,8 @@ export default async function ReviewQueuePage() {
               <TableHead>Challenge</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>AI review</TableHead>
-              <TableHead className="text-right">Score</TableHead>
-              <TableHead className="text-right">Submitted</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Score</TableHead>
+              <TableHead className="hidden text-right sm:table-cell">Submitted</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -88,10 +88,10 @@ export default async function ReviewQueuePage() {
                     {!s.confidence && <span className="text-muted-foreground text-xs">Not yet</span>}
                   </div>
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">
                   {s.final_score ?? s.auto_score} / {s.max_score}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-right text-xs">
+                <TableCell className="text-muted-foreground hidden text-right text-xs sm:table-cell">
                   {new Date(s.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                 </TableCell>
               </TableRow>

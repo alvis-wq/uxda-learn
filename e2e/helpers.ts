@@ -1,40 +1,29 @@
 import { expect, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "../src/lib/database.types";
+import { profileIdFor, TEST_EMAILS } from "../tests/support/fixtures";
+import { anonClient, serviceClient } from "../tests/support/test-project";
+import { testProject } from "./project";
 
-export const TEST_EMAILS = {
-  strategist: "test-strategist@theuxda.com",
-  designer: "test-designer@theuxda.com",
-  admin: "test-admin@theuxda.com",
-} as const;
+export { TEST_EMAILS };
 export type Role = keyof typeof TEST_EMAILS;
 
-/** Service-role client for test setup/teardown only (runs in the Playwright process, never the browser). */
+/** Service-role client for the TEST project — setup/teardown only, never the browser. */
 export function adminDb() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("E2E needs NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
-  return createClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!testProject) throw new Error("No test Supabase project configured (TEST_SUPABASE_*).");
+  return serviceClient(testProject);
 }
 
 /** A real signed-in anon-key client for a test user (as the browser would have). */
 export async function userDb(role: Role) {
-  const admin = adminDb();
-  const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email: TEST_EMAILS[role] });
+  const { data, error } = await adminDb().auth.admin.generateLink({ type: "magiclink", email: TEST_EMAILS[role] });
   if (error) throw error;
-  const client = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+  const client = anonClient(testProject!);
   const { error: vErr } = await client.auth.verifyOtp({ token_hash: data.properties.hashed_token, type: "email" });
   if (vErr) throw vErr;
   return client;
 }
 
-export async function profileId(email: string): Promise<string | null> {
-  const { data } = await adminDb().from("profiles").select("id").eq("email", email).maybeSingle();
-  return data?.id ?? null;
+export function profileId(email: string) {
+  return profileIdFor(adminDb(), email);
 }
 
 /** Put a test user back into the "never onboarded" state. */

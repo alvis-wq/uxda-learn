@@ -12,7 +12,9 @@ export default async function AdminGroupLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <SiteHeader profile={profile} />
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
+        {children}
+      </div>
     </>
   );
 }

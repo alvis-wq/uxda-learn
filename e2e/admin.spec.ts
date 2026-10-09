@@ -2,6 +2,9 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
 import { adminDb, loginAs, profileId, TEST_EMAILS } from "./helpers";
+import { requireTestProject } from "./project";
+
+requireTestProject();
 
 test.describe.configure({ mode: "serial" });
 test.beforeAll(cleanTestUserData);

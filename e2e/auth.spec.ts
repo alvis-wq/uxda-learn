@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { resetTrack } from "./helpers";
+import { requireTestProject } from "./project";
+
+requireTestProject();
 
 const STRATEGIST = "test-strategist@theuxda.com";
 

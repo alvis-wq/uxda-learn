@@ -32,11 +32,11 @@ export default async function AdminUsersPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Track</TableHead>
-                <TableHead className="text-right">Score</TableHead>
-                <TableHead className="text-right">Completed</TableHead>
-                <TableHead className="text-right">Pending</TableHead>
+                <TableHead className="hidden text-right md:table-cell">Score</TableHead>
+                <TableHead className="hidden text-right md:table-cell">Completed</TableHead>
+                <TableHead className="hidden text-right md:table-cell">Pending</TableHead>
                 <TableHead>Admin</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead className="hidden md:table-cell">Joined</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -52,13 +52,13 @@ export default async function AdminUsersPage() {
                     <TableCell>
                       <TrackSelect userId={p.id} name={name} track={p.track} />
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{s.totalScore}</TableCell>
-                    <TableCell className="text-right tabular-nums">{s.completed}</TableCell>
-                    <TableCell className="text-right tabular-nums">{s.pending}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">{s.totalScore}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">{s.completed}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums md:table-cell">{s.pending}</TableCell>
                     <TableCell>
                       <AdminSwitch userId={p.id} name={name} isAdmin={p.is_admin} isSelf={p.id === me.id} />
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground hidden text-xs md:table-cell">
                       {new Date(p.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </TableCell>
                   </TableRow>

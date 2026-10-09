@@ -1,17 +1,46 @@
 # Progress
 
-## Current state (after Phase 6)
-Phases 0–6 done. Learners sign in (Google or dev test login), choose a track, browse categories
-and challenges, submit quizzes (auto-graded, published instantly) or screenshot/Figma/reflection
-work (awaiting review), see scores/feedback on their profile and the Strategists/Designers
-leaderboard. Admins get a review queue, submission review (approve / request resubmission),
-user management (track, admin), a read-only content overview and a CSV score export.
-All checks green: `npm run check` (74 unit tests), `npm run build`, E2E 10/10 (two consecutive
-full runs).
-**Next step:** Phase 7 — evaluation pipeline (`eval:pull` / `eval:push`, idempotent; the admin
-review UI already reads `evaluations` rows in the shape `/evaluate` writes).
-**Needs Alvis:** sign in once with a real @theuxda.com Google account to confirm the OAuth
-round-trip (automated tests can't drive Google), and pick a track on first login (admins too).
+## Final summary (after Phase 8)
+
+**What was built** — all 8 phases of BUILD_PLAN.md:
+- Google sign-in limited to @theuxda.com (DB trigger + callback check), one-time track
+  onboarding, guarded dev test login (no passwords; off in production).
+- Content pipeline: strict Zod schemas, `content:validate`, idempotent `content:sync` (answers and
+  grader notes only in `challenge_keys`, version bumps, archive-never-delete). 7 wireframing
+  challenges (5 published) + 2 draft ai-workflow quizzes.
+- Learner app: categories with progress, challenge pages (markdown brief, quiz questions,
+  direct-to-Storage screenshots, Figma link, reflection), server-side validation + auto-grading,
+  3 attempts with best-score-counts, submission pages, profile dashboard with feedback history and
+  leaderboard visibility, per-track leaderboard.
+- Admin (`/admin`, real 403 for others): review queue (AI-reviewed first, low confidence flagged),
+  submission review with signed image URLs and AI rubric scores, approve / request resubmission,
+  users (track, admin), content overview, CSV export.
+- Evaluation pipeline: `eval:pull` / `eval:push` with full validation, idempotent, never overrides
+  human review; `/evaluate` command updated to match.
+- Polish: loading/empty/error/not-found states everywhere, skip link, axe WCAG 2.1 A/AA clean in
+  light and dark mode, no horizontal scroll at 375px, README and DEPLOY.md.
+
+**Key decisions** (full list in DECISIONS.md): Management API instead of `supabase db push`
+(token/network limits); explicit GRANTs on top of RLS; public-only `content_hash`; magic-link
+test login instead of a shared password; admin in its own route group for real 403s; AI results
+hidden from learners until an admin approves; tests isolated on a separate Supabase project.
+
+**Checks at the end:** `npm run check` ✅ (86 unit tests) · `npm run build` ✅ ·
+`npm run test:integration` 6/6 ✅ · `npm run test:e2e` 14/14 ✅ (twice in a row). With no
+`TEST_SUPABASE_*` configured both DB suites skip (exit 0). Because no test project exists yet,
+the passing runs were made by pointing the test vars at the main project in a single shell with
+the main-project vars removed (the guard otherwise refuses); all test data was removed
+afterwards (0 fixtures, submissions, evaluations, uploads; test users hidden).
+
+**Next steps**
+1. Create the separate test Supabase project, set `TEST_SUPABASE_*`, run
+   `npm run db:push -- --test-project` and `npm run db:check -- --test-project` (README → Testing).
+2. Deploy (DEPLOY.md): set the 3 runtime env vars, add the production `/auth/callback` to Supabase
+   Redirect URLs, run the smoke test.
+3. Sign in once with a real @theuxda.com Google account (the OAuth round-trip can't be automated).
+4. Review and publish the draft content (`spot-the-plant` needs the seeded Figma file;
+   `peer-review-swap` needs pairing logic; the two ai-workflow quizzes need Alvis's review).
+5. Run the first `/evaluate` once real submissions arrive.
 
 ## Phase 0 — Bootstrap
 **Plan:** verify env vars; install Supabase CLI and link; scaffold Next.js into the existing
@@ -207,6 +236,32 @@ re-pull excludes it) — run once against the main project since no test project
 test data removed afterwards (0 fixtures/submissions/evaluations/objects) · CLI smoke test ✅ ·
 `npm run check` ✅.
 
+## Phase 8 — Polish + handover
+**Plan:** empty/loading/error/not-found states; basic a11y (labels, focus, contrast); 375px check;
+README; DEPLOY.md (no Vercel CLI linked); E2E + integration tests on a separate Supabase project
+via `TEST_SUPABASE_*`, skipped when unset; full suite green.
+
+**Status: done.**
+- Test isolation: `tests/support/test-project.ts` resolves `TEST_SUPABASE_URL/_ANON_KEY/
+  _SERVICE_ROLE_KEY`; none set → skip; partial → error; same project as main (URL or ref) →
+  error. Playwright starts its own `next dev` (never reuses a server) with the app's Supabase env
+  overridden to the test project; global setup/teardown and every spec are gated. Shared fixtures
+  in `tests/support/fixtures.ts`. Scripts accept `--test-project` (`db:push`, `db:check`, `db:types`,
+  …) via `TEST_SUPABASE_PROJECT_REF` (+ optional `TEST_SUPABASE_ACCESS_TOKEN`). Documented in
+  `.env.example`, README and SETUP.md.
+- New `e2e/quality.spec.ts`: axe (WCAG 2.0/2.1 A+AA) on login, home, category, both challenge
+  types, leaderboard, profile, 404, 403 and all admin pages in light **and** dark mode; no
+  horizontal overflow at 375px on the same pages; keyboard skip link → `#main`. Axe was
+  sanity-checked by injecting a violation (it caught `image-alt` and `color-contrast`).
+- Root `not-found.tsx`, `error.tsx`, `global-error.tsx`, admin `loading.tsx`/`error.tsx`;
+  "Skip to content" link in the header.
+- Mobile: admin Users and Review queue tables hide secondary columns below `md`/`sm` so the
+  controls stay on screen at 375px (checked visually from screenshots).
+- README (setup, scripts, content + evaluation workflows, testing, security model, layout) and
+  DEPLOY.md (host-agnostic, env vars, Supabase redirect URLs, first-deploy steps, smoke test).
+
+**Checks:** see Final summary above.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).
@@ -221,14 +276,14 @@ test data removed afterwards (0 fixtures/submissions/evaluations/objects) · CLI
 - Pages under `(app)` stream behind `loading.tsx`, so `notFound()` there renders the right UI but
   with HTTP 200 (not 404). Access control is unaffected (data is never sent). Admin pages are in
   their own group precisely to keep a real 403.
-- E2E runs against the single real Supabase project: it adds a temporary `[E2E] Test challenges`
-  category (visible to signed-in users for ~2 minutes) and wipes test-user data before/after.
-  If a run is killed mid-way, the next run or `npm run content:sync` cleans it up.
+- No separate test Supabase project exists yet, so E2E/integration skip by default (see Next
+  steps). Creating it is an external-account step for Alvis.
 - Uploads removed before submitting stay in Storage (users have no delete policy). Harmless;
   a cleanup script could come later.
-- Test users (test-strategist/-designer/-admin) exist in the project with no passwords; they're
-  hidden from the leaderboard after each E2E run, but using test login manually can leave a
-  newly created test user visible until the next E2E run.
+- Test users (test-strategist/-designer/-admin) exist in the main project from earlier test runs
+  (no passwords, hidden from the leaderboard; test-admin is an admin). Remove them in Supabase →
+  Auth → Users if you don't want them there; dev test login against the main project recreates them.
+- `ALLOWED_EMAIL_DOMAIN` in `.env.example` is informational only (domain is enforced in code + DB).
 - Hardening idea (not done, security-model change → Alvis to decide): the email provider is
   enabled with confirmation required. Since sign-in is Google-only, consider turning off email
   signups in Supabase; test login uses admin-generated links and would need re-checking.

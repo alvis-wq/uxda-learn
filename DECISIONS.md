@@ -72,3 +72,9 @@
 - Push never modifies submissions an admin already published or sent back, and older batches can't overwrite newer ones — AI review must never undo a human decision.
 - Scores in half points, evidence required, `figma_inaccessible` ⇒ low confidence — enforce the calibration rules in evaluate.md mechanically.
 - Integration tests use a separate Vitest config (`npm run test:integration`) — `npm run check` stays fast and offline-safe.
+- E2E/integration tests target a separate project via `TEST_SUPABASE_*`, skip when unset, and refuse the main project by URL or ref — tests create users, submissions and uploads; that must never happen in production data.
+- Playwright overrides the dev server's Supabase env and never reuses an existing server — a reused server could be talking to the main project.
+- `--test-project` flag on scripts maps `TEST_SUPABASE_*` onto the normal vars — one code path, and the test project is set up with the same migrations.
+- Added `@axe-core/playwright` (dev only) — "basic a11y" verified by a tool, in light and dark mode, instead of by eye.
+- Responsive check is automated (no horizontal overflow at 375px) plus a visual screenshot review — overflow is the common mobile failure; tables hide secondary columns on small screens.
+- DEPLOY.md instead of a preview deploy — no Vercel CLI linked; the app is host-agnostic.

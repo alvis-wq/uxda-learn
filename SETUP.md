@@ -33,6 +33,7 @@ supabase link --project-ref <your-ref>
 ## 4. Environment
 Copy `.env.example` → `.env.local` and fill in every value.
 Set `ENABLE_TEST_LOGIN=true` only for local development (never in production).
+Optional: a second Supabase project for E2E/integration tests (`TEST_SUPABASE_*`) — see README → Testing.
 
 ## 5. Claude Code
 - Make sure the Figma MCP is connected (needed later for `/evaluate`).

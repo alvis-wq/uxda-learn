@@ -1,7 +1,15 @@
 import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+import { resolveTestProject } from "./tests/support/test-project";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+
+/**
+ * E2E writes real data (users, submissions, uploads), so it runs ONLY against a separate
+ * Supabase project from TEST_SUPABASE_*. Not configured → every test is skipped and no
+ * server is started. Pointing it at the main project is refused (see tests/support).
+ */
+const { project } = resolveTestProject();
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
@@ -30,12 +38,20 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], launchOptions: { executablePath } },
     },
   ],
-  // E2E runs against `next dev`: test login is (by design) unavailable in production mode.
-  webServer: {
-    command: `npx next dev --port ${PORT}`,
-    url: `${baseURL}/login`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    env: { ENABLE_TEST_LOGIN: "true" },
-  },
+  // `next dev`, not `next start`: test login is (by design) unavailable in production mode.
+  // The app is pointed at the test project; never reuse a server that might use the main one.
+  webServer: project
+    ? {
+        command: `npx next dev --port ${PORT}`,
+        url: `${baseURL}/login`,
+        reuseExistingServer: false,
+        timeout: 180_000,
+        env: {
+          NEXT_PUBLIC_SUPABASE_URL: project.url,
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: project.anonKey,
+          SUPABASE_SERVICE_ROLE_KEY: project.serviceRoleKey,
+          ENABLE_TEST_LOGIN: "true",
+        },
+      }
+    : undefined,
 });

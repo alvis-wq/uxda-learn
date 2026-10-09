@@ -8,6 +8,12 @@ import type { Profile } from "@/lib/auth/session";
 export function SiteHeader({ profile }: { profile: Profile }) {
   return (
     <header className="border-b">
+      <a
+        href="#main"
+        className="bg-background focus-visible:ring-ring/50 sr-only z-50 rounded-md px-3 py-2 text-sm font-medium focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus-visible:ring-[3px]"
+      >
+        Skip to content
+      </a>
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-2 px-4">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
