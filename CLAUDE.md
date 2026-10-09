@@ -2,7 +2,8 @@
 
 Internal learning platform for UXDA. Team members sign in with Google (only `ALLOWED_EMAIL_DOMAINS`, currently @uxdesignagency.com),
 complete challenges (quizzes, screenshot/Figma submissions), get scored, and appear on a
-leaderboard split into Strategists and Designers. Owner/admin: Alvis ("Vision").
+leaderboard split into groups of tracks (Strategists, Designers, Team — configured in
+`src/lib/tracks.ts`). Owner/admin: Alvis ("Vision").
 
 ## Stack (fixed — don't swap)
 - Next.js (latest stable, App Router) + TypeScript (strict)
@@ -26,9 +27,11 @@ leaderboard split into Strategists and Designers. Owner/admin: Alvis ("Vision").
   (never `NEXT_PUBLIC_`, never imported in client components).
 - All submission writes go through server actions using the service role after verifying
   the session user. Users can never set their own scores or status.
-- Users see categories with audience `all` plus their own track.
+- Users see categories and challenges whose `audiences` include `all` or their own track.
+  `required_for` marks challenges as required per track (validation: only for tracks that can see it).
 - Scoring: a challenge's `points` = sum of question points + rubric points. Best published
-  attempt per challenge counts. Max 3 attempts.
+  attempt per challenge counts. Max 3 attempts. `acknowledge` challenges are 0 points,
+  complete instantly and never count on the leaderboard.
 - Quiz-only challenges (all questions auto-gradable) publish immediately on submit.
   Anything with screenshots, Figma, reflection or text questions goes:
   `submitted → ai_reviewed (via /evaluate) → published` (admin approves)

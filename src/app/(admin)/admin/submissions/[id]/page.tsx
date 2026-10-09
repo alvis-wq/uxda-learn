@@ -144,8 +144,8 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
                           <div className="font-medium">
                             {challenge?.rubric.find((r) => r.id === c.id)?.criterion ?? c.id}
                           </div>
-                          {c.evidence && <div className="text-muted-foreground mt-1 text-xs">Evidence: {c.evidence}</div>}
-                          {c.comment && <div className="text-muted-foreground mt-1 text-xs">{c.comment}</div>}
+                          {c.evidence && <div className="text-muted-foreground text-meta mt-1">Evidence: {c.evidence}</div>}
+                          {c.comment && <div className="text-muted-foreground text-meta mt-1">{c.comment}</div>}
                         </TableCell>
                         <TableCell className="text-right align-top tabular-nums">
                           {c.score} / {c.max}

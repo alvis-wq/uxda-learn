@@ -11,6 +11,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <nav aria-label="Admin" className="flex flex-wrap items-center gap-1">
           <NavLink href="/admin" label="Review queue" icon={null} exact showLabel />
           <NavLink href="/admin/users" label="Users" icon={null} showLabel />
+          <NavLink href="/admin/required" label="Required progress" icon={null} showLabel />
+          <NavLink href="/admin/acknowledgements" label="Acknowledgements" icon={null} showLabel />
           <NavLink href="/admin/content" label="Content" icon={null} showLabel />
         </nav>
         <Button asChild variant="outline" size="sm">

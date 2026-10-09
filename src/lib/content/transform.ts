@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { LoadedChallenge } from "./load";
+import type { Audience } from "@/lib/tracks";
 import type { Category, PublicQuestion, Question } from "./schema";
 
 /** JSON with object keys sorted, so equal data always serialises identically (jsonb reorders keys). */
@@ -46,18 +47,43 @@ export type ChallengeRow = {
   title: string;
   summary: string | null;
   body_md: string;
-  type: "quiz" | "screenshot" | "figma" | "mixed";
-  audience: "all" | "strategist" | "designer";
+  type: "quiz" | "screenshot" | "figma" | "mixed" | "acknowledge";
+  audiences: Audience[];
   difficulty: number;
   points: number;
   estimated_minutes: number | null;
   questions: PublicQuestion[];
   submission_spec: Record<string, unknown>;
   rubric: unknown[];
-  content_hash: string;
-  status: "draft" | "published" | "archived";
   due_at: string | null;
+  content_hash: string;
+  // Assignment metadata — like status, not part of content_hash, so changing it doesn't bump the version.
+  status: "draft" | "published" | "archived";
+  required_for: Audience[];
 };
+
+/** The public fields content_hash covers (everything in ChallengeRow except hash/status/required_for). */
+export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "status" | "required_for">;
+
+const PUBLIC_KEYS = [
+  "slug", "category_slug", "title", "summary", "body_md", "type", "audiences", "difficulty", "points",
+  "estimated_minutes", "questions", "submission_spec", "rubric", "due_at",
+] as const satisfies readonly (keyof PublicChallengeContent)[];
+
+/** Timestamps compare by instant: the DB returns `+00:00` where content may say `Z`. */
+export function normalizeTimestamp(value: string | null | undefined): string | null {
+  return value ? new Date(value).toISOString() : null;
+}
+
+/**
+ * sha256 over the public fields only. Also used on rows read back from the DB, so a stale stored
+ * hash (e.g. after a format migration) can be told apart from a real content change.
+ */
+export function hashPublicContent(content: PublicChallengeContent): string {
+  const picked = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, content[k] ?? null]));
+  picked.due_at = normalizeTimestamp(content.due_at);
+  return createHash("sha256").update(canonicalJson(picked)).digest("hex");
+}
 
 export type ChallengeKeyRow = {
   challenge_slug: string;
@@ -69,7 +95,7 @@ export type CategoryRow = {
   slug: string;
   title: string;
   description: string | null;
-  audience: "all" | "strategist" | "designer";
+  audiences: Audience[];
   sort_order: number;
   archived: boolean;
 };
@@ -79,7 +105,7 @@ export function toCategoryRow(c: Category): CategoryRow {
     slug: c.slug,
     title: c.title,
     description: c.description ?? null,
-    audience: c.audience,
+    audiences: c.audiences,
     sort_order: c.sort_order,
     archived: false,
   };
@@ -89,8 +115,8 @@ export function toCategoryRow(c: Category): CategoryRow {
  * Split a challenge into its public row and its private key row.
  *
  * content_hash covers ONLY public fields: users can read it, and a hash over answers
- * could be brute-forced for small quizzes. Status is excluded so publishing doesn't bump
- * the version. Private (key) changes are detected by comparing challenge_keys directly.
+ * could be brute-forced for small quizzes. Status and required_for are excluded so publishing
+ * or (un)requiring a challenge doesn't bump the version. Private (key) changes are detected by comparing challenge_keys directly.
  */
 export function toChallengeRows(
   ch: LoadedChallenge,
@@ -98,24 +124,24 @@ export function toChallengeRows(
 ): { challenge: ChallengeRow; key: ChallengeKeyRow } {
   const c = ch.data;
   const category = categories.find((cat) => cat.slug === c.category);
-  const audience = c.audience ?? category?.audience ?? "all";
-  const publicContent = {
+  const audiences = c.audiences ?? category?.audiences ?? ["all"];
+  const publicContent: PublicChallengeContent = {
     slug: c.slug,
     category_slug: c.category,
     title: c.title,
     summary: c.summary ?? deriveSummary(ch.body),
     body_md: ch.body,
     type: c.type,
-    audience,
-    difficulty: c.difficulty,
-    points: c.points,
+    audiences,
+    difficulty: c.difficulty ?? 1,
+    points: c.points ?? 0,
     estimated_minutes: c.estimated_minutes ?? null,
     questions: c.questions.map(toPublicQuestion),
     submission_spec: (c.submission ?? {}) as Record<string, unknown>,
     rubric: c.rubric,
-    due_at: c.due_at ?? null,
+    due_at: normalizeTimestamp(c.due_at),
   };
-  const content_hash = createHash("sha256").update(canonicalJson(publicContent)).digest("hex");
+  const content_hash = hashPublicContent(publicContent);
 
   const answer_key: Record<string, string | string[]> = {};
   for (const q of c.questions) {
@@ -124,7 +150,7 @@ export function toChallengeRows(
   }
 
   return {
-    challenge: { ...publicContent, content_hash, status: c.status },
+    challenge: { ...publicContent, content_hash, status: c.status, required_for: c.required_for ?? [] },
     key: { challenge_slug: c.slug, answer_key, grader_notes: c.grader_notes?.trim() || null },
   };
 }

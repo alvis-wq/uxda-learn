@@ -1,9 +1,13 @@
 categories:
   - slug: basics
     title: Basics
-    audience: all
+    audiences: all
     sort_order: 10
   - slug: basics
     title: Basics again
-    audience: all
+    audiences: all
     sort_order: 20
+  - slug: strat-only
+    title: Strategist only
+    audiences: [strategist]
+    sort_order: 30

@@ -7,26 +7,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireOnboardedProfile } from "@/lib/auth/session";
-import type { Track } from "@/lib/challenges/model";
 import { createClient } from "@/lib/supabase/server";
 import { rankRows } from "@/lib/submissions/rules";
+import { groupById, groupForTrack, LEADERBOARD_GROUPS, TRACK_LABEL } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Leaderboard · UXDA Learn" };
 
-const TABS: { track: Track; label: string }[] = [
-  { track: "strategist", label: "Strategists" },
-  { track: "designer", label: "Designers" },
-];
-
 export default async function LeaderboardPage({ searchParams }: PageProps<"/leaderboard">) {
   const profile = await requireOnboardedProfile();
-  const requested = (await searchParams).track;
-  const track: Track =
-    requested === "strategist" || requested === "designer" ? requested : (profile.track ?? "strategist");
+  const myGroup = groupForTrack(profile.track) ?? LEADERBOARD_GROUPS[0];
+  const group = groupById((await searchParams).group) ?? myGroup;
+  const mixedTracks = group.tracks.length > 1;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_leaderboard", { p_track: track });
+  const { data, error } = await supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] });
   if (error) throw new Error(`Couldn't load the leaderboard: ${error.message}`);
   const rows = rankRows(data);
 
@@ -34,23 +29,23 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
     <main className="mx-auto w-full max-w-3xl px-4 py-10">
       <PageHeader title="Leaderboard" description="Best published score per challenge." />
 
-      <nav aria-label="Leaderboard tracks" className="bg-muted mb-6 inline-flex rounded-lg p-1">
-        {TABS.map((t) => (
+      <nav aria-label="Leaderboard groups" className="bg-muted mb-6 inline-flex max-w-full flex-wrap rounded-lg p-1">
+        {LEADERBOARD_GROUPS.map((g) => (
           <Link
-            key={t.track}
-            href={`/leaderboard?track=${t.track}`}
-            aria-current={t.track === track ? "page" : undefined}
+            key={g.id}
+            href={`/leaderboard?group=${g.id}`}
+            aria-current={g.id === group.id ? "page" : undefined}
             className={cn(
               "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-              t.track === track ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
+              g.id === group.id ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {t.label}
+            {g.label}
           </Link>
         ))}
       </nav>
 
-      {!profile.show_on_leaderboard && profile.track === track && (
+      {!profile.show_on_leaderboard && group.id === myGroup.id && (
         <Alert className="mb-4">
           <EyeOff aria-hidden />
           <AlertDescription>
@@ -85,9 +80,12 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
                 >
                   <TableCell className="tabular-nums">{r.rank}</TableCell>
                   <TableCell>
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       {r.full_name ?? "Unnamed"}
                       {me && <Badge>You</Badge>}
+                      {mixedTracks && (
+                        <span className="text-muted-foreground text-meta">{TRACK_LABEL[r.track]}</span>
+                      )}
                     </span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{r.completed}</TableCell>

@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TRACK_VALUES } from "@/lib/tracks";
 
 export type OnboardingState = { error?: string };
 
-const schema = z.object({ track: z.enum(["strategist", "designer"]) });
+const schema = z.object({ track: z.enum(TRACK_VALUES) });
 
 /** Set the signed-in user's track. Only allowed while it's still empty; admins change it later. */
 export async function chooseTrack(_prev: OnboardingState, formData: FormData): Promise<OnboardingState> {
@@ -16,7 +17,7 @@ export async function chooseTrack(_prev: OnboardingState, formData: FormData): P
   if (!user) redirect("/login");
 
   const parsed = schema.safeParse({ track: formData.get("track") });
-  if (!parsed.success) return { error: "Choose Strategist or Designer." };
+  if (!parsed.success) return { error: "Choose your track." };
 
   const admin = createAdminClient();
   const { data, error } = await admin

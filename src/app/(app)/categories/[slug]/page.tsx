@@ -5,6 +5,7 @@ import { ChevronLeft, ListChecks } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
@@ -18,6 +19,7 @@ export default async function CategoryPage({ params }: PageProps<"/categories/[s
   const data = await getCategoryPage(profile, slug);
   if (!data) notFound();
   const { category, challenges } = data;
+  const now = new Date();
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-10">
@@ -42,13 +44,17 @@ export default async function CategoryPage({ params }: PageProps<"/categories/[s
                     <div className="grid gap-1.5">
                       <CardTitle>{ch.title}</CardTitle>
                       {ch.summary && <CardDescription>{ch.summary}</CardDescription>}
+                      <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} />
                     </div>
-                    <StatusBadge status={ch.state.latest?.status} />
+                    <StatusBadge
+                      status={ch.state.latest?.status}
+                      acknowledged={ch.type === "acknowledge" ? ch.done : undefined}
+                    />
                   </CardHeader>
                   <CardContent className="flex flex-wrap items-center justify-between gap-2">
                     <ChallengeMeta challenge={ch} />
-                    {ch.state.bestScore !== null && (
-                      <span className="text-sm font-medium">
+                    {ch.type !== "acknowledge" && ch.state.bestScore !== null && (
+                      <span className="text-meta font-medium">
                         Best: {ch.state.bestScore} / {ch.points}
                       </span>
                     )}

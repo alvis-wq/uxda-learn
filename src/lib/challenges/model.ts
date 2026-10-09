@@ -10,9 +10,10 @@ import {
   type SubmissionSpec,
 } from "@/lib/content/schema";
 
+import { isVisibleToTrack, type Audience, type Track } from "@/lib/tracks";
+
 export type ChallengeRow = Database["public"]["Tables"]["challenges"]["Row"];
-export type Track = Database["public"]["Enums"]["track"];
-export type Audience = Database["public"]["Enums"]["audience"];
+export type { Audience, Track };
 
 export type Challenge = Omit<ChallengeRow, "questions" | "submission_spec" | "rubric"> & {
   questions: PublicQuestion[];
@@ -34,9 +35,22 @@ export function challengeNeedsReview(c: Pick<Challenge, "questions" | "submissio
   return needsReview({ questions: c.questions as never, submission: c.submission_spec });
 }
 
-/** Users see audience `all` plus their own track. */
-export function isVisibleToTrack(audience: Audience, track: Track | null): boolean {
-  return audience === "all" || (track !== null && audience === track);
+/**
+ * Learners see a challenge when it's published, its category isn't archived, and both the
+ * category's and the challenge's audiences include `all` or their track.
+ */
+export function isChallengeVisible(
+  challenge: { status: string; audiences: readonly Audience[] },
+  category: { archived: boolean; audiences: readonly Audience[] } | null | undefined,
+  track: Track | null | undefined,
+): boolean {
+  return (
+    challenge.status === "published" &&
+    !!category &&
+    !category.archived &&
+    isVisibleToTrack(category.audiences, track) &&
+    isVisibleToTrack(challenge.audiences, track)
+  );
 }
 
 export const DIFFICULTY_LABEL: Record<number, string> = { 1: "Easy", 2: "Medium", 3: "Hard" };
@@ -46,4 +60,5 @@ export const TYPE_LABEL: Record<Challenge["type"], string> = {
   screenshot: "Screenshots",
   figma: "Figma",
   mixed: "Mixed",
+  acknowledge: "Read & confirm",
 };

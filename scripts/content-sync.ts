@@ -26,8 +26,8 @@ async function main() {
 
   const db = adminClient();
   const [cats, chs, keys] = await Promise.all([
-    db.from("categories").select("slug,title,description,audience,sort_order,archived"),
-    db.from("challenges").select("slug,content_hash,version,status"),
+    db.from("categories").select("slug,title,description,audiences,sort_order,archived"),
+    db.from("challenges").select("*"),
     db.from("challenge_keys").select("challenge_slug,answer_key,grader_notes"),
   ]);
   check(cats, "read categories");
@@ -39,14 +39,20 @@ async function main() {
       categories: content.categories.map(toCategoryRow),
       challenges: content.challenges.map((c) => toChallengeRows(c, content.categories)),
     },
-    { categories: cats.data ?? [], challenges: chs.data ?? [], keys: keys.data ?? [] },
+    {
+      categories: cats.data ?? [],
+      challenges: (chs.data ?? []).map((c) => ({ ...c, questions: c.questions as never, submission_spec: c.submission_spec as never, rubric: c.rubric as never })),
+      keys: keys.data ?? [],
+    },
   );
 
   for (const { row, action } of plan.categoryUpserts) console.log(`  category ${action}: ${row.slug}`);
   for (const { row, action } of plan.challengeWrites) {
     console.log(`  challenge ${action}: ${row.slug} (v${row.version}, ${row.status})`);
   }
-  for (const { slug, status } of plan.challengeStatusUpdates) console.log(`  challenge status: ${slug} → ${status}`);
+  for (const u of plan.challengeMetaUpdates) {
+    console.log(`  challenge metadata: ${u.slug} (${u.status}, required_for: [${u.required_for.join(", ")}]; version unchanged)`);
+  }
   for (const slug of plan.challengeArchives) console.log(`  challenge archived: ${slug}`);
   for (const slug of plan.categoryArchives) console.log(`  category archived: ${slug}`);
 
@@ -73,8 +79,11 @@ async function main() {
     );
     check(await db.from("challenge_keys").upsert(key), `upsert key ${row.slug}`);
   }
-  for (const { slug, status } of plan.challengeStatusUpdates) {
-    check(await db.from("challenges").update({ status, updated_at: now }).eq("slug", slug), `status ${slug}`);
+  for (const { slug, status, required_for, content_hash } of plan.challengeMetaUpdates) {
+    check(
+      await db.from("challenges").update({ status, required_for, content_hash, updated_at: now }).eq("slug", slug),
+      `metadata ${slug}`,
+    );
   }
   if (plan.challengeArchives.length) {
     check(

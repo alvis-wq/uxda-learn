@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRACK_VALUES, type Audience } from "@/lib/tracks";
 
 /** Zod schemas for /content. Spec: docs/content-format.md. */
 
@@ -8,14 +9,31 @@ const slug = z
 const id = z.string().regex(/^[a-z0-9][a-z0-9_-]*$/i, "must be a simple id (letters, digits, - or _)");
 const nonEmpty = z.string().trim().min(1, "must not be empty");
 
-export const audienceSchema = z.enum(["all", "strategist", "designer"]);
-export const challengeTypeSchema = z.enum(["quiz", "screenshot", "figma", "mixed"]);
+export const trackSchema = z.enum(TRACK_VALUES);
+
+/**
+ * `all`, or a list of tracks. Always normalised to an array: ["all"] or [track, ...].
+ * `[all]` is accepted too; mixing `all` with tracks is not.
+ */
+export const audiencesSchema = z
+  .union([z.literal("all"), z.array(z.union([z.literal("all"), trackSchema])).min(1, "needs at least one track")])
+  .transform((v): Audience[] => (v === "all" ? ["all"] : v))
+  .refine((a) => !a.includes("all") || a.length === 1, '"all" can\'t be combined with tracks')
+  .refine((a) => new Set(a).size === a.length, "lists a track twice");
+
+/** `audience` was replaced by `audiences`; give a pointed error instead of "unrecognized key". */
+const legacyAudience = z
+  .never({ error: "`audience` was replaced by `audiences` (a list of tracks, or `all`)" })
+  .optional();
+
+export const challengeTypeSchema = z.enum(["quiz", "screenshot", "figma", "mixed", "acknowledge"]);
 export const challengeStatusSchema = z.enum(["draft", "published", "archived"]);
 
 export const categorySchema = z.strictObject({
   slug,
   title: nonEmpty,
-  audience: audienceSchema,
+  audiences: audiencesSchema,
+  audience: legacyAudience,
   description: z.string().trim().optional(),
   sort_order: z.number().int().default(0),
 });
@@ -96,10 +114,13 @@ export const challengeFrontmatterSchema = z.strictObject({
   slug,
   title: nonEmpty,
   category: slug,
-  audience: audienceSchema.optional(),
+  audiences: audiencesSchema.optional(), // defaults to the category's audiences
+  audience: legacyAudience,
+  required_for: audiencesSchema.optional(), // omitted = optional for everyone
   type: challengeTypeSchema,
-  difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  points,
+  // Optional only for `acknowledge` (checked in validate.ts).
+  difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  points: z.number().int().min(0, "must be 0 or more").optional(),
   estimated_minutes: z.number().int().positive().optional(),
   status: challengeStatusSchema.default("draft"),
   summary: z.string().trim().max(300).optional(),
@@ -129,7 +150,10 @@ export function isAutoGraded(q: Question | PublicQuestion): boolean {
 }
 
 /** True when a submission needs human/AI review (anything beyond auto-graded questions). */
-export function needsReview(c: Pick<ChallengeFrontmatter, "questions" | "submission">): boolean {
+export function needsReview(c: {
+  questions: readonly (Question | PublicQuestion)[];
+  submission?: SubmissionSpec;
+}): boolean {
   const s = c.submission;
   return (
     c.questions.some((q) => !isAutoGraded(q)) ||
