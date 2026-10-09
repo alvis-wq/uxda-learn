@@ -42,7 +42,8 @@ test.describe("learner experience", () => {
     await loginAs(page, "strategist");
     await page.goto("/challenges/e2e-screenshot");
 
-    await page.getByLabel("Add screenshots").setInputFiles(path.join(__dirname, "fixtures", "screenshot.png"));
+    await expect(page.getByRole("button", { name: "Add screenshots" })).toBeEnabled();
+    await page.getByLabel("Choose screenshot files").setInputFiles(path.join(__dirname, "fixtures", "screenshot.png"));
     await expect(page.getByRole("img", { name: "screenshot.png" })).toBeVisible();
     await page.getByLabel(/^Reflection/).fill("The AI forgot the error state entirely.");
     await page.getByRole("button", { name: "Submit" }).click();

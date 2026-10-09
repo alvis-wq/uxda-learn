@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -37,6 +37,12 @@ export function ScreenshotUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Pending[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Disabled until hydrated: a file picked before React attaches onChange would be silently lost.
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const remaining = max - images.length - pending.length;
 
   async function handleFiles(files: FileList | null) {
@@ -111,15 +117,16 @@ export function ScreenshotUploader({
         accept={Object.keys(IMAGE_TYPES).join(",")}
         multiple
         className="sr-only"
-        aria-label="Add screenshots"
-        disabled={disabled || remaining <= 0}
+        aria-label="Choose screenshot files"
+        tabIndex={-1}
+        disabled={!ready || disabled || remaining <= 0}
         onChange={(e) => handleFiles(e.target.files)}
       />
       <Button
         type="button"
         variant="outline"
         className="w-fit"
-        disabled={disabled || remaining <= 0}
+        disabled={!ready || disabled || remaining <= 0}
         onClick={() => inputRef.current?.click()}
       >
         <ImagePlus aria-hidden />

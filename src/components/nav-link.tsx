@@ -9,11 +9,13 @@ export function NavLink({
   icon,
   label,
   exact = false,
+  showLabel = false,
 }: {
   href: string;
-  icon: React.ReactNode;
+  icon: React.ReactNode | null;
   label: string;
   exact?: boolean;
+  showLabel?: boolean;
 }) {
   const pathname = usePathname();
   const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -28,7 +30,7 @@ export function NavLink({
       )}
     >
       {icon}
-      <span className="hidden md:inline">{label}</span>
+      <span className={showLabel ? undefined : "hidden md:inline"}>{label}</span>
     </Link>
   );
 }

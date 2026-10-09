@@ -1,13 +1,17 @@
 # Progress
 
-## Current state (after Phase 3)
-Phases 0–3 done: Next.js app scaffolded; DB schema live on Supabase with RLS + explicit grants;
-content pipeline syncing 9 categories / 9 challenges; auth (Google OAuth flow, proxy gating,
-onboarding, guarded dev test login) working end to end via test login.
-**Next step:** Phase 4 — learner experience (home with categories/progress, category page,
-challenge page with uploads, submit server action with auto-grading).
-**Needs Alvis:** enable the Google provider in Supabase (see Known issues) — real Google
-sign-in can't work until then.
+## Current state (after Phase 6)
+Phases 0–6 done. Learners sign in (Google or dev test login), choose a track, browse categories
+and challenges, submit quizzes (auto-graded, published instantly) or screenshot/Figma/reflection
+work (awaiting review), see scores/feedback on their profile and the Strategists/Designers
+leaderboard. Admins get a review queue, submission review (approve / request resubmission),
+user management (track, admin), a read-only content overview and a CSV score export.
+All checks green: `npm run check` (74 unit tests), `npm run build`, E2E 10/10 (two consecutive
+full runs).
+**Next step:** Phase 7 — evaluation pipeline (`eval:pull` / `eval:push`, idempotent; the admin
+review UI already reads `evaluations` rows in the shape `/evaluate` writes).
+**Needs Alvis:** sign in once with a real @theuxda.com Google account to confirm the OAuth
+round-trip (automated tests can't drive Google), and pick a track on first login (admins too).
 
 ## Phase 0 — Bootstrap
 **Plan:** verify env vars; install Supabase CLI and link; scaffold Next.js into the existing
@@ -145,6 +149,36 @@ leaderboard visibility toggle; `/leaderboard` with Strategists/Designers tabs vi
 "Test Designer · You · 4"; not on Strategists tab) · unit 67/67 ✅ · `npm run check` ✅ ·
 `npm run build` ✅.
 
+## Phase 6 — Admin
+**Plan:** `/admin` admins-only (403 otherwise): review queue (ai_reviewed first, low confidence
+flagged), submission detail (signed image URLs, answers, rubric scores from the latest
+evaluation, editable score + feedback, Approve / Request resubmission), users (set track, toggle
+admin), read-only content overview, CSV export; E2E.
+
+**Status: done.**
+- `src/app/(admin)/` route group: its layout runs `requireAdmin()` (fresh DB read) before anything
+  streams, so non-admins get a real **403** via `forbidden()` (`experimental.authInterrupts`).
+  Admin nav link only shown to admins.
+- Reads use the admin's own RLS client (admin policies), writes use the service role after
+  `getAdminOrNull()` in every action/route.
+- `reviewSubmission`: Zod (score ≥ 0, half-point steps, ≤ max_score checked server-side; feedback
+  required for resubmission); compare-and-set on status so a submission can't be reviewed twice;
+  approve → `published` + `published_at`; resubmit → `needs_resubmission`; stamps
+  `evaluations.approved_by/approved_at`.
+- Queue sort (pure, tested): ai_reviewed → low → medium → high confidence → oldest first.
+- Users: track select + admin switch (optimistic, toasts); admins can't remove their own admin.
+- CSV (`/admin/export/scores.csv`): one row per user (totals + best score per challenge),
+  formula-injection-safe cells, `no-store`; 403 for non-admins.
+- Uploader is disabled until hydrated (`useSyncExternalStore`) — files picked before hydration
+  were silently dropped (found by a flaky E2E run).
+
+**Checks:** E2E 10/10 ✅ twice in a row (non-admin: 403 on /admin, /admin/users, /admin/content
+and the CSV; admin approves low-confidence ai_reviewed submission at 8/10 → published,
+evaluation stamped, queue empty, learner sees 8 on Strategists leaderboard and the feedback on
+their profile; track change, admin toggle, self-demotion blocked, CSV export, content overview) ·
+teardown leaves 0 fixtures/submissions/evaluations/objects ✅ · unit 74/74 ✅ · `npm run check` ✅ ·
+`npm run build` ✅.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).
@@ -152,14 +186,21 @@ leaderboard visibility toggle; `/leaderboard` with Strategists/Designers tabs vi
   Management API fallback from BUILD_PLAN Phase 1. Direct Postgres (port 5432) is not
   reachable from the cloud session either. Fix: use a personal access token with full
   project access (Owner/Admin) if CLI `link`/`db push` are wanted.
-- **Google provider is not enabled in Supabase** (`/auth/v1/settings` → `google: false`), so
-  "Sign in with Google" currently fails. Needs SETUP.md step 3 (Google OAuth client, Internal
-  consent screen, paste client ID/secret into Supabase → Auth → Providers → Google) and
-  Redirect URLs `http://localhost:3000/**` (+ deployed URL later). Can't be done from here
-  (requires creating an OAuth client — a stop condition), and the access token can't read or
-  change auth config (403). Everything else is tested via test login.
-- Real Google OAuth round-trip is therefore untested; the callback's error mapping is tested
-  with the exact query Supabase sends.
+- Google provider is now enabled (`/auth/v1/settings` → `google: true`), but the real Google
+  round-trip is still untested by automation (it needs a human Google login). The callback's
+  error mapping is tested with the exact query Supabase sends. Remember to add the deployed URL
+  to Supabase Redirect URLs later.
+- Pages under `(app)` stream behind `loading.tsx`, so `notFound()` there renders the right UI but
+  with HTTP 200 (not 404). Access control is unaffected (data is never sent). Admin pages are in
+  their own group precisely to keep a real 403.
+- E2E runs against the single real Supabase project: it adds a temporary `[E2E] Test challenges`
+  category (visible to signed-in users for ~2 minutes) and wipes test-user data before/after.
+  If a run is killed mid-way, the next run or `npm run content:sync` cleans it up.
+- Uploads removed before submitting stay in Storage (users have no delete policy). Harmless;
+  a cleanup script could come later.
+- Test users (test-strategist/-designer/-admin) exist in the project with no passwords; they're
+  hidden from the leaderboard after each E2E run, but using test login manually can leave a
+  newly created test user visible until the next E2E run.
 - Hardening idea (not done, security-model change → Alvis to decide): the email provider is
   enabled with confirmation required. Since sign-in is Google-only, consider turning off email
   signups in Supabase; test login uses admin-generated links and would need re-checking.

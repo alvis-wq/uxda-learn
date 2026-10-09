@@ -52,3 +52,16 @@
 - Leaderboard visibility updated with the user's RLS client, not the service role — the DB already grants exactly that column; least privilege.
 - Ties share a rank (1, 2, 2, 4) — standard competition ranking, matches the SQL order (score, then completed).
 - Dashboard "pending reviews" counts submissions in `submitted` or `ai_reviewed` — both are "Awaiting review" to the learner.
+- Admin lives in its own `(admin)` route group, not under `(app)` — `(app)/loading.tsx` streams the response, so `forbidden()` there would render the 403 UI with a 200 status.
+- `forbidden()` via `experimental.authInterrupts` — gives a real 403 + dedicated page; the flag is documented and stable enough for one call site.
+- Admin reads use the admin's own RLS client; only writes use the service role — RLS stays a second check even inside /admin.
+- Every admin action re-checks `is_admin` from the DB — UI hiding and layouts aren't authorization.
+- Review is a compare-and-set (`WHERE status IN (submitted, ai_reviewed)`) — two admins (or a double click) can't double-review.
+- Final score in half-point steps, 0..max_score — rubric levels allow "in between" scores; finer precision adds nothing.
+- Requesting resubmission requires feedback — the learner must know what to change.
+- Admins can't remove their own admin flag — prevents locking the last admin out; another admin can.
+- Toggling admin doesn't touch `admin_allowlist` — the allowlist only seeds admins at signup / `seed:admins`.
+- CSV cells starting with = + - @ are prefixed with ' (numbers excepted) — spreadsheet formula injection via user-controlled names.
+- CSV has one row per user with per-challenge best scores (non-draft challenges) — the most useful single export; totals match the leaderboard rule.
+- Screenshot uploader disabled until hydrated — a file chosen before React attaches `onChange` is silently lost.
+- E2E specs each wipe test-user data in `beforeAll` — specs run in any order; serial within a file.
