@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTestLoginEnabled, TEST_USERS } from "./test-login";
+import { isTestLoginEnabled, TEST_USER_ROLES, testUser } from "./test-login";
 import { isAllowedEmail } from "./domain";
 
 describe("isTestLoginEnabled", () => {
@@ -19,7 +19,22 @@ describe("isTestLoginEnabled", () => {
     expect(isTestLoginEnabled({ ENABLE_TEST_LOGIN: "TRUE", NODE_ENV: "development" })).toBe(false);
   });
 
-  it("only defines UXDA test users", () => {
-    for (const u of Object.values(TEST_USERS)) expect(isAllowedEmail(u.email)).toBe(true);
+});
+
+describe("testUser", () => {
+  const env = { ALLOWED_EMAIL_DOMAINS: "uxdesignagency.com,theuxda.com" };
+
+  it("puts test users on the first allowed domain", () => {
+    expect(testUser("strategist", env).email).toBe("test-strategist@uxdesignagency.com");
+    expect(testUser("designer", env).email).toBe("test-designer@uxdesignagency.com");
+    expect(testUser("admin", env)).toMatchObject({ email: "test-admin@uxdesignagency.com", isAdmin: true });
+  });
+
+  it("only defines allowed-domain test users", () => {
+    for (const role of TEST_USER_ROLES) expect(isAllowedEmail(testUser(role, env).email, env)).toBe(true);
+  });
+
+  it("throws when no domain is configured", () => {
+    expect(() => testUser("admin", {})).toThrow(/ALLOWED_EMAIL_DOMAINS/);
   });
 });

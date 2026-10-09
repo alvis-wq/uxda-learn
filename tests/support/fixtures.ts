@@ -3,14 +3,22 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../src/lib/database.types";
 import { loadAndValidate } from "../../src/lib/content";
 import { toCategoryRow, toChallengeRows } from "../../src/lib/content/transform";
+import { testUser } from "../../src/lib/auth/test-login";
 
 type Db = SupabaseClient<Database>;
 
+/** Same addresses the app's test login uses (first ALLOWED_EMAIL_DOMAINS domain). */
 export const TEST_EMAILS = {
-  strategist: "test-strategist@theuxda.com",
-  designer: "test-designer@theuxda.com",
-  admin: "test-admin@theuxda.com",
-} as const;
+  get strategist() {
+    return testUser("strategist").email;
+  },
+  get designer() {
+    return testUser("designer").email;
+  },
+  get admin() {
+    return testUser("admin").email;
+  },
+};
 
 const FIXTURE_DIR = path.join(__dirname, "..", "..", "e2e", "fixtures", "content");
 

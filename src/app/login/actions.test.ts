@@ -43,6 +43,16 @@ describe("testLogin server action guard", () => {
     expect(createAdminClient).not.toHaveBeenCalled();
   });
 
+  it("returns an error (not a crash) when ALLOWED_EMAIL_DOMAINS is missing", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ENABLE_TEST_LOGIN", "true");
+    vi.stubEnv("ALLOWED_EMAIL_DOMAINS", "");
+    await expect(testLogin({}, form("admin"))).resolves.toEqual({
+      error: "ALLOWED_EMAIL_DOMAINS is not set. See .env.example.",
+    });
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
   it("rejects unknown roles when enabled", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("ENABLE_TEST_LOGIN", "true");

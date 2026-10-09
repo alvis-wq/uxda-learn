@@ -1,6 +1,6 @@
 # UXDA Learn
 
-Internal learning platform for the UXDA team. People sign in with their @theuxda.com Google
+Internal learning platform for the UXDA team. People sign in with their UXDA Google Workspace
 account, choose a track (Strategist or Designer), complete challenges (quizzes, screenshots,
 Figma work, reflections), get scored and see themselves on a per-track leaderboard. Admins
 review submissions (with an AI first pass) and manage users.
@@ -19,6 +19,7 @@ npm install
 cp .env.example .env.local   # fill in the main project values (see comments in the file)
 npm run db:push              # apply supabase/migrations
 npm run db:types             # regenerate src/lib/database.types.ts
+npm run seed:domains         # ALLOWED_EMAIL_DOMAINS → allowed_email_domains (who may sign up)
 npm run seed:admins          # ADMIN_EMAILS → admin_allowlist (+ promote existing profiles)
 npm run content:sync         # /content → database
 npm run db:check             # tables, RLS, private-table and signup-domain checks
@@ -43,6 +44,7 @@ With `ENABLE_TEST_LOGIN=true` (development only) the login page also offers test
 | `content:validate` | Validate `/content` (schemas, categories, slugs, ids, points add up) |
 | `content:sync` | Sync `/content` → DB (`-- --dry-run` to preview) |
 | `seed:admins` | Allowlist `ADMIN_EMAILS` as admins |
+| `seed:domains` | Sync `ALLOWED_EMAIL_DOMAINS` into `allowed_email_domains` (adds and removes) |
 | `eval:pull` / `eval:push` | Evaluation batch export / import (see below) |
 
 ## Content workflow
@@ -87,7 +89,8 @@ Quiz-only challenges are graded and published the moment someone submits. Everyt
   1. Create a second Supabase project (Auth → email provider on, the default; Google isn't needed).
   2. Set `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`,
      `TEST_SUPABASE_PROJECT_REF` (and optionally `TEST_SUPABASE_ACCESS_TOKEN`).
-  3. `npm run db:push -- --test-project` then `npm run db:check -- --test-project`.
+  3. `npm run db:push -- --test-project`, `npm run seed:domains -- --test-project`, then
+     `npm run db:check -- --test-project`.
   4. `npm run test:integration` and `npm run test:e2e`.
 
   Without these vars both commands skip and pass. Using the main project's URL or ref is refused.
@@ -102,12 +105,14 @@ and E2E tests aren't run there (they need the test Supabase project).
 
 ## Security model (summary)
 
-- RLS on every table plus explicit grants; `challenge_keys` and `admin_allowlist` have no client
+- RLS on every table plus explicit grants; `challenge_keys`, `admin_allowlist` and `allowed_email_domains` have no client
   access at all. Storage bucket `submissions` is private; users can write/read only their own folder.
 - All writes (submissions, reviews, track changes) go through server actions that verify the
   session and use the service role; users can never set scores or status. The only client-side
   write is a user's own `show_on_leaderboard`.
-- Sign-in is limited to @theuxda.com by a DB trigger (and re-checked in the auth callback).
+- Sign-in is limited to the `ALLOWED_EMAIL_DOMAINS` domains (currently uxdesignagency.com): the
+  DB trigger checks the `allowed_email_domains` table (synced by `seed:domains`), and the auth
+  callback re-checks against the env var.
 - The service-role key is server-only (`server-only` import guard); never use `NEXT_PUBLIC_` for it.
 
 ## Project layout

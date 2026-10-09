@@ -15,7 +15,7 @@ const manifest: Manifest = {
       submission_id: SUB,
       attempt: 1,
       submitted_at: "2026-10-09T09:00:00.000Z",
-      user: { name: "Test", email: "t@theuxda.com", track: "strategist" },
+      user: { name: "Test", email: "t@uxdesignagency.com", track: "strategist" },
       challenge: {
         slug: "c", title: "C", version: 1, type: "mixed", points: 30, brief_md: "b",
         questions: [], submission_spec: {}, rubric: [], grader_notes: "notes",

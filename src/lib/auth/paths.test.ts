@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { isAllowedEmail } from "./domain";
 import { isPublicPath, safeNext } from "./paths";
 
 describe("safeNext", () => {
@@ -24,17 +23,5 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/onboarding")).toBe(false);
     expect(isPublicPath("/auth/signout")).toBe(false);
     expect(isPublicPath("/loginx")).toBe(false);
-  });
-});
-
-describe("isAllowedEmail", () => {
-  it("accepts only @theuxda.com", () => {
-    expect(isAllowedEmail("alvis@theuxda.com")).toBe(true);
-    expect(isAllowedEmail("Alvis@TheUXDA.com")).toBe(true);
-    expect(isAllowedEmail("x@gmail.com")).toBe(false);
-    expect(isAllowedEmail("x@theuxda.com.evil.com")).toBe(false);
-    expect(isAllowedEmail("x@sub.theuxda.com")).toBe(false);
-    expect(isAllowedEmail("theuxda.com")).toBe(false);
-    expect(isAllowedEmail(null)).toBe(false);
   });
 });

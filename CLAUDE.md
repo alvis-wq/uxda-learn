@@ -1,6 +1,6 @@
 # UXDA Learn — project instructions
 
-Internal learning platform for UXDA. Team members sign in with Google (@theuxda.com only),
+Internal learning platform for UXDA. Team members sign in with Google (only `ALLOWED_EMAIL_DOMAINS`, currently @uxdesignagency.com),
 complete challenges (quizzes, screenshot/Figma submissions), get scored, and appear on a
 leaderboard split into Strategists and Designers. Owner/admin: Alvis ("Vision").
 

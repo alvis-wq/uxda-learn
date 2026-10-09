@@ -4,10 +4,12 @@
  *  2. RLS is enabled on every public table.
  *  3. Neither anon nor a signed-in user can read challenge_keys / admin_allowlist
  *     (tested with a real sentinel row and a real temporary user, both removed afterwards).
- *  4. The signup trigger rejects non-UXDA email domains.
+ *  4. allowed_email_domains matches ALLOWED_EMAIL_DOMAINS, and the signup trigger accepts
+ *     those domains and rejects others.
  */
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { allowedEmailDomains } from "../src/lib/auth/domain";
 import type { Database } from "../src/lib/database.types";
 import { requireEnv } from "./lib/env";
 import { runSql } from "./lib/management-api";
@@ -15,6 +17,7 @@ import { adminClient, anonClient } from "./lib/supabase";
 
 const EXPECTED_TABLES = [
   "admin_allowlist",
+  "allowed_email_domains",
   "profiles",
   "categories",
   "challenges",
@@ -52,7 +55,9 @@ async function checkTablesAndRls() {
 
 type Client = ReturnType<typeof anonClient>;
 
-async function expectNoRows(client: Client, table: "challenge_keys" | "admin_allowlist", who: string) {
+type PrivateTable = "challenge_keys" | "admin_allowlist" | "allowed_email_domains";
+
+async function expectNoRows(client: Client, table: PrivateTable, who: string) {
   const { data, error } = await client.from(table).select("*");
   if (error) pass(`${who} cannot read ${table} (${error.code ?? error.message})`);
   else if (!data || data.length === 0) pass(`${who} reads 0 rows from ${table}`);
@@ -64,7 +69,16 @@ async function main() {
   await checkTablesAndRls();
 
   const admin = adminClient();
-  const email = `check-db-${randomBytes(4).toString("hex")}@theuxda.com`;
+  const domains = allowedEmailDomains();
+
+  console.log("Allowed email domains");
+  const { data: domainRows, error: domainErr } = await admin.from("allowed_email_domains").select("domain");
+  if (domainErr) throw new Error(`allowed_email_domains: ${domainErr.message}`);
+  const inDb = (domainRows ?? []).map((r) => r.domain).sort();
+  if (JSON.stringify(inDb) === JSON.stringify([...domains].sort())) pass(`DB matches ALLOWED_EMAIL_DOMAINS (${inDb.join(", ")})`);
+  else fail(`DB has [${inDb.join(", ")}], ALLOWED_EMAIL_DOMAINS is [${domains.join(", ")}] — run npm run seed:domains`);
+
+  const email = `check-db-${randomBytes(4).toString("hex")}@${domains[0]}`;
   const password = randomBytes(18).toString("base64url");
   let userId: string | undefined;
 
@@ -88,6 +102,7 @@ async function main() {
     console.log("Anonymous client");
     await expectNoRows(anonClient(), "challenge_keys", "anon");
     await expectNoRows(anonClient(), "admin_allowlist", "anon");
+    await expectNoRows(anonClient(), "allowed_email_domains", "anon");
     const { data: anonChallenges } = await anonClient().from("challenges").select("slug");
     if (!anonChallenges?.length) pass("anon reads 0 challenges");
     else fail(`anon CAN READ challenges (${anonChallenges.length})`);
@@ -96,8 +111,9 @@ async function main() {
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email, password, email_confirm: true,
     });
-    if (createErr || !created.user) throw new Error(`temp user: ${createErr?.message}`);
+    if (createErr || !created.user) throw new Error(`temp user (@${domains[0]}): ${createErr?.message}`);
     userId = created.user.id;
+    pass(`@${domains[0]} email is accepted at signup`);
 
     const authed = createClient<Database>(
       requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
@@ -109,6 +125,7 @@ async function main() {
 
     await expectNoRows(authed, "challenge_keys", "authenticated user");
     await expectNoRows(authed, "admin_allowlist", "authenticated user");
+    await expectNoRows(authed, "allowed_email_domains", "authenticated user");
     const { data: visible } = await authed.from("challenges").select("slug").eq("slug", SENTINEL_CHALLENGE);
     if (visible?.length === 1) pass("authenticated user can read the published challenge (policy works)");
     else fail("authenticated user cannot read a published challenge");
@@ -121,9 +138,9 @@ async function main() {
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
     });
-    if (outsiderErr) pass("non-UXDA email is rejected at signup");
+    if (outsiderErr) pass("email from a non-allowed domain is rejected at signup");
     else {
-      fail("non-UXDA email was ACCEPTED at signup");
+      fail("email from a non-allowed domain was ACCEPTED at signup");
       if (outsider.user) await admin.auth.admin.deleteUser(outsider.user.id);
     }
   } finally {

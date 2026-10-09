@@ -79,3 +79,7 @@
 - Responsive check is automated (no horizontal overflow at 375px) plus a visual screenshot review — overflow is the common mobile failure; tables hide secondary columns on small screens.
 - DEPLOY.md instead of a preview deploy — no Vercel CLI linked; the app is host-agnostic.
 - CI runs check + build with placeholder `NEXT_PUBLIC_SUPABASE_*` and no secrets — the build never contacts Supabase (verified with an empty env), so real keys would only add risk. E2E/integration stay out of CI until a test project + secrets are set up.
+- Allowed sign-in domains in a table (`allowed_email_domains`) synced from `ALLOWED_EMAIL_DOMAINS` by `seed:domains` — migrations can't read env vars, and the trigger needs a DB-side source; sync removes stale domains so the env var stays the single source of truth.
+- Empty `allowed_email_domains` rejects every sign-up, and a missing `ALLOWED_EMAIL_DOMAINS` makes the app refuse sign-in — fail closed rather than fall back to a hardcoded domain.
+- Google `hd` is the domain when one is configured, `*` (any Workspace account) when several — `hd` takes a single value and is only a picker hint.
+- Test users live on the first configured domain — they must pass the same trigger as real users.

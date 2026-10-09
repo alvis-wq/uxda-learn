@@ -70,13 +70,13 @@ design, naming, copy, error messages, refactors, test approach.
 second run reports 0 changes.
 
 ## Phase 3 — Auth
-- Google sign-in via Supabase (`hd=theuxda.com`, `prompt=select_account`), callback route,
+- Google sign-in via Supabase (`hd` from `ALLOWED_EMAIL_DOMAINS`, `prompt=select_account`), callback route,
   middleware protecting all routes except `/login` and auth callback, sign-out.
 - Friendly error page for non-UXDA accounts (DB trigger rejects them).
 - First login with no track → onboarding page to choose Strategist / Designer
   (server action, only allowed while `track` is null; admin can change later).
 - Dev test login (guarded per CLAUDE.md) that creates/uses test users:
-  test-strategist@, test-designer@, test-admin@theuxda.com.
+  test-strategist@, test-designer@, test-admin@ on the first `ALLOWED_EMAIL_DOMAINS` domain.
 **Checks:** E2E: test user logs in, completes onboarding, reaches home. Unit test: test
 login is disabled when `NODE_ENV=production`.
 
