@@ -126,6 +126,25 @@ status); submission detail page; loading/error/empty states; E2E with isolated f
 other user's submission: 404 page, 0 rows via RLS, Storage sign/download denied) · teardown leaves
 0 fixture rows/submissions/objects ✅ · unit 64/64 ✅ · `npm run check` ✅ · `npm run build` ✅.
 
+## Phase 5 — Dashboard + leaderboard
+**Plan:** `/profile` with total score, completed, pending reviews, feedback history and a
+leaderboard visibility toggle; `/leaderboard` with Strategists/Designers tabs via
+`get_leaderboard`, current user highlighted; main nav; E2E.
+
+**Status: done.**
+- `summarizeScores` mirrors `get_leaderboard` (best published score per challenge); `rankRows`
+  gives ties the same rank. Unit-tested.
+- Visibility toggle is a server action using the user's own RLS client (column grant on
+  `show_on_leaderboard` only), optimistic UI + toast.
+- Leaderboard tabs are links (`?track=`), defaulting to the user's track; current row highlighted
+  (`aria-current`, "You" badge); notice when the user is hidden; empty state.
+- Header nav: Home, Leaderboard, Profile, Admin (admins only); labels collapse to icons on mobile.
+- Each E2E spec now wipes test-user data in `beforeAll`, so specs are independent of order.
+
+**Checks:** E2E 7/7 ✅ (quiz 4/10 → profile total 4, completed 1; toggle on → Designers tab shows
+"Test Designer · You · 4"; not on Strategists tab) · unit 67/67 ✅ · `npm run check` ✅ ·
+`npm run build` ✅.
+
 ## Known issues
 - `supabase link` fails with `LinkAuthTokenError`: the access token is rejected (403) on
   project config endpoints (`/config/database/postgres`, `/config/auth`, `/postgrest`).

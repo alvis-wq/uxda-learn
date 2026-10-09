@@ -1,8 +1,10 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { cleanTestUserData } from "./fixtures";
 import { adminDb, loginAs, profileId, TEST_EMAILS, userDb } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
+test.beforeAll(cleanTestUserData);
 
 test.describe("learner experience", () => {
   test("quiz challenge auto-grades and publishes", async ({ page }) => {

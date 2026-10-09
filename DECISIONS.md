@@ -48,3 +48,7 @@
 - Orphaned uploads (removed before submit) stay in Storage — no delete policy for users; harmless and cheap. Cleanup can be a later admin script.
 - Admins can preview draft challenges but can't submit to them — useful for review, no polluted data.
 - E2E runs against the real project with an isolated fixture category and full cleanup of test-user data — only one Supabase project exists; content:sync would archive any leftover fixture.
+- Leaderboard tabs are `?track=` links rendered on the server — no client state, shareable URLs, works without JS.
+- Leaderboard visibility updated with the user's RLS client, not the service role — the DB already grants exactly that column; least privilege.
+- Ties share a rank (1, 2, 2, 4) — standard competition ranking, matches the SQL order (score, then completed).
+- Dashboard "pending reviews" counts submissions in `submitted` or `ai_reviewed` — both are "Awaiting review" to the learner.

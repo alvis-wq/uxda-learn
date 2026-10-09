@@ -57,3 +57,30 @@ export function learnerStatus(status: SubmissionStatus | null | undefined) {
 export function isResultVisible(status: SubmissionStatus): boolean {
   return status === "published" || status === "needs_resubmission";
 }
+
+/** Dashboard totals. Mirrors get_leaderboard: best published score per challenge. */
+export function summarizeScores(
+  subs: { challenge_slug: string; status: SubmissionStatus; final_score: number | null }[],
+) {
+  const best = new Map<string, number>();
+  let pending = 0;
+  for (const s of subs) {
+    if (s.status === "submitted" || s.status === "ai_reviewed") pending++;
+    if (s.status === "published" && s.final_score !== null) {
+      best.set(s.challenge_slug, Math.max(best.get(s.challenge_slug) ?? 0, Number(s.final_score)));
+    }
+  }
+  return {
+    totalScore: [...best.values()].reduce((a, b) => a + b, 0),
+    completed: best.size,
+    pending,
+  };
+}
+
+/** Standard competition ranking (1, 2, 2, 4) for an already-sorted score list. */
+export function rankRows<T extends { total_score: number }>(rows: T[]): (T & { rank: number })[] {
+  return rows.map((r) => ({
+    ...r,
+    rank: rows.findIndex((x) => Number(x.total_score) === Number(r.total_score)) + 1,
+  }));
+}

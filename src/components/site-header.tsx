@@ -1,29 +1,32 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { Home, LogOut, Shield, Trophy, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NavLink } from "@/components/nav-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { Profile } from "@/lib/auth/session";
-
-const TRACK_LABEL = { strategist: "Strategist", designer: "Designer" } as const;
 
 export function SiteHeader({ profile }: { profile: Profile }) {
   return (
     <header className="border-b">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="bg-brand size-5 rounded" aria-hidden />
-          UXDA Learn
-        </Link>
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-2 px-4">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <span className="bg-brand size-5 rounded" aria-hidden />
+            <span className="hidden sm:inline">UXDA Learn</span>
+          </Link>
+          <nav aria-label="Main" className="flex items-center gap-1">
+            <NavLink href="/" icon={<Home aria-hidden />} label="Home" exact />
+            <NavLink href="/leaderboard" icon={<Trophy aria-hidden />} label="Leaderboard" />
+            <NavLink href="/profile" icon={<UserRound aria-hidden />} label="Profile" />
+            {profile.is_admin && <NavLink href="/admin" icon={<Shield aria-hidden />} label="Admin" />}
+          </nav>
+        </div>
         <div className="flex items-center gap-1">
-          <span className="text-muted-foreground mr-2 hidden text-sm sm:inline">
-            {profile.full_name ?? profile.email}
-            {profile.track && <> · {TRACK_LABEL[profile.track]}</>}
-          </span>
           <ThemeToggle />
           <form action="/auth/signout" method="post">
-            <Button type="submit" variant="ghost" size="sm">
+            <Button type="submit" variant="ghost" size="sm" aria-label="Sign out">
               <LogOut aria-hidden />
-              Sign out
+              <span className="hidden sm:inline">Sign out</span>
             </Button>
           </form>
         </div>
