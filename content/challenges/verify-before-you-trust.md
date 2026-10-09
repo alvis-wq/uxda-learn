@@ -6,7 +6,7 @@ type: quiz
 difficulty: 1
 points: 10
 estimated_minutes: 5
-status: draft
+status: published
 questions:
   - id: q1
     kind: single
