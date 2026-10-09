@@ -18,7 +18,15 @@ const LEARNER_PAGES = [
   "/profile",
   "/does-not-exist",
 ];
-const ADMIN_PAGES = ["/admin", "/admin/users", "/admin/required", "/admin/acknowledgements", "/admin/content"];
+const ADMIN_PAGES = [
+  "/admin",
+  "/admin/users",
+  "/admin/required",
+  "/admin/acknowledgements",
+  "/admin/content",
+  "/admin/content/e2e-quiz",
+  "/admin/content/e2e-draft-todo",
+];
 
 async function axe(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

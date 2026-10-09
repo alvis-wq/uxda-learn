@@ -127,6 +127,54 @@ export type Database = {
           },
         ]
       }
+      challenge_settings_audit: {
+        Row: {
+          challenge_slug: string
+          changed_at: string
+          changed_by: string | null
+          field: string
+          id: number
+          new_value: Json | null
+          old_value: Json | null
+          source: string
+        }
+        Insert: {
+          challenge_slug: string
+          changed_at?: string
+          changed_by?: string | null
+          field: string
+          id?: never
+          new_value?: Json | null
+          old_value?: Json | null
+          source: string
+        }
+        Update: {
+          challenge_slug?: string
+          changed_at?: string
+          changed_by?: string | null
+          field?: string
+          id?: never
+          new_value?: Json | null
+          old_value?: Json | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_settings_audit_challenge_slug_fkey"
+            columns: ["challenge_slug"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "challenge_settings_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenges: {
         Row: {
           audiences: Database["public"]["Enums"]["audience"][]
@@ -383,6 +431,16 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      set_challenge_setting: {
+        Args: {
+          p_actor?: string
+          p_field: string
+          p_slug: string
+          p_source: string
+          p_value: Json
+        }
+        Returns: boolean
+      }
       valid_audiences: {
         Args: { a: Database["public"]["Enums"]["audience"][] }
         Returns: boolean

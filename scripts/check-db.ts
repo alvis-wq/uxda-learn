@@ -8,6 +8,8 @@
  *     leaderboard function is callable.
  *  5. allowed_email_domains matches ALLOWED_EMAIL_DOMAINS, and the signup trigger accepts
  *     those domains and rejects others.
+ *  6. set_challenge_setting writes the value + one audit row (none for a no-op); users can't
+ *     call it or read the audit log.
  */
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -27,6 +29,7 @@ const EXPECTED_TABLES = [
   "submissions",
   "evaluations",
   "acknowledgements",
+  "challenge_settings_audit",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
@@ -58,7 +61,7 @@ async function checkTablesAndRls() {
 
 type Client = ReturnType<typeof anonClient>;
 
-type PrivateTable = "challenge_keys" | "admin_allowlist" | "allowed_email_domains";
+type PrivateTable = "challenge_keys" | "admin_allowlist" | "allowed_email_domains" | "challenge_settings_audit";
 
 async function expectNoRows(client: Client, table: PrivateTable, who: string) {
   const { data, error } = await client.from(table).select("*");
@@ -159,6 +162,35 @@ async function main() {
     if (!lbErr) pass("signed-in user can call get_leaderboard(track[])");
     else fail(`get_leaderboard(track[]) failed: ${lbErr.message}`);
 
+    console.log("Challenge settings & audit log");
+    const set = (p_field: string, p_value: unknown) =>
+      admin.rpc("set_challenge_setting", {
+        p_slug: SENTINEL_CHALLENGE, p_field, p_value: p_value as never, p_source: "admin", p_actor: userId,
+      });
+    const changed = await set("required_for", ["designer"]);
+    const unchanged = await set("required_for", ["designer"]);
+    const { data: auditRows } = await admin
+      .from("challenge_settings_audit")
+      .select("field,old_value,new_value,changed_by")
+      .eq("challenge_slug", SENTINEL_CHALLENGE);
+    const { data: after } = await admin.from("challenges").select("required_for").eq("slug", SENTINEL_CHALLENGE).single();
+    if (changed.data === true && unchanged.data === false && after?.required_for.join() === "designer" && auditRows?.length === 1 &&
+        JSON.stringify(auditRows[0].old_value) === "[]" && auditRows[0].changed_by === userId) {
+      pass("set_challenge_setting updates the challenge and writes one audit row (none for a no-op)");
+    } else {
+      fail(`set_challenge_setting: ${changed.error?.message ?? unchanged.error?.message ?? JSON.stringify({ after, auditRows })}`);
+    }
+    const badStatus = await set("status", "live");
+    if (badStatus.error) pass("set_challenge_setting rejects an invalid status (column check)");
+    else fail("set_challenge_setting ACCEPTED status 'live'");
+    await expectNoRows(authed, "challenge_settings_audit", "authenticated user");
+    const { error: userRpcErr } = await authed.rpc("set_challenge_setting", {
+      p_slug: SENTINEL_CHALLENGE, p_field: "status", p_value: "draft", p_source: "admin", p_actor: userId,
+    });
+    const { data: stillPublished } = await admin.from("challenges").select("status").eq("slug", SENTINEL_CHALLENGE).single();
+    if (userRpcErr && stillPublished?.status === "published") pass(`user cannot call set_challenge_setting (${userRpcErr.code ?? userRpcErr.message})`);
+    else fail("user COULD call set_challenge_setting");
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -169,6 +201,7 @@ async function main() {
       if (outsider.user) await admin.auth.admin.deleteUser(outsider.user.id);
     }
   } finally {
+    await admin.from("challenge_settings_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     if (userId) await admin.auth.admin.deleteUser(userId);
     await admin.from("acknowledgements").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenge_keys").delete().eq("challenge_slug", SENTINEL_CHALLENGE);

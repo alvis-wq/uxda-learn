@@ -59,9 +59,10 @@ export async function installFixtures(db: Db) {
   const { error: catErr } = await db.from("categories").upsert(content.categories.map(toCategoryRow));
   if (catErr) throw new Error(`fixture categories: ${catErr.message}`);
   for (const ch of content.challenges) {
-    const { challenge, key } = toChallengeRows(ch, content.categories);
+    const { challenge, settings, key } = toChallengeRows(ch, content.categories);
     const { error } = await db.from("challenges").upsert({
       ...challenge,
+      ...settings,
       questions: challenge.questions as never,
       submission_spec: challenge.submission_spec as never,
       rubric: challenge.rubric as never,

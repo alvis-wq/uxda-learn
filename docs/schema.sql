@@ -122,6 +122,22 @@ create table acknowledgements (
   primary key (user_id, challenge_slug)
 );
 
+-- Who changed a challenge's admin-owned settings (status, required_for, due_at), and when.
+-- Written only by set_challenge_setting(): the admin panel, or content:sync archiving a
+-- challenge whose file was removed.
+create table challenge_settings_audit (
+  id bigint generated always as identity primary key,
+  challenge_slug text not null references challenges(slug) on delete cascade,
+  field text not null check (field in ('status', 'required_for', 'due_at')),
+  old_value jsonb,
+  new_value jsonb,
+  source text not null check (source in ('admin', 'content:sync')),
+  changed_by uuid references profiles(id) on delete set null,
+  changed_at timestamptz not null default now(),
+  check (source <> 'admin' or changed_by is not null)
+);
+create index challenge_settings_audit_slug_idx on challenge_settings_audit (challenge_slug, changed_at desc);
+
 -- Helpers ------------------------------------------------------------------
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -170,6 +186,14 @@ language sql stable security definer set search_path = public as $$
   order by total_score desc, completed desc;
 $$;
 
+-- Sets one of status / required_for / due_at and writes the audit row in the same transaction.
+-- No-op (returns false, no audit row) when the value doesn't change. Service role only; the
+-- server action validates first (visible tracks, no TODO placeholders when publishing).
+-- Full body: supabase/migrations/20261011090000_challenge_settings_audit.sql
+-- function public.set_challenge_setting(p_slug text, p_field text, p_value jsonb,
+--                                       p_source text, p_actor uuid default null) returns boolean
+-- revoke execute ... from public, anon, authenticated; grant execute ... to service_role;
+
 -- RLS ----------------------------------------------------------------------
 alter table admin_allowlist enable row level security;   -- no policies
 alter table allowed_email_domains enable row level security;   -- no policies
@@ -180,6 +204,7 @@ alter table challenge_keys  enable row level security;   -- no policies
 alter table submissions     enable row level security;
 alter table evaluations     enable row level security;
 alter table acknowledgements enable row level security;
+alter table challenge_settings_audit enable row level security;
 
 create policy profiles_select on profiles for select to authenticated
   using (id = auth.uid() or public.is_admin());
@@ -204,6 +229,10 @@ create policy evaluations_select on evaluations for select to authenticated
 create policy acknowledgements_select on acknowledgements for select to authenticated
   using (user_id = auth.uid() or public.is_admin());
 -- No insert/update policies or grants: written by a server action with the service role.
+
+create policy challenge_settings_audit_select on challenge_settings_audit for select to authenticated
+  using (public.is_admin());
+-- No write policies or grants: written only by set_challenge_setting() (service role).
 
 -- Storage ------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

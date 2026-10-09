@@ -37,6 +37,10 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   `submitted → ai_reviewed (via /evaluate) → published` (admin approves)
   or `→ needs_resubmission`.
 - Never delete challenges that have submissions — archive them. Content changes bump `version`.
+- Content files own content (brief, questions, rubric, points, type, audiences). The admin panel
+  owns `status`, `required_for`, `due_at`: files set them only on creation, content:sync never
+  overwrites them, and every change is audited (`challenge_settings_audit`). Content with a
+  `TODO…` placeholder can't be published.
 - Test login (email/password test users) only when `ENABLE_TEST_LOGIN=true` AND
   `NODE_ENV !== 'production'`. Guard it in code and test the guard.
 

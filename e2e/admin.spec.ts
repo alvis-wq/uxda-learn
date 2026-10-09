@@ -14,7 +14,7 @@ test.describe("admin", () => {
     await loginAs(page, "strategist");
     await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
 
-    for (const url of ["/admin", "/admin/users", "/admin/content"]) {
+    for (const url of ["/admin", "/admin/users", "/admin/content", "/admin/content/e2e-quiz"]) {
       const res = await page.goto(url);
       expect(res?.status(), url).toBe(403);
       await expect(page.getByRole("heading", { name: "Access denied" })).toBeVisible();
@@ -100,7 +100,9 @@ test.describe("admin", () => {
     await expect(me.getByRole("cell").last()).toHaveText("8");
     await page.goto("/profile");
     await expect(page.getByTestId("stat-total")).toHaveText("8");
-    await expect(page.getByText("Nice work — next time include the error state.")).toBeVisible();
+    const card = page.getByTestId("challenge-history").filter({ hasText: "[E2E] Screenshot" });
+    await expect(card.getByTestId("attempt-score")).toContainText("8 / 10");
+    await expect(card.getByText("Nice work — next time include the error state.")).toBeVisible();
   });
 
   test("admin can change a user's track, toggle admin and export CSV", async ({ page }) => {
@@ -141,6 +143,6 @@ test.describe("admin", () => {
 
     await page.goto("/admin/content");
     await expect(page.getByRole("heading", { name: "Content" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Same brief, three tools" })).toBeVisible();
+    await expect(page.getByTestId("content-challenge").filter({ hasText: "[E2E] Quiz" })).toBeVisible();
   });
 });

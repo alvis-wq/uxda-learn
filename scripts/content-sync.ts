@@ -2,6 +2,8 @@
  * Sync /content into Supabase (service role).
  *   npm run content:sync [-- --dry-run]
  * Answers and grader notes go to challenge_keys only. Removed content is archived, never deleted.
+ * status / required_for / due_at come from the file only when a challenge is first created; after
+ * that the admin panel owns them and this script only reports where the file disagrees.
  */
 import "./lib/env";
 import { loadAndValidate } from "../src/lib/content";
@@ -47,16 +49,22 @@ async function main() {
   );
 
   for (const { row, action } of plan.categoryUpserts) console.log(`  category ${action}: ${row.slug}`);
-  for (const { row, action } of plan.challengeWrites) {
-    console.log(`  challenge ${action}: ${row.slug} (v${row.version}, ${row.status})`);
+  for (const w of plan.challengeWrites) {
+    console.log(
+      w.action === "create"
+        ? `  challenge create: ${w.row.slug} (v1, ${w.settings.status})`
+        : `  challenge update: ${w.row.slug} (v${w.row.version}; status, required_for and due_at kept from the DB)`,
+    );
   }
-  for (const u of plan.challengeMetaUpdates) {
-    console.log(`  challenge metadata: ${u.slug} (${u.status}, required_for: [${u.required_for.join(", ")}]; version unchanged)`);
-  }
+  for (const u of plan.challengeHashRefreshes) console.log(`  challenge hash refresh: ${u.slug} (version unchanged)`);
   for (const slug of plan.challengeArchives) console.log(`  challenge archived: ${slug}`);
   for (const slug of plan.categoryArchives) console.log(`  category archived: ${slug}`);
 
   const total = countChanges(plan);
+  if (plan.settingsDrift.length) {
+    console.log("Settings managed in the admin panel (file values ignored, DB wins):");
+    for (const d of plan.settingsDrift) console.log(`  ${d.slug}: ${d.field} — file says ${d.file}, DB has ${d.db}`);
+  }
   if (dryRun) {
     console.log(`Dry run: ${total} change(s) would be applied.`);
     return;
@@ -66,29 +74,35 @@ async function main() {
   if (plan.categoryUpserts.length) {
     check(await db.from("categories").upsert(plan.categoryUpserts.map((u) => u.row)), "upsert categories");
   }
-  for (const { row, key } of plan.challengeWrites) {
+  for (const w of plan.challengeWrites) {
+    const content = {
+      ...w.row,
+      questions: w.row.questions as never,
+      submission_spec: w.row.submission_spec as never,
+      rubric: w.row.rubric as never,
+      updated_at: now,
+    };
+    if (w.action === "create") {
+      check(await db.from("challenges").insert({ ...content, ...w.settings }), `create challenge ${w.row.slug}`);
+    } else {
+      // Content columns only: status / required_for / due_at belong to the admin panel.
+      check(await db.from("challenges").update(content).eq("slug", w.row.slug), `update challenge ${w.row.slug}`);
+    }
+    check(await db.from("challenge_keys").upsert(w.key), `upsert key ${w.row.slug}`);
+  }
+  for (const { slug, content_hash } of plan.challengeHashRefreshes) {
+    check(await db.from("challenges").update({ content_hash }).eq("slug", slug), `hash refresh ${slug}`);
+  }
+  for (const slug of plan.challengeArchives) {
+    // Through set_challenge_setting so the archive shows up in the challenge's audit log.
     check(
-      await db.from("challenges").upsert({
-        ...row,
-        questions: row.questions as never,
-        submission_spec: row.submission_spec as never,
-        rubric: row.rubric as never,
-        updated_at: now,
+      await db.rpc("set_challenge_setting", {
+        p_slug: slug,
+        p_field: "status",
+        p_value: "archived",
+        p_source: "content:sync",
       }),
-      `upsert challenge ${row.slug}`,
-    );
-    check(await db.from("challenge_keys").upsert(key), `upsert key ${row.slug}`);
-  }
-  for (const { slug, status, required_for, content_hash } of plan.challengeMetaUpdates) {
-    check(
-      await db.from("challenges").update({ status, required_for, content_hash, updated_at: now }).eq("slug", slug),
-      `metadata ${slug}`,
-    );
-  }
-  if (plan.challengeArchives.length) {
-    check(
-      await db.from("challenges").update({ status: "archived", updated_at: now }).in("slug", plan.challengeArchives),
-      "archive challenges",
+      `archive challenge ${slug}`,
     );
   }
   if (plan.categoryArchives.length) {

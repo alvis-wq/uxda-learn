@@ -1,5 +1,6 @@
 import type { ContentError, LoadedContent } from "./load";
 import { audienceTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
+import { challengeParts, describePlaceholders, findPlaceholders } from "./placeholders";
 import { needsReview } from "./schema";
 
 function duplicates(values: string[]): string[] {
@@ -51,6 +52,14 @@ export function validateContent(content: LoadedContent): ContentError[] {
     }
 
     if (!body) err(file, "brief (markdown body) is empty");
+
+    // A file can only publish a challenge when it's first created; never with placeholders in it.
+    if (c.status === "published") {
+      const hits = findPlaceholders(challengeParts({ ...c, body }));
+      if (hits.length) {
+        err(file, `status: published, but the content still has placeholders: ${describePlaceholders(hits)} — keep it draft until they're filled in`);
+      }
+    }
 
     for (const qid of duplicates(c.questions.map((q) => q.id))) {
       err(file, `duplicate question id "${qid}"`);

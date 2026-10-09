@@ -82,6 +82,12 @@ describe("content validation", () => {
       expect(all.join("\n")).not.toMatch(/Strategist/);
     });
 
+    it("rejects status: published while the content still has TODO placeholders", () => {
+      expect(messagesFor("published-placeholder")).toEqual([
+        "status: published, but the content still has placeholders: TODO_FIGMA_URL (brief, questions) — keep it draft until they're filled in",
+      ]);
+    });
+
     it("rejects acknowledge challenges with points or questions", () => {
       const msgs = messagesFor("bad-ack");
       expect(msgs).toContain("acknowledge challenges are worth 0 points");
@@ -133,20 +139,27 @@ describe("transform", () => {
     const motion = content.challenges.find((c) => c.data.slug === "motion-basics")!;
     expect(toChallengeRows(ack, content.categories).challenge).toMatchObject({
       audiences: ["all"],
-      required_for: ["all"],
       type: "acknowledge",
       points: 0,
       difficulty: 1,
       questions: [],
     });
-    expect(toChallengeRows(motion, content.categories).challenge).toMatchObject({
-      audiences: ["motion_designer"],
-      required_for: ["motion_designer"],
-    });
-    expect(toChallengeRows(quiz, content.categories).challenge.required_for).toEqual([]);
+    expect(toChallengeRows(ack, content.categories).settings.required_for).toEqual(["all"]);
+    expect(toChallengeRows(motion, content.categories).challenge.audiences).toEqual(["motion_designer"]);
+    expect(toChallengeRows(motion, content.categories).settings.required_for).toEqual(["motion_designer"]);
+    expect(toChallengeRows(quiz, content.categories).settings.required_for).toEqual([]);
   });
 
-  it("content_hash ignores status, required_for and private fields", () => {
+  it("keeps the admin-owned settings out of the public content row", () => {
+    const ack = content.challenges.find((c) => c.data.slug === "read-the-rules")!;
+    const { challenge, settings } = toChallengeRows(ack, content.categories);
+    expect(challenge).not.toHaveProperty("status");
+    expect(challenge).not.toHaveProperty("required_for");
+    expect(challenge).not.toHaveProperty("due_at");
+    expect(settings).toEqual({ status: "published", required_for: ["all"], due_at: "2026-10-20T09:00:00.000Z" });
+  });
+
+  it("content_hash ignores status, required_for, due_at and private fields", () => {
     const base = toChallengeRows(quiz, content.categories).challenge.content_hash;
     const drafted = { ...quiz, data: { ...quiz.data, status: "draft" as const } };
     const newNotes = { ...quiz, data: { ...quiz.data, grader_notes: "changed" } };
@@ -154,6 +167,8 @@ describe("transform", () => {
     expect(toChallengeRows(drafted, content.categories).challenge.content_hash).toBe(base);
     expect(toChallengeRows(newNotes, content.categories).challenge.content_hash).toBe(base);
     expect(toChallengeRows(required, content.categories).challenge.content_hash).toBe(base);
+    const due = { ...quiz, data: { ...quiz.data, due_at: "2027-01-01T00:00:00Z" } };
+    expect(toChallengeRows(due, content.categories).challenge.content_hash).toBe(base);
     const narrowed = { ...quiz, data: { ...quiz.data, audiences: ["designer" as const] } };
     expect(toChallengeRows(narrowed, content.categories).challenge.content_hash).not.toBe(base);
     const newBody = { ...quiz, body: quiz.body + "\nMore." };
@@ -171,12 +186,12 @@ describe("planSync", () => {
   const synced = () => ({
     categories: disk.categories.map((c) => ({ ...c })),
     // Full rows as the DB returns them (timestamps in Postgres' +00:00 form).
-    challenges: disk.challenges.map(({ challenge }) => ({
+    challenges: disk.challenges.map(({ challenge, settings }) => ({
       ...challenge,
-      due_at: challenge.due_at?.replace(/\.000Z$/, "+00:00") ?? null,
+      due_at: settings.due_at?.replace(/\.000Z$/, "+00:00") ?? null,
       version: 3 as number,
-      status: challenge.status as string,
-      required_for: [...challenge.required_for] as string[],
+      status: settings.status as string,
+      required_for: [...settings.required_for] as string[],
     })),
     // jsonb returns keys in its own order; planSync must not treat that as a change.
     keys: disk.challenges.map(({ key }) => ({
@@ -186,7 +201,7 @@ describe("planSync", () => {
     })),
   });
 
-  it("creates everything on an empty DB with version 1", () => {
+  it("creates everything on an empty DB with version 1, taking settings from the file", () => {
     const plan = planSync(disk, { categories: [], challenges: [], keys: [] });
     expect(plan.categoryUpserts).toHaveLength(3);
     expect(plan.challengeWrites.map((w) => [w.row.slug, w.action, w.row.version])).toEqual([
@@ -195,45 +210,64 @@ describe("planSync", () => {
       ["read-the-rules", "create", 1],
       ["show-your-work", "create", 1],
     ]);
+    const rules = plan.challengeWrites.find((w) => w.row.slug === "read-the-rules")!;
+    expect(rules.action === "create" && rules.settings).toEqual({
+      status: "published",
+      required_for: ["all"],
+      due_at: "2026-10-20T09:00:00.000Z",
+    });
+    expect(plan.settingsDrift).toEqual([]);
   });
 
   it("reports 0 changes when the DB already matches", () => {
-    expect(countChanges(planSync(disk, synced()))).toBe(0);
+    const plan = planSync(disk, synced());
+    expect(countChanges(plan)).toBe(0);
+    expect(plan.settingsDrift).toEqual([]);
   });
 
-  it("bumps the version when public content changes", () => {
+  it("bumps the version when public content changes, without touching settings", () => {
     const db = synced();
-    db.challenges[0] = { ...db.challenges[0], title: "Old title", content_hash: "old" };
+    db.challenges[0] = { ...db.challenges[0], title: "Old title", content_hash: "old", status: "draft" };
     const plan = planSync(disk, db);
     expect(plan.challengeWrites).toHaveLength(1);
-    expect(plan.challengeWrites[0].row.version).toBe(4);
+    const [w] = plan.challengeWrites;
+    expect(w.action).toBe("update");
+    expect(w.row.version).toBe(4);
+    expect(w).not.toHaveProperty("settings");
+    for (const field of ["status", "required_for", "due_at"]) expect(w.row).not.toHaveProperty(field);
   });
 
   it("refreshes a stale stored hash without bumping when the fields are unchanged", () => {
-    // e.g. after the audience → audiences migration: same content, hash computed the old way.
-    // read-the-rules has a due_at, which the DB returns as +00:00 rather than Z.
+    // e.g. after due_at moved out of the hash: same content, hash computed the old way.
     const db = synced();
     const i = db.challenges.findIndex((c) => c.slug === "read-the-rules");
     db.challenges[i] = { ...db.challenges[i], content_hash: "hash-from-old-format" };
     const expected = disk.challenges.find((c) => c.challenge.slug === "read-the-rules")!.challenge.content_hash;
     const plan = planSync(disk, db);
     expect(plan.challengeWrites).toHaveLength(0);
-    expect(plan.challengeMetaUpdates).toEqual([
-      expect.objectContaining({ slug: "read-the-rules", content_hash: expected }),
-    ]);
-    expect(db.challenges[i].due_at).toMatch(/\+00:00$/);
+    expect(plan.challengeHashRefreshes).toEqual([{ slug: "read-the-rules", content_hash: expected }]);
     expect(hashPublicContent(db.challenges[i])).toBe(expected);
   });
 
-  it("updates required_for without bumping the version", () => {
+  it("never writes status, required_for or due_at for an existing challenge — the DB wins", () => {
     const db = synced();
     const i = db.challenges.findIndex((c) => c.slug === "read-the-rules");
-    db.challenges[i] = { ...db.challenges[i], required_for: [] };
+    // An admin changed all three in the panel; the file still has the original values.
+    db.challenges[i] = { ...db.challenges[i], status: "draft", required_for: [], due_at: "2027-02-01T09:00:00+00:00" };
     const plan = planSync(disk, db);
-    expect(plan.challengeWrites).toHaveLength(0);
-    expect(plan.challengeMetaUpdates).toEqual([
-      expect.objectContaining({ slug: "read-the-rules", required_for: ["all"] }),
+    expect(countChanges(plan)).toBe(0);
+    expect(plan.settingsDrift).toEqual([
+      { slug: "read-the-rules", field: "status", file: "published", db: "draft" },
+      { slug: "read-the-rules", field: "required_for", file: "[all]", db: "optional" },
+      { slug: "read-the-rules", field: "due_at", file: "2026-10-20T09:00:00.000Z", db: "2027-02-01T09:00:00.000Z" },
     ]);
+  });
+
+  it("does not report drift for the same due date in a different timestamp format", () => {
+    const db = synced();
+    const i = db.challenges.findIndex((c) => c.slug === "read-the-rules");
+    expect(db.challenges[i].due_at).toMatch(/\+00:00$/);
+    expect(planSync(disk, db).settingsDrift).toEqual([]);
   });
 
   it("updates a category whose audiences changed", () => {
@@ -248,17 +282,6 @@ describe("planSync", () => {
     const db = synced();
     db.keys[0] = { ...db.keys[0], answer_key: { q1: "a", q2: ["a", "c"] } };
     expect(planSync(disk, db).challengeWrites[0]?.row.version).toBe(4);
-  });
-
-  it("updates status without bumping the version", () => {
-    const db = synced();
-    const i = db.challenges.findIndex((c) => c.slug === "quick-quiz");
-    db.challenges[i] = { ...db.challenges[i], status: "draft" };
-    const plan = planSync(disk, db);
-    expect(plan.challengeWrites).toHaveLength(0);
-    expect(plan.challengeMetaUpdates).toEqual([
-      expect.objectContaining({ slug: "quick-quiz", status: "published", required_for: [] }),
-    ]);
   });
 
   it("archives content removed from disk instead of deleting it", () => {

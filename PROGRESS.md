@@ -335,3 +335,39 @@ E2E + integration (no separate test project exists yet, so run against a throwaw
 Supabase stack via Docker — all 4 migrations applied cleanly from scratch): `test:e2e` ✅ 18/18
 (incl. axe WCAG A/AA light + dark, no overflow at 375px, new required/acknowledge specs) ·
 `test:integration` ✅ 6/6. Screens reviewed at 375px in light and dark mode.
+
+## Admin-editable challenge settings + "Your challenges" history
+Plan approved by Alvis (plus: block publishing while content has a TODO placeholder). Done:
+- **Ownership split.** Content files own content; the admin panel owns `status`, `required_for`,
+  `due_at`. Files set those only when content:sync creates a challenge; afterwards sync never
+  writes them and lists any file/DB disagreement as "Settings managed in the admin panel".
+  `due_at` left `content_hash` (stale hashes refresh without version bumps).
+- **Admin → Content:** per challenge status select, required-for picker (Everyone + tracks; only
+  tracks that can see it are selectable, re-validated server-side) and due date (browser local
+  time, saved on blur, Clear). Instant save with toasts. Change history per challenge (who,
+  field, old → new, when). Migration `20261011090000_challenge_settings_audit`: audit table
+  (RLS: admins read, nobody writes) + `set_challenge_setting()` (service role only; value + audit
+  row in one transaction, no-op writes nothing). content:sync archives go through it too.
+- **Placeholders:** `TODO` / `TODO_*` anywhere in a challenge (brief, questions, submission,
+  rubric, grader notes) blocks publishing in the panel with the reason; content:validate fails
+  files that say `status: published` with one. spot-the-plant (TODO_FIGMA_URL) is blocked.
+- **Admin preview** `/admin/content/[slug]`: brief, questions with correct answers marked,
+  submission spec, rubric with levels, grader notes, history. Admin-only, server-rendered.
+- **Profile → "Your challenges":** one card per challenge; headline = best published attempt
+  (Best score), newer pending attempt flagged, other attempts collapsible (Earlier attempt /
+  Not counted muted, Awaiting review, Resubmission requested). Scores < 50% in new `warning`
+  token (#a14a00 light / #f0b44c dark, AA on all surfaces, + icon). Feedback per attempt;
+  AI-reviewed scores/feedback stay hidden until approved.
+- Docs: content-format ("Who owns what"), /new-challenge, README, schema.sql, CLAUDE.md.
+
+Checks: `npm run check` ✅ (218 unit tests) · `npm run build` ✅ · `content:validate` ✅.
+Local Supabase stack (Docker, all 5 migrations from scratch): `test:e2e` ✅ 23/23 (new:
+settings + audit, visible-track limits, TODO publish block, preview answers, profile grouping
+with axe light/dark) · `test:integration` ✅ 6/6 · SQL checks of `set_challenge_setting`
+(rollback without actor, invalid values, grants) ✅. Screens reviewed at 1280px and 375px,
+light and dark.
+Main project (run by Claude at Alvis's request): `db:push` ✅ (1 migration) · `db:types` ✅ (no
+diff vs hand-written) · `content:sync --dry-run` ✅ (9 hash refreshes, no version bumps, no
+settings drift) · `content:sync` ✅ (9 changes; second dry run 0) · `db:check` ✅ (incl. audit
+table RLS and function grants). Data after: 9 challenges (all v2, statuses unchanged),
+3 submissions untouched, 0 audit rows.
