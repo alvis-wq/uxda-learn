@@ -102,3 +102,4 @@
 - Destructive badges/buttons use a `--destructive-foreground` token instead of `text-white` on 60% red in dark mode — the old dark combination was below 4.5:1 with overdue badges now common.
 - Markdown briefs use `prose-lg` — the typography plugin's base size is 16px; prose-lg is the +2px step.
 - Scripts that use Node's fetch need `NODE_USE_ENV_PROXY=1` in cloud sessions — Node's built-in fetch ignores HTTPS_PROXY.
+- E2E/integration verified on a local Supabase stack (`supabase start` in Docker) — no test project exists yet, and test login against the main project would recreate test users there.

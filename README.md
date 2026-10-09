@@ -107,8 +107,13 @@ Quiz-only challenges are graded and published the moment someone submits. Everyt
   1. Create a second Supabase project (Auth → email provider on, the default; Google isn't needed).
   2. Set `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`,
      `TEST_SUPABASE_PROJECT_REF` (and optionally `TEST_SUPABASE_ACCESS_TOKEN`).
-  3. `npm run db:push -- --test-project`, `npm run seed:domains -- --test-project`, then
+  3. `npm run db:push -- --test-project`, `npm run seed:domains -- --test-project`,
+     `npm run content:sync -- --test-project` (the admin spec expects real content), then
      `npm run db:check -- --test-project`.
+
+  A local stack works too: `npx supabase start` (Docker), then point `TEST_SUPABASE_URL` /
+  `_ANON_KEY` / `_SERVICE_ROLE_KEY` at the values from `npx supabase status`; migrations apply
+  on start, so only `seed:domains` and `content:sync` (with `--test-project`) are needed.
   4. `npm run test:integration` and `npm run test:e2e`.
 
   Without these vars both commands skip and pass. Using the main project's URL or ref is refused.

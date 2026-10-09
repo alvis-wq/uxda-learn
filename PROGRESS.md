@@ -331,3 +331,7 @@ Main project (run by Claude at Alvis's request): `db:push` ✅ (2 migrations) ·
 update, 9 hash refreshes, no version bumps) · `content:sync` ✅ (12 changes; second dry run 0) ·
 `db:check` ✅ (incl. acknowledgement write/read isolation and `get_leaderboard(track[])`).
 Data after: 11 categories, 9 challenges (all still v2), 3 submissions untouched.
+E2E + integration (no separate test project exists yet, so run against a throwaway local
+Supabase stack via Docker — all 4 migrations applied cleanly from scratch): `test:e2e` ✅ 18/18
+(incl. axe WCAG A/AA light + dark, no overflow at 375px, new required/acknowledge specs) ·
+`test:integration` ✅ 6/6. Screens reviewed at 375px in light and dark mode.
