@@ -14,7 +14,7 @@ test.describe("learner experience", () => {
     await loginAs(page, "designer");
 
     const category = page.getByRole("link", { name: /\[E2E\] Test challenges/ });
-    await expect(category).toContainText("0 of 2 completed");
+    await expect(category).toContainText("0 of 3 completed");
     await category.click();
     await expect(page.getByRole("heading", { name: "[E2E] Test challenges" })).toBeVisible();
     await page.getByRole("link", { name: /\[E2E\] Quiz/ }).click();
@@ -38,7 +38,7 @@ test.describe("learner experience", () => {
     expect(data![0].published_at).not.toBeNull();
 
     await page.goto("/");
-    await expect(page.getByRole("link", { name: /\[E2E\] Test challenges/ })).toContainText("1 of 2 completed");
+    await expect(page.getByRole("link", { name: /\[E2E\] Test challenges/ })).toContainText("1 of 3 completed");
   });
 
   test("screenshot challenge uploads and shows Awaiting review", async ({ page }) => {

@@ -13,11 +13,12 @@ const LEARNER_PAGES = [
   "/categories/e2e-tests",
   "/challenges/e2e-quiz",
   "/challenges/e2e-screenshot",
+  "/challenges/e2e-ack",
   "/leaderboard",
   "/profile",
   "/does-not-exist",
 ];
-const ADMIN_PAGES = ["/admin", "/admin/users", "/admin/content"];
+const ADMIN_PAGES = ["/admin", "/admin/users", "/admin/required", "/admin/acknowledgements", "/admin/content"];
 
 async function axe(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

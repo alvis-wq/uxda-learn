@@ -3,17 +3,34 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
-import { challengeNeedsReview, isVisibleToTrack, parseChallenge } from "@/lib/challenges/model";
+import { challengeNeedsReview, isChallengeVisible, parseChallenge } from "@/lib/challenges/model";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gradeAnswers, type AnswerKey } from "@/lib/submissions/grading";
 import { submissionInputSchema } from "@/lib/submissions/input";
 import { attemptState } from "@/lib/submissions/rules";
+import type { Track } from "@/lib/tracks";
 
 export type SubmitResult =
   | { ok: true; submissionId: string; status: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 const slugSchema = z.string().regex(/^[a-z0-9-]{1,100}$/);
+
+/** The challenge row if this track may act on it now (published, visible), else null. */
+async function loadOpenChallenge(
+  admin: ReturnType<typeof createAdminClient>,
+  slug: string,
+  track: Track | null,
+) {
+  const { data: row } = await admin.from("challenges").select("*").eq("slug", slug).maybeSingle();
+  if (!row) return null;
+  const { data: category } = await admin
+    .from("categories")
+    .select("archived,audiences")
+    .eq("slug", row.category_slug)
+    .maybeSingle();
+  return isChallengeVisible(row, category, track) ? row : null;
+}
 
 /**
  * Create a submission for the signed-in user. Everything that matters — visibility,
@@ -30,20 +47,8 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
   if (!slug.success) return { ok: false, error: "Challenge not found." };
 
   const admin = createAdminClient();
-  const { data: row } = await admin.from("challenges").select("*").eq("slug", slug.data).maybeSingle();
-  const { data: category } = row
-    ? await admin.from("categories").select("archived,audience").eq("slug", row.category_slug).maybeSingle()
-    : { data: null };
-  if (
-    !row ||
-    row.status !== "published" ||
-    !category ||
-    category.archived ||
-    !isVisibleToTrack(category.audience, profile.track) ||
-    !isVisibleToTrack(row.audience, profile.track)
-  ) {
-    return { ok: false, error: "This challenge isn't open for submissions." };
-  }
+  const row = await loadOpenChallenge(admin, slug.data, profile.track);
+  if (!row || row.type === "acknowledge") return { ok: false, error: "This challenge isn't open for submissions." };
   const challenge = parseChallenge(row);
 
   const { data: previous, error: prevError } = await admin
@@ -116,4 +121,43 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
 
   revalidatePath("/", "layout");
   return { ok: true, submissionId: inserted.id, status: inserted.status };
+}
+
+export type AcknowledgeResult = { ok: true; acknowledgedAt: string } | { ok: false; error: string };
+
+/**
+ * "I've read and understood" for an acknowledge challenge. Records who confirmed, when, and
+ * against which version. Idempotent: confirming twice keeps the first timestamp.
+ */
+export async function acknowledgeChallenge(slugInput: string): Promise<AcknowledgeResult> {
+  const user = await getCurrentUser();
+  const profile = await getCurrentProfile();
+  if (!user || !profile) return { ok: false, error: "Your session has expired. Please sign in again." };
+  if (!profile.track) return { ok: false, error: "Choose your track first." };
+
+  const slug = slugSchema.safeParse(slugInput);
+  if (!slug.success) return { ok: false, error: "Challenge not found." };
+
+  const admin = createAdminClient();
+  const row = await loadOpenChallenge(admin, slug.data, profile.track);
+  if (!row || row.type !== "acknowledge") return { ok: false, error: "This challenge can't be acknowledged." };
+
+  const { error } = await admin
+    .from("acknowledgements")
+    .upsert(
+      { user_id: user.id, challenge_slug: row.slug, challenge_version: row.version },
+      { onConflict: "user_id,challenge_slug", ignoreDuplicates: true },
+    );
+  if (error) return { ok: false, error: "Couldn't save your confirmation. Please try again." };
+
+  const { data: ack, error: readError } = await admin
+    .from("acknowledgements")
+    .select("acknowledged_at")
+    .eq("user_id", user.id)
+    .eq("challenge_slug", row.slug)
+    .single();
+  if (readError) return { ok: false, error: "Couldn't save your confirmation. Please try again." };
+
+  revalidatePath("/", "layout");
+  return { ok: true, acknowledgedAt: ack.acknowledged_at };
 }

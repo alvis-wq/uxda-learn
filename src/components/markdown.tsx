@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 /** Renders trusted repo markdown. Raw HTML is not rendered (react-markdown default). */
 export function Markdown({ children, className }: { children: string; className?: string }) {
   return (
-    <div className={cn("prose prose-neutral dark:prose-invert max-w-none prose-headings:tracking-tight", className)}>
+    <div className={cn("prose prose-lg prose-neutral dark:prose-invert max-w-none prose-headings:tracking-tight", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

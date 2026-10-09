@@ -1,6 +1,6 @@
 categories:
   - slug: e2e-tests
     title: "[E2E] Test challenges"
-    audience: all
+    audiences: all
     description: Temporary fixtures created and removed by the E2E suite.
     sort_order: 9999

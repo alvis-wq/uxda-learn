@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Challenge } from "@/lib/challenges/model";
-import { challengeNeedsReview, isVisibleToTrack } from "@/lib/challenges/model";
+import type { Audience, Challenge } from "@/lib/challenges/model";
+import { challengeNeedsReview, isChallengeVisible } from "@/lib/challenges/model";
 import { gradeAnswers } from "./grading";
 import { countWords, isFigmaUrl, isOwnImagePath, submissionInputSchema } from "./input";
 import { attemptState, isResultVisible, learnerStatus } from "./rules";
@@ -12,7 +12,7 @@ const IMG = "33333333-3333-4333-8333-333333333333";
 function challenge(over: Partial<Challenge> = {}): Challenge {
   return {
     slug: "c1", category_slug: "cat", title: "C1", summary: null, body_md: "b", type: "quiz",
-    audience: "all", difficulty: 1, points: 10, estimated_minutes: null, version: 1,
+    audiences: ["all"], required_for: [], difficulty: 1, points: 10, estimated_minutes: null, version: 1,
     content_hash: "h", status: "published", due_at: null, updated_at: "",
     questions: [
       { id: "q1", kind: "single", prompt: "p", options: [{ id: "a", label: "A" }, { id: "b", label: "B" }], points: 4 },
@@ -115,11 +115,16 @@ describe("helpers", () => {
     expect(challengeNeedsReview(challenge())).toBe(false);
     expect(challengeNeedsReview(reviewChallenge)).toBe(true);
   });
-  it("audience visibility", () => {
-    expect(isVisibleToTrack("all", "designer")).toBe(true);
-    expect(isVisibleToTrack("strategist", "strategist")).toBe(true);
-    expect(isVisibleToTrack("strategist", "designer")).toBe(false);
-    expect(isVisibleToTrack("designer", null)).toBe(false);
+  it("challenge visibility needs published + category and challenge audiences", () => {
+    const cat = (audiences: Audience[], archived = false) => ({ archived, audiences });
+    const pub = (audiences: Audience[]) => ({ status: "published", audiences });
+    const designers = cat(["designer", "motion_designer"]);
+    expect(isChallengeVisible(pub(["all"]), designers, "motion_designer")).toBe(true);
+    expect(isChallengeVisible(pub(["all"]), designers, "strategist")).toBe(false);
+    expect(isChallengeVisible(pub(["designer"]), designers, "motion_designer")).toBe(false);
+    expect(isChallengeVisible({ status: "draft", audiences: ["all"] }, cat(["all"]), "designer")).toBe(false);
+    expect(isChallengeVisible(pub(["all"]), cat(["all"], true), "designer")).toBe(false);
+    expect(isChallengeVisible(pub(["all"]), null, "designer")).toBe(false);
   });
 });
 

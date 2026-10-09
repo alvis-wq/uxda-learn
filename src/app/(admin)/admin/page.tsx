@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { REVIEWABLE_STATUSES, sortQueue } from "@/lib/admin/review";
 import { createClient } from "@/lib/supabase/server";
+import { TRACK_LABEL } from "@/lib/tracks";
 
 export const metadata: Metadata = { title: "Review queue · Admin · UXDA Learn" };
 
@@ -56,7 +57,9 @@ export default async function ReviewQueuePage() {
                   <Link href={`/admin/submissions/${s.id}`} className="font-medium hover:underline">
                     {s.profiles?.full_name ?? s.profiles?.email}
                   </Link>
-                  <div className="text-muted-foreground text-xs capitalize">{s.profiles?.track ?? "no track"}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {s.profiles?.track ? TRACK_LABEL[s.profiles.track] : "No track"}
+                  </div>
                 </TableCell>
                 <TableCell>
                   {s.challenges?.title}

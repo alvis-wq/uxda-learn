@@ -1,10 +1,14 @@
 categories:
   - slug: basics
     title: Basics
-    audience: all
+    audiences: all
     description: Everyone.
     sort_order: 10
   - slug: strat-only
     title: Strategist only
-    audience: strategist
+    audiences: [strategist]
     sort_order: 20
+  - slug: designers
+    title: Designers and motion
+    audiences: [designer, motion_designer]
+    sort_order: 30

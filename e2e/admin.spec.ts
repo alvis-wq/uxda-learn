@@ -94,7 +94,7 @@ test.describe("admin", () => {
 
     // 4. The learner sees the score and feedback, and is on the Strategists leaderboard.
     await loginAs(page, "strategist");
-    await page.goto("/leaderboard?track=strategist");
+    await page.goto("/leaderboard?group=strategists");
     const me = page.getByTestId("leaderboard-me");
     await expect(me).toContainText("Test Strategist");
     await expect(me.getByRole("cell").last()).toHaveText("8");

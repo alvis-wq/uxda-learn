@@ -1,8 +1,9 @@
--- UXDA Learn — database spec. Turn into a migration in Phase 1.
+-- UXDA Learn — database spec (current state). Migrations in supabase/migrations are the
+-- source of truth for how the live DB got here; keep this file in step with them.
 
-create type track as enum ('strategist', 'designer');
-create type audience as enum ('all', 'strategist', 'designer');
-create type challenge_type as enum ('quiz', 'screenshot', 'figma', 'mixed');
+create type track as enum ('strategist', 'designer', 'account_manager', 'assistant', 'motion_designer');
+create type audience as enum ('all', 'strategist', 'designer', 'account_manager', 'assistant', 'motion_designer');
+create type challenge_type as enum ('quiz', 'screenshot', 'figma', 'mixed', 'acknowledge');
 create type submission_status as enum
   ('submitted', 'ai_reviewed', 'published', 'needs_resubmission');
 
@@ -25,11 +26,20 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
+-- Exactly {all}, or one or more distinct tracks.
+create or replace function public.valid_audiences(a audience[]) returns boolean
+language sql immutable set search_path = public as $$
+  select a is not null
+     and cardinality(a) >= 1
+     and (a = array['all']::audience[] or not ('all' = any(a)))
+     and cardinality(a) = (select count(distinct x) from unnest(a) as x);
+$$;
+
 create table categories (
   slug text primary key,
   title text not null,
   description text,
-  audience audience not null,
+  audiences audience[] not null check (public.valid_audiences(audiences)),
   sort_order int not null default 0,
   archived boolean not null default false
 );
@@ -41,9 +51,13 @@ create table challenges (
   summary text,
   body_md text not null,
   type challenge_type not null,
-  audience audience not null,
+  audiences audience[] not null check (public.valid_audiences(audiences)),
+  -- Empty = optional for everyone.
+  required_for audience[] not null default '{}'
+    check (cardinality(required_for) = 0 or public.valid_audiences(required_for)),
   difficulty smallint not null check (difficulty between 1 and 3),
-  points int not null check (points > 0),
+  -- Acknowledge challenges are worth 0 points; everything else > 0.
+  points int not null check (points >= 0 and ((type = 'acknowledge') = (points = 0))),
   estimated_minutes int,
   questions jsonb not null default '[]',        -- WITHOUT answers
   submission_spec jsonb not null default '{}',
@@ -98,6 +112,16 @@ create table evaluations (
   unique (submission_id, batch_id)
 );
 
+-- "I've read and understood" for acknowledge challenges. Separate from submissions so they
+-- never count towards scores, the leaderboard or the review queue.
+create table acknowledgements (
+  user_id uuid not null references profiles(id) on delete cascade,
+  challenge_slug text not null references challenges(slug),
+  challenge_version int not null,
+  acknowledged_at timestamptz not null default now(),
+  primary key (user_id, challenge_slug)
+);
+
 -- Helpers ------------------------------------------------------------------
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -126,8 +150,9 @@ end; $$;
 create trigger on_auth_user_created
   after insert on auth.users for each row execute function public.handle_new_user();
 
-create or replace function public.get_leaderboard(p_track track)
-returns table (user_id uuid, full_name text, avatar_url text, total_score numeric, completed int)
+-- Groups of tracks are configured in src/lib/tracks.ts (LEADERBOARD_GROUPS).
+create or replace function public.get_leaderboard(p_tracks track[])
+returns table (user_id uuid, full_name text, avatar_url text, track track, total_score numeric, completed int)
 language sql stable security definer set search_path = public as $$
   with best as (
     select s.user_id, s.challenge_slug, max(s.final_score) as score
@@ -135,12 +160,12 @@ language sql stable security definer set search_path = public as $$
     where s.status = 'published'
     group by s.user_id, s.challenge_slug
   )
-  select p.id, p.full_name, p.avatar_url,
+  select p.id, p.full_name, p.avatar_url, p.track,
          coalesce(sum(b.score), 0) as total_score,
          count(b.challenge_slug)::int as completed
   from profiles p
   left join best b on b.user_id = p.id
-  where p.track = p_track and p.show_on_leaderboard
+  where p.track = any(p_tracks) and p.show_on_leaderboard
   group by p.id
   order by total_score desc, completed desc;
 $$;
@@ -154,6 +179,7 @@ alter table challenges      enable row level security;
 alter table challenge_keys  enable row level security;   -- no policies
 alter table submissions     enable row level security;
 alter table evaluations     enable row level security;
+alter table acknowledgements enable row level security;
 
 create policy profiles_select on profiles for select to authenticated
   using (id = auth.uid() or public.is_admin());
@@ -174,6 +200,10 @@ create policy submissions_select on submissions for select to authenticated
 
 create policy evaluations_select on evaluations for select to authenticated
   using (public.is_admin());
+
+create policy acknowledgements_select on acknowledgements for select to authenticated
+  using (user_id = auth.uid() or public.is_admin());
+-- No insert/update policies or grants: written by a server action with the service role.
 
 -- Storage ------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

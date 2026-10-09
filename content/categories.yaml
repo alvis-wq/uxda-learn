@@ -2,50 +2,61 @@ categories:
   # For everyone
   - slug: uxda-way
     title: The UXDA Way
-    audience: all
+    audiences: all
     description: Our process, standards, tools and how we work with clients.
     sort_order: 10
   - slug: ai-workflow
     title: AI Workflow & Critical Thinking
-    audience: all
+    audiences: all
     description: Using Claude and other AI tools well — and knowing when not to trust them.
     sort_order: 20
   - slug: fintech-fundamentals
     title: Fintech Fundamentals
-    audience: all
+    audiences: all
     description: Banking and fintech domain knowledge every UXDA project relies on.
     sort_order: 30
+  - slug: tool-proficiency
+    title: Tool Proficiency
+    audiences: all
+    description: Getting the most out of the tools we use every day.
+    sort_order: 33
+  - slug: organization-policies
+    title: Organization & Policies
+    audiences: all
+    description: Company rules, policies and how the organization runs.
+    sort_order: 36
 
   # Strategists
   - slug: wireframing
     title: Wireframing & Flows
-    audience: strategist
+    audiences: [strategist]
     description: Claude Design, Figma Make Kit and the uxda-wireframes plugin, end to end.
     sort_order: 40
   - slug: research-discovery
     title: Research & Discovery
-    audience: strategist
+    audiences: [strategist]
     description: Turning briefs, interviews and data into clear problems and structure.
     sort_order: 50
   - slug: client-communication
     title: Client Communication
-    audience: strategist
+    audiences: [strategist]
     description: Presenting, defending and documenting decisions for clients.
     sort_order: 60
 
   # Designers
   - slug: design-systems
     title: Design Systems
-    audience: designer
+    audiences: [designer]
     description: Tokens, components, governance and the uxda-design-systems plugin.
     sort_order: 70
   - slug: figma-craft
     title: Figma Craft
-    audience: designer
+    audiences: [designer]
     description: Auto layout, variants, variables and file hygiene.
     sort_order: 80
+  # Designers + Motion Designers
   - slug: ui-motion
     title: UI & Motion
-    audience: designer
+    audiences: [designer, motion_designer]
     description: Visual design and motion quality for fintech products.
     sort_order: 90

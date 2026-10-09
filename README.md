@@ -1,9 +1,11 @@
 # UXDA Learn
 
 Internal learning platform for the UXDA team. People sign in with their UXDA Google Workspace
-account, choose a track (Strategist or Designer), complete challenges (quizzes, screenshots,
-Figma work, reflections), get scored and see themselves on a per-track leaderboard. Admins
-review submissions (with an AI first pass) and manage users.
+account, choose a track (Strategist, Designer, Motion Designer, Account Manager or Assistant),
+complete challenges (quizzes, screenshots, Figma work, reflections, "read and confirm"
+acknowledgements), get scored and see themselves on a leaderboard (Strategists / Designers /
+Team). Some challenges are required for certain tracks, optionally with a due date. Admins
+review submissions (with an AI first pass), track required progress and manage users.
 
 - **Stack:** Next.js 16 (App Router, TypeScript strict) · Supabase (Postgres, Auth, Storage) via
   `@supabase/ssr` · Tailwind v4 + shadcn/ui · Zod · Vitest · Playwright.
@@ -41,7 +43,7 @@ With `ENABLE_TEST_LOGIN=true` (development only) the login page also offers test
 | `db:push` | Apply pending migrations via the Supabase Management API (`-- --test-project` for the test project) |
 | `db:types` | Regenerate `src/lib/database.types.ts` — run after every migration |
 | `db:check` | Verify tables, RLS, that clients can't read `challenge_keys`, and the signup domain guard |
-| `content:validate` | Validate `/content` (schemas, categories, slugs, ids, points add up) |
+| `content:validate` | Validate `/content` (schemas, categories, slugs, ids, points add up, audiences / required_for visible) |
 | `content:sync` | Sync `/content` → DB (`-- --dry-run` to preview) |
 | `seed:admins` | Allowlist `ADMIN_EMAILS` as admins |
 | `seed:domains` | Sync `ALLOWED_EMAIL_DOMAINS` into `allowed_email_domains` (adds and removes) |
@@ -57,9 +59,15 @@ Categories live in `content/categories.yaml`, challenges in `content/challenges/
 2. `npm run content:validate` — fix every error (points must equal questions + rubric).
 3. Review, set `status: published`, then `npm run content:sync`.
 
+Targeting: `audiences: all` or a list of tracks (categories and challenges), `required_for` the
+same shape (omitted = optional), `due_at` for a deadline, and `type: acknowledge` for briefs
+people only need to confirm they've read (0 points, never on the leaderboard). Tracks and the
+leaderboard groups are configured in [`src/lib/tracks.ts`](src/lib/tracks.ts).
+
 Rules the sync enforces:
 - Answers and `grader_notes` go only to the private `challenge_keys` table — never to clients.
-- Changing a challenge's content or answer key bumps its `version`; status changes don't.
+- Changing a challenge's content or answer key bumps its `version`; `status` and `required_for`
+  changes don't (nor does a stored hash going stale after a format migration).
 - Removing a file **archives** the challenge (or category); nothing is ever deleted.
 - Running sync twice in a row reports `0 change(s)`.
 
@@ -81,16 +89,31 @@ Quiz-only challenges are graded and published the moment someone submits. Everyt
    submission, adjust score/feedback and **Approve & publish** or **Request resubmission**.
    Only then do learners see their score and feedback.
 
+## Required progress and acknowledgements
+
+- **/admin → Required progress**: per person, every required challenge as done / awaiting
+  review / not done / overdue, filterable by track, with **Export CSV** (one row per person and
+  required challenge). "Resubmission requested" counts as not done (and can become overdue).
+- **/admin → Acknowledgements**: per acknowledge challenge, who confirmed (and when) and who
+  hasn't yet.
+
 ## Testing
 
-- **Unit** (`npm run test`, part of `check`): content validation, grading, attempt rules,
-  submission input validation, eval results validation, CSV escaping, auth guards.
+- **Unit** (`npm run test`, part of `check`): content validation (audiences, required_for,
+  acknowledge), sync planning, grading, attempt and required-progress rules, leaderboard groups,
+  the acknowledge action guard, submission input validation, eval results validation, CSV
+  escaping, auth guards, and WCAG AA contrast of the light/dark theme tokens.
 - **Integration** and **E2E** write real data, so they use a **separate Supabase project**:
   1. Create a second Supabase project (Auth → email provider on, the default; Google isn't needed).
   2. Set `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`,
      `TEST_SUPABASE_PROJECT_REF` (and optionally `TEST_SUPABASE_ACCESS_TOKEN`).
-  3. `npm run db:push -- --test-project`, `npm run seed:domains -- --test-project`, then
+  3. `npm run db:push -- --test-project`, `npm run seed:domains -- --test-project`,
+     `npm run content:sync -- --test-project` (the admin spec expects real content), then
      `npm run db:check -- --test-project`.
+
+  A local stack works too: `npx supabase start` (Docker), then point `TEST_SUPABASE_URL` /
+  `_ANON_KEY` / `_SERVICE_ROLE_KEY` at the values from `npx supabase status`; migrations apply
+  on start, so only `seed:domains` and `content:sync` (with `--test-project`) are needed.
   4. `npm run test:integration` and `npm run test:e2e`.
 
   Without these vars both commands skip and pass. Using the main project's URL or ref is refused.
@@ -106,8 +129,8 @@ and E2E tests aren't run there (they need the test Supabase project).
 ## Security model (summary)
 
 - RLS on every table plus explicit grants; `challenge_keys`, `admin_allowlist` and `allowed_email_domains` have no client
-  access at all. Storage bucket `submissions` is private; users can write/read only their own folder.
-- All writes (submissions, reviews, track changes) go through server actions that verify the
+  access at all. `acknowledgements` are readable by their owner and admins, writable only by the server. Storage bucket `submissions` is private; users can write/read only their own folder.
+- All writes (submissions, acknowledgements, reviews, track changes) go through server actions that verify the
   session and use the service role; users can never set scores or status. The only client-side
   write is a user's own `show_on_leaderboard`.
 - Sign-in is limited to the `ALLOWED_EMAIL_DOMAINS` domains (currently uxdesignagency.com): the
@@ -123,7 +146,7 @@ docs/                    schema spec, content format, seed briefs
 e2e/                     Playwright specs + fixtures
 scripts/                 db, content and eval CLIs (scripts/lib/eval = pipeline logic)
 src/app/(app)/           learner pages (home, categories, challenges, submissions, profile, leaderboard)
-src/app/(admin)/admin/   admin pages, actions and CSV export
+src/app/(admin)/admin/   admin pages (review, users, required progress, acknowledgements, content), actions, CSV exports
 src/lib/                 auth, supabase clients, content schemas, grading/rules, data access
 supabase/migrations/     database migrations
 tests/                   fixtures, integration tests, shared test support

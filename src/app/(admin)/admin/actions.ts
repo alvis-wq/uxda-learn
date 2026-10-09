@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getAdminOrNull } from "@/lib/auth/admin";
 import { REVIEWABLE_STATUSES, reviewSchema } from "@/lib/admin/review";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TRACK_VALUES } from "@/lib/tracks";
 
 export type ActionResult = { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
@@ -65,7 +66,7 @@ export async function setUserTrack(userId: string, track: string): Promise<Actio
   const admin = await getAdminOrNull();
   if (!admin) return NOT_ADMIN;
   const id = userIdSchema.safeParse(userId);
-  const t = z.enum(["strategist", "designer"]).safeParse(track);
+  const t = z.enum(TRACK_VALUES).safeParse(track);
   if (!id.success || !t.success) return { ok: false, error: "Invalid input." };
 
   const { data, error } = await createAdminClient().from("profiles").update({ track: t.data }).eq("id", id.data).select("id");

@@ -1,12 +1,19 @@
 import {
   canonicalJson,
+  hashPublicContent,
   type CategoryRow,
   type ChallengeKeyRow,
   type ChallengeRow,
+  type PublicChallengeContent,
 } from "./transform";
 
 export type DbCategory = CategoryRow;
-export type DbChallenge = { slug: string; content_hash: string; version: number; status: string };
+export type DbChallenge = PublicChallengeContent & {
+  content_hash: string;
+  version: number;
+  status: string;
+  required_for: string[];
+};
 export type DbKey = { challenge_slug: string; answer_key: unknown; grader_notes: string | null };
 
 export type SyncPlan = {
@@ -17,7 +24,13 @@ export type SyncPlan = {
     key: ChallengeKeyRow;
     action: "create" | "update";
   }[];
-  challengeStatusUpdates: { slug: string; status: ChallengeRow["status"] }[];
+  /** No content change: status, required_for and/or a stale stored hash. Never bumps the version. */
+  challengeMetaUpdates: {
+    slug: string;
+    status: ChallengeRow["status"];
+    required_for: ChallengeRow["required_for"];
+    content_hash: string;
+  }[];
   challengeArchives: string[];
 };
 
@@ -26,7 +39,7 @@ export function countChanges(plan: SyncPlan): number {
     plan.categoryUpserts.length +
     plan.categoryArchives.length +
     plan.challengeWrites.length +
-    plan.challengeStatusUpdates.length +
+    plan.challengeMetaUpdates.length +
     plan.challengeArchives.length
   );
 }
@@ -35,7 +48,7 @@ function sameCategory(a: CategoryRow, b: CategoryRow): boolean {
   return (
     a.title === b.title &&
     (a.description ?? null) === (b.description ?? null) &&
-    a.audience === b.audience &&
+    a.audiences.join() === b.audiences.join() &&
     a.sort_order === b.sort_order &&
     a.archived === b.archived
   );
@@ -52,7 +65,9 @@ function sameKey(a: ChallengeKeyRow, b: DbKey | undefined): boolean {
 /**
  * Pure diff between content on disk and what's in the DB.
  * - New or changed content → write; changed public content or keys → version + 1.
- * - Status-only change → status update, no version bump.
+ * - Status / required_for change → metadata update, no version bump.
+ * - Stored hash differs but the DB row's public fields hash the same as disk (e.g. after a
+ *   format migration) → hash refresh, no version bump.
  * - In DB but not on disk → archived (never deleted).
  */
 export function planSync(
@@ -63,7 +78,7 @@ export function planSync(
     categoryUpserts: [],
     categoryArchives: [],
     challengeWrites: [],
-    challengeStatusUpdates: [],
+    challengeMetaUpdates: [],
     challengeArchives: [],
   };
 
@@ -86,16 +101,25 @@ export function planSync(
       plan.challengeWrites.push({ row: { ...challenge, version: 1 }, key, action: "create" });
       continue;
     }
-    const contentChanged =
-      existing.content_hash !== challenge.content_hash || !sameKey(key, dbKeys.get(challenge.slug));
-    if (contentChanged) {
+    const publicChanged =
+      existing.content_hash !== challenge.content_hash && hashPublicContent(existing) !== challenge.content_hash;
+    if (publicChanged || !sameKey(key, dbKeys.get(challenge.slug))) {
       plan.challengeWrites.push({
         row: { ...challenge, version: existing.version + 1 },
         key,
         action: "update",
       });
-    } else if (existing.status !== challenge.status) {
-      plan.challengeStatusUpdates.push({ slug: challenge.slug, status: challenge.status });
+    } else if (
+      existing.status !== challenge.status ||
+      (existing.required_for ?? []).join() !== challenge.required_for.join() ||
+      existing.content_hash !== challenge.content_hash
+    ) {
+      plan.challengeMetaUpdates.push({
+        slug: challenge.slug,
+        status: challenge.status,
+        required_for: challenge.required_for,
+        content_hash: challenge.content_hash,
+      });
     }
   }
   const diskChallengeSlugs = new Set(disk.challenges.map((c) => c.challenge.slug));

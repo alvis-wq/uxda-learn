@@ -83,3 +83,23 @@
 - Empty `allowed_email_domains` rejects every sign-up, and a missing `ALLOWED_EMAIL_DOMAINS` makes the app refuse sign-in — fail closed rather than fall back to a hardcoded domain.
 - Google `hd` is the domain when one is configured, `*` (any Workspace account) when several — `hd` takes a single value and is only a picker hint.
 - Test users live on the first configured domain — they must pass the same trigger as real users.
+- Tracks + leaderboard groups live in `src/lib/tracks.ts`; `get_leaderboard` takes `track[]` — one place to regroup tracks without a migration; every track is in exactly one group (unit-tested).
+- `audiences audience[]` with a `valid_audiences` check (`{all}` or distinct tracks) instead of a join table — small fixed set, read on every page, and the check keeps `all` from being mixed with tracks.
+- New enum values in their own migration — Postgres can't use an enum value in the transaction that adds it, and db:push runs each migration in one transaction.
+- A challenge may narrow its category's audiences but never widen them (validation error) — a wider challenge audience could never be seen anyway.
+- `required_for: all` means every track — literal reading; it fails validation unless everyone can see the challenge, which catches "required for all" on a track-only category.
+- Required states: done / pending (awaiting review) / missing (not started or resubmission requested) / overdue (missing past due_at) — per Alvis: resubmission needs learner action, so it can become overdue; awaiting review can't.
+- `required_for` and `status` are excluded from `content_hash` — (un)requiring a challenge isn't a content change and mustn't bump `version`.
+- content:sync re-hashes the DB row's public fields before calling something a content change — a stored hash going stale after a format migration (audience → audiences) refreshes the hash without bumping every challenge's version.
+- `due_at` normalised to ISO `Z` before hashing — Postgres returns `+00:00`, which would look like a change.
+- Acknowledgements in their own table (not submissions) — they can never leak into scores, the leaderboard, "completed" counts, the review queue or eval:pull.
+- One acknowledgement per user and challenge (records the version confirmed); editing the brief doesn't ask for re-confirmation — re-confirm on new versions can be added later using the stored version.
+- Acknowledge challenges: points 0 (DB check ties `type = acknowledge` to `points = 0`), difficulty not needed (stored as 1, hidden in the UI).
+- Old `audience:` key rejected with a pointed message — silent fallback would hide stale content.
+- Admin required-progress/acknowledgement data built by pure functions (`src/lib/admin/required-progress.ts`) shared by the page and CSV — one rule set, unit-tested without a DB.
+- Type scale +2px via Tailwind theme sizes; new `text-meta` (14px, the old text-sm) for meta info, table headers and captions; badges stay text-xs — one change in globals.css instead of editing every class; `tailwind-merge` taught that `text-meta` is a size.
+- Softer palette as hex tokens, contrast-checked by a unit test (`theme-contrast.test.ts`) — axe runs only in E2E; the token test runs in every `check`.
+- Destructive badges/buttons use a `--destructive-foreground` token instead of `text-white` on 60% red in dark mode — the old dark combination was below 4.5:1 with overdue badges now common.
+- Markdown briefs use `prose-lg` — the typography plugin's base size is 16px; prose-lg is the +2px step.
+- Scripts that use Node's fetch need `NODE_USE_ENV_PROXY=1` in cloud sessions — Node's built-in fetch ignores HTTPS_PROXY.
+- E2E/integration verified on a local Supabase stack (`supabase start` in Docker) — no test project exists yet, and test login against the main project would recreate test users there.

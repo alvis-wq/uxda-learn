@@ -304,3 +304,34 @@ via `TEST_SUPABASE_*`, skipped when unset; full suite green.
   signup accepted, other domains rejected). A @theuxda.com signup is now rejected.
 - `admin_allowlist` still contains the old `alvis@theuxda.com` row; harmless (that domain can no
   longer sign up). Delete it in Supabase if you want it gone.
+
+## Tracks, required challenges, acknowledgements, readability
+Plan approved by Alvis (with "resubmission requested" = missing). Done:
+- Tracks account_manager, assistant, motion_designer (+ strategist, designer); onboarding and
+  admin Users offer all five. Leaderboard groups Strategists / Designers (+ motion) / Team
+  (AM + assistant), configured in `src/lib/tracks.ts`.
+- `audiences` (all | tracks) replaces `audience` on categories + challenges. UI & Motion →
+  designer + motion_designer; new Tool Proficiency + Organization & Policies (all).
+- `required_for` (+ `due_at`): Required/Due/Overdue badges, required first on category pages,
+  "Required for you" with "X of Y required done" + overdue on home. Admin → Required progress
+  (per person, track filter, CSV export).
+- `type: acknowledge`: brief + "I've read and understood"; `acknowledgements` table (RLS,
+  server-written), 0 points, off the leaderboard. Admin → Acknowledgements (who has / hasn't).
+- Readability: softer light/dark palette (#FAFAFA / #17181C, text #E6E6EA, muted #A1A1AA,
+  accent #B5A2FF), all text +2px except labels (`text-meta` 14px, badges 12px).
+- Docs: content-format, schema.sql, README, CLAUDE.md, /new-challenge.
+- Migrations `20261010090000_track_enum_values`, `20261010090100_audiences_required_acknowledgements`,
+  tested first on a throwaway local Postgres with sample data (values carried over, constraints
+  reject bad lists, RLS on acknowledgements).
+- Also fixed: `package-lock.json` was out of sync with package.json (`npm ci` failed).
+
+Checks: `npm run check` ✅ · `npm run build` ✅ · `content:validate` ✅.
+Main project (run by Claude at Alvis's request): `db:push` ✅ (2 migrations) · `db:types` ✅
+(no diff vs the hand-written types) · `content:sync --dry-run` ✅ (2 new categories, ui-motion
+update, 9 hash refreshes, no version bumps) · `content:sync` ✅ (12 changes; second dry run 0) ·
+`db:check` ✅ (incl. acknowledgement write/read isolation and `get_leaderboard(track[])`).
+Data after: 11 categories, 9 challenges (all still v2), 3 submissions untouched.
+E2E + integration (no separate test project exists yet, so run against a throwaway local
+Supabase stack via Docker — all 4 migrations applied cleanly from scratch): `test:e2e` ✅ 18/18
+(incl. axe WCAG A/AA light + dark, no overflow at 375px, new required/acknowledge specs) ·
+`test:integration` ✅ 6/6. Screens reviewed at 375px in light and dark mode.

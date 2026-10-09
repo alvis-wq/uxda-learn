@@ -87,7 +87,7 @@ export function ChallengeForm({
           <legend className="mb-3 font-medium">
             <span className="text-muted-foreground mr-2">{i + 1}.</span>
             {q.prompt}
-            <span className="text-muted-foreground ml-2 text-sm font-normal">({q.points} pts)</span>
+            <span className="text-muted-foreground text-meta ml-2 font-normal">({q.points} pts)</span>
           </legend>
         );
         if (q.kind === "single") {

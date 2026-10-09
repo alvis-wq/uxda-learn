@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      acknowledgements: {
+        Row: {
+          acknowledged_at: string
+          challenge_slug: string
+          challenge_version: number
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          challenge_slug: string
+          challenge_version: number
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          challenge_slug?: string
+          challenge_version?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acknowledgements_challenge_slug_fkey"
+            columns: ["challenge_slug"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "acknowledgements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_allowlist: {
         Row: {
           email: string
@@ -41,7 +77,7 @@ export type Database = {
       categories: {
         Row: {
           archived: boolean
-          audience: Database["public"]["Enums"]["audience"]
+          audiences: Database["public"]["Enums"]["audience"][]
           description: string | null
           slug: string
           sort_order: number
@@ -49,7 +85,7 @@ export type Database = {
         }
         Insert: {
           archived?: boolean
-          audience: Database["public"]["Enums"]["audience"]
+          audiences: Database["public"]["Enums"]["audience"][]
           description?: string | null
           slug: string
           sort_order?: number
@@ -57,7 +93,7 @@ export type Database = {
         }
         Update: {
           archived?: boolean
-          audience?: Database["public"]["Enums"]["audience"]
+          audiences?: Database["public"]["Enums"]["audience"][]
           description?: string | null
           slug?: string
           sort_order?: number
@@ -93,7 +129,7 @@ export type Database = {
       }
       challenges: {
         Row: {
-          audience: Database["public"]["Enums"]["audience"]
+          audiences: Database["public"]["Enums"]["audience"][]
           body_md: string
           category_slug: string
           content_hash: string
@@ -102,6 +138,7 @@ export type Database = {
           estimated_minutes: number | null
           points: number
           questions: Json
+          required_for: Database["public"]["Enums"]["audience"][]
           rubric: Json
           slug: string
           status: string
@@ -113,7 +150,7 @@ export type Database = {
           version: number
         }
         Insert: {
-          audience: Database["public"]["Enums"]["audience"]
+          audiences: Database["public"]["Enums"]["audience"][]
           body_md: string
           category_slug: string
           content_hash: string
@@ -122,6 +159,7 @@ export type Database = {
           estimated_minutes?: number | null
           points: number
           questions?: Json
+          required_for?: Database["public"]["Enums"]["audience"][]
           rubric?: Json
           slug: string
           status?: string
@@ -133,7 +171,7 @@ export type Database = {
           version?: number
         }
         Update: {
-          audience?: Database["public"]["Enums"]["audience"]
+          audiences?: Database["public"]["Enums"]["audience"][]
           body_md?: string
           category_slug?: string
           content_hash?: string
@@ -142,6 +180,7 @@ export type Database = {
           estimated_minutes?: number | null
           points?: number
           questions?: Json
+          required_for?: Database["public"]["Enums"]["audience"][]
           rubric?: Json
           slug?: string
           status?: string
@@ -333,26 +372,42 @@ export type Database = {
     }
     Functions: {
       get_leaderboard: {
-        Args: { p_track: Database["public"]["Enums"]["track"] }
+        Args: { p_tracks: Database["public"]["Enums"]["track"][] }
         Returns: {
           avatar_url: string
           completed: number
           full_name: string
           total_score: number
+          track: Database["public"]["Enums"]["track"]
           user_id: string
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      valid_audiences: {
+        Args: { a: Database["public"]["Enums"]["audience"][] }
+        Returns: boolean
+      }
     }
     Enums: {
-      audience: "all" | "strategist" | "designer"
-      challenge_type: "quiz" | "screenshot" | "figma" | "mixed"
+      audience:
+        | "all"
+        | "strategist"
+        | "designer"
+        | "account_manager"
+        | "assistant"
+        | "motion_designer"
+      challenge_type: "quiz" | "screenshot" | "figma" | "mixed" | "acknowledge"
       submission_status:
         | "submitted"
         | "ai_reviewed"
         | "published"
         | "needs_resubmission"
-      track: "strategist" | "designer"
+      track:
+        | "strategist"
+        | "designer"
+        | "account_manager"
+        | "assistant"
+        | "motion_designer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -480,15 +535,28 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      audience: ["all", "strategist", "designer"],
-      challenge_type: ["quiz", "screenshot", "figma", "mixed"],
+      audience: [
+        "all",
+        "strategist",
+        "designer",
+        "account_manager",
+        "assistant",
+        "motion_designer",
+      ],
+      challenge_type: ["quiz", "screenshot", "figma", "mixed", "acknowledge"],
       submission_status: [
         "submitted",
         "ai_reviewed",
         "published",
         "needs_resubmission",
       ],
-      track: ["strategist", "designer"],
+      track: [
+        "strategist",
+        "designer",
+        "account_manager",
+        "assistant",
+        "motion_designer",
+      ],
     },
   },
 } as const

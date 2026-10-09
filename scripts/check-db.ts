@@ -4,7 +4,9 @@
  *  2. RLS is enabled on every public table.
  *  3. Neither anon nor a signed-in user can read challenge_keys / admin_allowlist
  *     (tested with a real sentinel row and a real temporary user, both removed afterwards).
- *  4. allowed_email_domains matches ALLOWED_EMAIL_DOMAINS, and the signup trigger accepts
+ *  4. Users can't write acknowledgements themselves and only see their own; the group
+ *     leaderboard function is callable.
+ *  5. allowed_email_domains matches ALLOWED_EMAIL_DOMAINS, and the signup trigger accepts
  *     those domains and rejects others.
  */
 import { randomBytes } from "node:crypto";
@@ -24,6 +26,7 @@ const EXPECTED_TABLES = [
   "challenge_keys",
   "submissions",
   "evaluations",
+  "acknowledgements",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
@@ -85,12 +88,12 @@ async function main() {
   try {
     // Sentinel data so "0 rows" really means "blocked", not "empty table".
     const { error: catErr } = await admin.from("categories").upsert({
-      slug: SENTINEL_CATEGORY, title: "check-db sentinel", audience: "all", archived: false,
+      slug: SENTINEL_CATEGORY, title: "check-db sentinel", audiences: ["all"], archived: false,
     });
     if (catErr) throw new Error(`sentinel category: ${catErr.message}`);
     const { error: chErr } = await admin.from("challenges").upsert({
       slug: SENTINEL_CHALLENGE, category_slug: SENTINEL_CATEGORY, title: "sentinel",
-      body_md: "sentinel", type: "quiz", audience: "all", difficulty: 1, points: 1,
+      body_md: "sentinel", type: "quiz", audiences: ["all"], difficulty: 1, points: 1,
       content_hash: "sentinel", status: "published",
     });
     if (chErr) throw new Error(`sentinel challenge: ${chErr.message}`);
@@ -134,6 +137,28 @@ async function main() {
     if (setAdminErr && me?.is_admin === false) pass("user cannot make themselves admin");
     else fail("user COULD update is_admin on their profile");
 
+    console.log("Acknowledgements & leaderboard");
+    const { error: ackWriteErr } = await authed
+      .from("acknowledgements")
+      .insert({ user_id: userId, challenge_slug: SENTINEL_CHALLENGE, challenge_version: 1 });
+    if (ackWriteErr) pass(`user cannot write acknowledgements directly (${ackWriteErr.code ?? ackWriteErr.message})`);
+    else fail("user COULD insert their own acknowledgement");
+    // Someone else's acknowledgement (written by the service role) must stay invisible.
+    const { data: others } = await admin.from("profiles").select("id").neq("id", userId).limit(1);
+    const otherId = others?.[0]?.id;
+    if (otherId) {
+      const { error: seedAckErr } = await admin
+        .from("acknowledgements")
+        .insert({ user_id: otherId, challenge_slug: SENTINEL_CHALLENGE, challenge_version: 1 });
+      if (seedAckErr) throw new Error(`sentinel acknowledgement: ${seedAckErr.message}`);
+      const { data: seen } = await authed.from("acknowledgements").select("user_id");
+      if (!seen?.length) pass("user cannot read other users' acknowledgements");
+      else fail(`user CAN READ other users' acknowledgements (${seen.length})`);
+    }
+    const { error: lbErr } = await authed.rpc("get_leaderboard", { p_tracks: ["designer", "motion_designer"] });
+    if (!lbErr) pass("signed-in user can call get_leaderboard(track[])");
+    else fail(`get_leaderboard(track[]) failed: ${lbErr.message}`);
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -145,6 +170,7 @@ async function main() {
     }
   } finally {
     if (userId) await admin.auth.admin.deleteUser(userId);
+    await admin.from("acknowledgements").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenge_keys").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenges").delete().eq("slug", SENTINEL_CHALLENGE);
     await admin.from("categories").delete().eq("slug", SENTINEL_CATEGORY);

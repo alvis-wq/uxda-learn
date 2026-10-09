@@ -8,11 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isResultVisible, summarizeScores } from "@/lib/submissions/rules";
+import { TRACK_LABEL } from "@/lib/tracks";
 import { VisibilityToggle } from "./visibility-toggle";
 
 export const metadata: Metadata = { title: "Profile · UXDA Learn" };
-
-const TRACK_LABEL = { strategist: "Strategist", designer: "Designer" } as const;
 
 export default async function ProfilePage() {
   const profile = await requireOnboardedProfile();
@@ -85,11 +84,11 @@ export default async function ProfilePage() {
                       <Link href={`/submissions/${s.id}`} className="hover:underline">
                         {titleOf(s.challenge_slug)}
                       </Link>
-                      <span className="text-muted-foreground ml-2 font-normal">Attempt {s.attempt}</span>
+                      <span className="text-muted-foreground text-meta ml-2 font-normal">Attempt {s.attempt}</span>
                     </CardTitle>
                     <div className="flex items-center gap-3">
                       {s.final_score !== null && (
-                        <span className="text-sm font-medium">
+                        <span className="text-meta font-medium">
                           {s.final_score} / {s.max_score}
                         </span>
                       )}

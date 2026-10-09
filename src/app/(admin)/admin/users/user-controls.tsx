@@ -4,6 +4,7 @@ import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { TRACKS } from "@/lib/tracks";
 import { setUserAdmin, setUserTrack } from "../actions";
 
 export function TrackSelect({ userId, name, track }: { userId: string; name: string; track: string | null }) {
@@ -22,12 +23,15 @@ export function TrackSelect({ userId, name, track }: { userId: string; name: str
         })
       }
     >
-      <SelectTrigger size="sm" className="w-36" aria-label={`Track for ${name}`}>
+      <SelectTrigger size="sm" className="w-44" aria-label={`Track for ${name}`}>
         <SelectValue placeholder="Not chosen" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="strategist">Strategist</SelectItem>
-        <SelectItem value="designer">Designer</SelectItem>
+        {TRACKS.map((t) => (
+          <SelectItem key={t.value} value={t.value}>
+            {t.label}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );

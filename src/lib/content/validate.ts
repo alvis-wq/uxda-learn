@@ -1,4 +1,5 @@
 import type { ContentError, LoadedContent } from "./load";
+import { audienceTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
 import { needsReview } from "./schema";
 
 function duplicates(values: string[]): string[] {
@@ -16,7 +17,7 @@ export function validateContent(content: LoadedContent): ContentError[] {
   for (const slug of duplicates(content.categories.map((c) => c.slug))) {
     err("categories.yaml", `duplicate category slug "${slug}"`);
   }
-  const categorySlugs = new Set(content.categories.map((c) => c.slug));
+  const categoriesBySlug = new Map(content.categories.map((c) => [c.slug, c]));
 
   for (const slug of duplicates(content.challenges.map((c) => c.data.slug))) {
     const files = content.challenges.filter((c) => c.data.slug === slug).map((c) => c.file);
@@ -27,7 +28,27 @@ export function validateContent(content: LoadedContent): ContentError[] {
     const expectedFile = `challenges/${c.slug}.md`;
     if (file !== expectedFile) err(file, `slug "${c.slug}" must match the filename (${expectedFile})`);
 
-    if (!categorySlugs.has(c.category)) err(file, `unknown category "${c.category}"`);
+    const category = categoriesBySlug.get(c.category);
+    if (!category) err(file, `unknown category "${c.category}"`);
+
+    // Audiences: a challenge can narrow its category's audiences, never widen them.
+    const categoryTracks = category ? audienceTracks(category.audiences) : [];
+    if (category && c.audiences && !c.audiences.includes("all")) {
+      for (const t of c.audiences) {
+        if (!(categoryTracks as Audience[]).includes(t)) {
+          err(file, `audiences: ${TRACK_LABEL[t as Track]} can't see category "${category.slug}"`);
+        }
+      }
+    }
+    // Required for a track that can't see it → nobody on that track could ever complete it.
+    if (category && c.required_for) {
+      const visible = visibleTracks(category.audiences, c.audiences ?? category.audiences);
+      for (const t of audienceTracks(c.required_for)) {
+        if (!visible.includes(t)) {
+          err(file, `required_for: ${TRACK_LABEL[t]} can't see this challenge (check audiences of the challenge and its category)`);
+        }
+      }
+    }
 
     if (!body) err(file, "brief (markdown body) is empty");
 
@@ -51,9 +72,24 @@ export function validateContent(content: LoadedContent): ContentError[] {
       }
     }
 
+    if (c.type === "acknowledge") {
+      if (c.questions.length || c.submission || c.rubric.length || c.grader_notes) {
+        err(file, "acknowledge challenges have no questions, submission, rubric or grader_notes");
+      }
+      if (c.points !== undefined && c.points !== 0) err(file, "acknowledge challenges are worth 0 points");
+      continue;
+    }
+
+    if (c.difficulty === undefined) err(file, "difficulty: is required");
+    if (c.points === undefined) {
+      err(file, "points: is required");
+    } else if (c.points === 0) {
+      err(file, "points: must be positive (only acknowledge challenges are worth 0)");
+    }
+
     const questionPoints = c.questions.reduce((sum, q) => sum + q.points, 0);
     const rubricPoints = c.rubric.reduce((sum, r) => sum + r.points, 0);
-    if (questionPoints + rubricPoints !== c.points) {
+    if (c.points !== undefined && questionPoints + rubricPoints !== c.points) {
       err(
         file,
         `points mismatch: points is ${c.points} but questions (${questionPoints}) + rubric (${rubricPoints}) = ${questionPoints + rubricPoints}`,

@@ -34,13 +34,13 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await toggle.click();
   await expect(page.getByText("You're on the leaderboard.")).toBeVisible();
 
-  await page.goto("/leaderboard?track=designer");
+  await page.goto("/leaderboard?group=designers");
   const me = page.getByTestId("leaderboard-me");
   await expect(me).toContainText("Test Designer");
   await expect(me).toContainText("You");
   await expect(me.getByRole("cell").last()).toHaveText("4");
 
   await page.getByRole("link", { name: "Strategists" }).click();
-  await expect(page).toHaveURL(/track=strategist/);
+  await expect(page).toHaveURL(/group=strategists/);
   await expect(page.getByText("Test Designer")).toHaveCount(0);
 });
