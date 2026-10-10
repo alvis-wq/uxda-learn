@@ -57,7 +57,17 @@ Categories live in `content/categories.yaml`, challenges in `content/challenges/
 1. Create a challenge by hand or with `/new-challenge <description>` in Claude Code
    (it drafts the file as `status: draft`).
 2. `npm run content:validate` — fix every error (points must equal questions + rubric).
-3. Review, set `status: published`, then `npm run content:sync`.
+3. `npm run content:sync` — creates it in the DB (as a draft).
+4. Review it in **/admin → Content → Preview with answers** (questions with correct answers,
+   rubric, grader notes), then publish it there.
+
+**Files own the content, the admin panel owns the settings.** Brief, questions, answers, rubric,
+points, type and audiences come from the file on every sync. `status`, `required_for` and
+`due_at` in a file are only starting values for a *new* challenge; after that they're changed in
+**/admin → Content** (instant save, change history per challenge: who, what, old → new, when)
+and `content:sync` never overwrites them — it just lists where a file disagrees. A challenge
+containing a `TODO…` placeholder (e.g. `TODO_FIGMA_URL`) can't be published. Details:
+[`docs/content-format.md`](docs/content-format.md#who-owns-what).
 
 Targeting: `audiences: all` or a list of tracks (categories and challenges), `required_for` the
 same shape (omitted = optional), `due_at` for a deadline, and `type: acknowledge` for briefs
@@ -66,8 +76,9 @@ leaderboard groups are configured in [`src/lib/tracks.ts`](src/lib/tracks.ts).
 
 Rules the sync enforces:
 - Answers and `grader_notes` go only to the private `challenge_keys` table — never to clients.
-- Changing a challenge's content or answer key bumps its `version`; `status` and `required_for`
-  changes don't (nor does a stored hash going stale after a format migration).
+- Changing a challenge's content or answer key bumps its `version`; `status`, `required_for` and
+  `due_at` changes don't (nor does a stored hash going stale after a format migration).
+- `status`, `required_for` and `due_at` are written only when a challenge is created.
 - Removing a file **archives** the challenge (or category); nothing is ever deleted.
 - Running sync twice in a row reports `0 change(s)`.
 
@@ -100,7 +111,9 @@ Quiz-only challenges are graded and published the moment someone submits. Everyt
 ## Testing
 
 - **Unit** (`npm run test`, part of `check`): content validation (audiences, required_for,
-  acknowledge), sync planning, grading, attempt and required-progress rules, leaderboard groups,
+  acknowledge, TODO placeholders), sync planning (incl. file vs admin-owned settings), admin
+  settings validation and audit formatting, grading, attempt history grouping and
+  required-progress rules, leaderboard groups,
   the acknowledge action guard, submission input validation, eval results validation, CSV
   escaping, auth guards, and WCAG AA contrast of the light/dark theme tokens.
 - **Integration** and **E2E** write real data, so they use a **separate Supabase project**:
@@ -129,8 +142,8 @@ and E2E tests aren't run there (they need the test Supabase project).
 ## Security model (summary)
 
 - RLS on every table plus explicit grants; `challenge_keys`, `admin_allowlist` and `allowed_email_domains` have no client
-  access at all. `acknowledgements` are readable by their owner and admins, writable only by the server. Storage bucket `submissions` is private; users can write/read only their own folder.
-- All writes (submissions, acknowledgements, reviews, track changes) go through server actions that verify the
+  access at all. `acknowledgements` are readable by their owner and admins, writable only by the server. `challenge_settings_audit` is readable by admins only and written only through `set_challenge_setting()` (service role). Storage bucket `submissions` is private; users can write/read only their own folder.
+- All writes (submissions, acknowledgements, reviews, track and challenge-setting changes) go through server actions that verify the
   session and use the service role; users can never set scores or status. The only client-side
   write is a user's own `show_on_leaderboard`.
 - Sign-in is limited to the `ALLOWED_EMAIL_DOMAINS` domains (currently uxdesignagency.com): the
@@ -146,7 +159,7 @@ docs/                    schema spec, content format, seed briefs
 e2e/                     Playwright specs + fixtures
 scripts/                 db, content and eval CLIs (scripts/lib/eval = pipeline logic)
 src/app/(app)/           learner pages (home, categories, challenges, submissions, profile, leaderboard)
-src/app/(admin)/admin/   admin pages (review, users, required progress, acknowledgements, content), actions, CSV exports
+src/app/(admin)/admin/   admin pages (review, users, required progress, acknowledgements, content settings + preview), actions, CSV exports
 src/lib/                 auth, supabase clients, content schemas, grading/rules, data access
 supabase/migrations/     database migrations
 tests/                   fixtures, integration tests, shared test support

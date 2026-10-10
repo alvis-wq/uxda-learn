@@ -1,10 +1,13 @@
 import {
   canonicalJson,
   hashPublicContent,
+  normalizeTimestamp,
   type CategoryRow,
   type ChallengeKeyRow,
   type ChallengeRow,
+  type ChallengeSettings,
   type PublicChallengeContent,
+  type SettingField,
 } from "./transform";
 
 export type DbCategory = CategoryRow;
@@ -13,33 +16,35 @@ export type DbChallenge = PublicChallengeContent & {
   version: number;
   status: string;
   required_for: string[];
+  due_at: string | null;
 };
 export type DbKey = { challenge_slug: string; answer_key: unknown; grader_notes: string | null };
 
 export type SyncPlan = {
   categoryUpserts: { row: CategoryRow; action: "create" | "update" }[];
   categoryArchives: string[];
-  challengeWrites: {
-    row: ChallengeRow & { version: number };
-    key: ChallengeKeyRow;
-    action: "create" | "update";
-  }[];
-  /** No content change: status, required_for and/or a stale stored hash. Never bumps the version. */
-  challengeMetaUpdates: {
-    slug: string;
-    status: ChallengeRow["status"];
-    required_for: ChallengeRow["required_for"];
-    content_hash: string;
-  }[];
+  /**
+   * Content writes. `settings` (status, required_for, due_at from the file) is only present on
+   * create — after that the admin panel owns them and an update never touches them.
+   */
+  challengeWrites: (
+    | { action: "create"; row: ChallengeRow & { version: number }; settings: ChallengeSettings; key: ChallengeKeyRow }
+    | { action: "update"; row: ChallengeRow & { version: number }; key: ChallengeKeyRow }
+  )[];
+  /** Same content, but the stored hash is stale (e.g. after a format change). Never bumps the version. */
+  challengeHashRefreshes: { slug: string; content_hash: string }[];
   challengeArchives: string[];
+  /** File and DB disagree on an admin-owned setting. Informational only: the DB wins, nothing is written. */
+  settingsDrift: { slug: string; field: SettingField; file: string; db: string }[];
 };
 
+/** Number of writes the plan would make (settings drift is informational and not counted). */
 export function countChanges(plan: SyncPlan): number {
   return (
     plan.categoryUpserts.length +
     plan.categoryArchives.length +
     plan.challengeWrites.length +
-    plan.challengeMetaUpdates.length +
+    plan.challengeHashRefreshes.length +
     plan.challengeArchives.length
   );
 }
@@ -62,24 +67,49 @@ function sameKey(a: ChallengeKeyRow, b: DbKey | undefined): boolean {
   );
 }
 
+/** Display form of a setting, used to compare file vs DB and in the sync output. */
+function settingText(field: SettingField, value: unknown): string {
+  if (field === "required_for") {
+    const list = (value as string[] | null) ?? [];
+    return list.length ? `[${list.join(", ")}]` : "optional";
+  }
+  if (field === "due_at") return normalizeTimestamp(value as string | null) ?? "none";
+  return String(value);
+}
+
+function drift(slug: string, file: ChallengeSettings, db: DbChallenge): SyncPlan["settingsDrift"] {
+  const out: SyncPlan["settingsDrift"] = [];
+  for (const field of ["status", "required_for", "due_at"] as const) {
+    const f = settingText(field, file[field]);
+    const d = settingText(field, db[field]);
+    if (f !== d) out.push({ slug, field, file: f, db: d });
+  }
+  return out;
+}
+
 /**
  * Pure diff between content on disk and what's in the DB.
- * - New or changed content → write; changed public content or keys → version + 1.
- * - Status / required_for change → metadata update, no version bump.
+ * - New challenge → create, including status / required_for / due_at from the file.
+ * - Changed public content or keys → content write with version + 1. Settings are left alone.
  * - Stored hash differs but the DB row's public fields hash the same as disk (e.g. after a
- *   format migration) → hash refresh, no version bump.
+ *   format change) → hash refresh, no version bump.
+ * - Settings that differ between file and DB → reported as drift, never written (DB wins).
  * - In DB but not on disk → archived (never deleted).
  */
 export function planSync(
-  disk: { categories: CategoryRow[]; challenges: { challenge: ChallengeRow; key: ChallengeKeyRow }[] },
+  disk: {
+    categories: CategoryRow[];
+    challenges: { challenge: ChallengeRow; settings: ChallengeSettings; key: ChallengeKeyRow }[];
+  },
   db: { categories: DbCategory[]; challenges: DbChallenge[]; keys: DbKey[] },
 ): SyncPlan {
   const plan: SyncPlan = {
     categoryUpserts: [],
     categoryArchives: [],
     challengeWrites: [],
-    challengeMetaUpdates: [],
+    challengeHashRefreshes: [],
     challengeArchives: [],
+    settingsDrift: [],
   };
 
   const dbCats = new Map(db.categories.map((c) => [c.slug, c]));
@@ -95,31 +125,19 @@ export function planSync(
 
   const dbChallenges = new Map(db.challenges.map((c) => [c.slug, c]));
   const dbKeys = new Map(db.keys.map((k) => [k.challenge_slug, k]));
-  for (const { challenge, key } of disk.challenges) {
+  for (const { challenge, settings, key } of disk.challenges) {
     const existing = dbChallenges.get(challenge.slug);
     if (!existing) {
-      plan.challengeWrites.push({ row: { ...challenge, version: 1 }, key, action: "create" });
+      plan.challengeWrites.push({ action: "create", row: { ...challenge, version: 1 }, settings, key });
       continue;
     }
+    plan.settingsDrift.push(...drift(challenge.slug, settings, existing));
     const publicChanged =
       existing.content_hash !== challenge.content_hash && hashPublicContent(existing) !== challenge.content_hash;
     if (publicChanged || !sameKey(key, dbKeys.get(challenge.slug))) {
-      plan.challengeWrites.push({
-        row: { ...challenge, version: existing.version + 1 },
-        key,
-        action: "update",
-      });
-    } else if (
-      existing.status !== challenge.status ||
-      (existing.required_for ?? []).join() !== challenge.required_for.join() ||
-      existing.content_hash !== challenge.content_hash
-    ) {
-      plan.challengeMetaUpdates.push({
-        slug: challenge.slug,
-        status: challenge.status,
-        required_for: challenge.required_for,
-        content_hash: challenge.content_hash,
-      });
+      plan.challengeWrites.push({ action: "update", row: { ...challenge, version: existing.version + 1 }, key });
+    } else if (existing.content_hash !== challenge.content_hash) {
+      plan.challengeHashRefreshes.push({ slug: challenge.slug, content_hash: challenge.content_hash });
     }
   }
   const diskChallengeSlugs = new Set(disk.challenges.map((c) => c.challenge.slug));

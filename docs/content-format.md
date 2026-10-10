@@ -2,6 +2,24 @@
 
 `npm run content:validate` checks everything below; `npm run content:sync` writes it to the DB.
 
+## Who owns what
+| Owned by the **content file** (synced every time) | Owned by the **admin panel** (Admin → Content) |
+|---|---|
+| title, summary, brief, type, category, audiences, difficulty, points, estimated time, questions + answers, submission, rubric, grader notes | `status`, `required_for`, `due_at` |
+
+- The file's `status`, `required_for` and `due_at` are **starting values**: `content:sync` uses them
+  only when it **creates** a challenge. After that it never writes them — change them in
+  Admin → Content (saves instantly, every change is in the challenge's change history).
+- If a file disagrees with the DB on one of them, `content:sync` prints it under "Settings managed
+  in the admin panel" (file value ignored, DB wins). Editing those lines in the file does nothing.
+- Content changes bump `version`; settings changes never do.
+- A file removed from `/content` still archives its challenge (recorded in the change history as
+  `content:sync`). Restoring the file doesn't un-archive it — publish it again in the admin panel.
+- **Placeholders:** a challenge whose content still contains `TODO` or `TODO_SOMETHING` (e.g.
+  `TODO_FIGMA_URL`) anywhere — brief, questions, submission, rubric or grader notes — can't be
+  published: the admin panel refuses with the reason, and `content:validate` fails a file that says
+  `status: published`. Keep such challenges `draft` until the placeholder is filled in.
+
 ## Tracks and audiences
 Tracks: `strategist`, `designer`, `motion_designer`, `account_manager`, `assistant`
 (labels and leaderboard groups live in `src/lib/tracks.ts`).
@@ -33,13 +51,13 @@ title: Same brief, three tools
 category: wireframing              # must exist in categories.yaml
 audiences: [strategist]            # optional, defaults to the category's audiences;
                                    # may narrow the category's audiences, never widen them
-required_for: [strategist]         # optional: all | [track, ...]; omitted = optional for everyone
-due_at: 2026-11-01T17:00:00Z       # optional deadline (ISO 8601 with offset)
+required_for: [strategist]         # initial value* — optional: all | [track, ...]; omitted = optional
+due_at: 2026-11-01T17:00:00Z       # initial value* — optional deadline (ISO 8601 with offset)
 type: mixed                        # quiz | screenshot | figma | mixed | acknowledge
 difficulty: 2                      # 1 easy, 2 medium, 3 hard (not used by acknowledge)
 points: 30                         # MUST equal sum of question points + rubric points
 estimated_minutes: 90
-status: draft                      # draft | published | archived
+status: draft                      # initial value* — draft | published | archived
 questions:                         # optional
   - id: q1
     kind: single                   # single | multi (auto-graded) | text (AI-reviewed)
@@ -65,6 +83,8 @@ grader_notes: |                    # PRIVATE — evaluator only, never shown to 
 ## Brief
 ...
 ```
+\* Used only when the challenge is first synced; afterwards these are managed in Admin → Content
+(see "Who owns what").
 
 ## Required vs optional
 - `required_for` uses the same shape as audiences. Everything not listed is optional.
@@ -77,7 +97,9 @@ grader_notes: |                    # PRIVATE — evaluator only, never shown to 
   - **pending** — the latest attempt is awaiting review
   - **missing** — not started, or resubmission requested (the learner has to act)
   - **overdue** — missing and `due_at` has passed
-- Changing `required_for` (like `status`) does not bump the challenge `version`.
+- After creation, `required_for` and `due_at` (like `status`) are changed in Admin → Content. The
+  picker only offers tracks that can see the challenge (same rule as validation). Changing them
+  never bumps the challenge `version`.
 
 ## Acknowledge challenges (`type: acknowledge`)
 For "read the new safety rules" style content: the brief plus an "I've read and understood"

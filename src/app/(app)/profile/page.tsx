@@ -3,12 +3,12 @@ import Link from "next/link";
 import { MessageSquareText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { isResultVisible, summarizeScores } from "@/lib/submissions/rules";
+import { groupAttemptHistory, summarizeScores } from "@/lib/submissions/rules";
 import { TRACK_LABEL } from "@/lib/tracks";
+import { ChallengeHistoryList } from "./challenge-history";
 import { VisibilityToggle } from "./visibility-toggle";
 
 export const metadata: Metadata = { title: "Profile · UXDA Learn" };
@@ -30,7 +30,7 @@ export default async function ProfilePage() {
   const titleOf = (slug: string) => challenges?.find((c) => c.slug === slug)?.title ?? slug;
 
   const { totalScore, completed, pending } = summarizeScores(subs);
-  const history = subs.filter((s) => isResultVisible(s.status));
+  const history = groupAttemptHistory(subs);
 
   const stats = [
     { label: "Total score", value: totalScore, testId: "stat-total" },
@@ -64,46 +64,22 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <section aria-labelledby="feedback-heading" className="grid gap-3">
-        <h2 id="feedback-heading" className="text-lg font-semibold">
-          Feedback history
+      <section aria-labelledby="challenges-heading" className="grid gap-3">
+        <h2 id="challenges-heading" className="text-lg font-semibold">
+          Your challenges
         </h2>
         {history.length === 0 ? (
           <EmptyState
             icon={MessageSquareText}
-            title="No results yet"
-            description="Scores and feedback appear here once your submissions are graded or reviewed."
-          />
+            title="No attempts yet"
+            description="Challenges you submit appear here with the score that counts, earlier attempts and feedback."
+          >
+            <Link href="/" className="text-sm font-medium underline underline-offset-4">
+              Find a challenge
+            </Link>
+          </EmptyState>
         ) : (
-          <ul className="grid gap-3">
-            {history.map((s) => (
-              <li key={s.id}>
-                <Card className="gap-3 py-4">
-                  <CardHeader className="flex flex-wrap items-center justify-between gap-2 px-4">
-                    <CardTitle className="text-sm">
-                      <Link href={`/submissions/${s.id}`} className="hover:underline">
-                        {titleOf(s.challenge_slug)}
-                      </Link>
-                      <span className="text-muted-foreground text-meta ml-2 font-normal">Attempt {s.attempt}</span>
-                    </CardTitle>
-                    <div className="flex items-center gap-3">
-                      {s.final_score !== null && (
-                        <span className="text-meta font-medium">
-                          {s.final_score} / {s.max_score}
-                        </span>
-                      )}
-                      <StatusBadge status={s.status} />
-                    </div>
-                  </CardHeader>
-                  {s.feedback && (
-                    <CardContent className="text-muted-foreground px-4 text-sm whitespace-pre-line">
-                      {s.feedback}
-                    </CardContent>
-                  )}
-                </Card>
-              </li>
-            ))}
-          </ul>
+          <ChallengeHistoryList groups={history} titleOf={titleOf} />
         )}
       </section>
     </main>

@@ -46,6 +46,11 @@ const PAIRS: [string, string][] = [
   ["destructive", "background"],
   ["destructive", "card"],
   ["destructive-foreground", "destructive"],
+  // Scores below 50% and unfinished-content hints.
+  ["warning", "background"],
+  ["warning", "card"],
+  ["warning", "muted"],
+  ["warning", "accent"],
 ];
 
 describe.each([

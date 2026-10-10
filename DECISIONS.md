@@ -103,3 +103,16 @@
 - Markdown briefs use `prose-lg` — the typography plugin's base size is 16px; prose-lg is the +2px step.
 - Scripts that use Node's fetch need `NODE_USE_ENV_PROXY=1` in cloud sessions — Node's built-in fetch ignores HTTPS_PROXY.
 - E2E/integration verified on a local Supabase stack (`supabase start` in Docker) — no test project exists yet, and test login against the main project would recreate test users there.
+- Files own content, the admin panel owns status / required_for / due_at (file values = initial values only) — operational settings change week to week and shouldn't need a commit + sync; one owner per field avoids sync silently reverting admin changes.
+- content:sync reports file-vs-DB setting drift but never writes it — makes the "DB wins" rule visible instead of surprising.
+- `due_at` removed from `content_hash` — it's an admin setting now; changing a deadline isn't a content change and mustn't bump the version.
+- Settings change through one SQL function (`set_challenge_setting`, service role only) that writes value + audit row in one transaction — an audit log that can't miss a change or record one that didn't happen; no-ops write nothing.
+- Audit as rows per field with jsonb old/new (not a generic trigger) — three known fields, readable history, and `source` distinguishes admin edits from sync archiving.
+- Visibility and placeholder rules validated in the server action (pure, unit-tested `settingChangeError`), not in SQL — the same rule code as content:validate; DB checks still guard the shape.
+- TODO placeholders = upper-case `TODO` or `TODO_*`, checked in public content and grader notes — catches TODO_FIGMA_URL-style markers without flagging prose like "todo list".
+- Required-for picker shows every track, disabling the ones that can't see the challenge — explains why a track can't be picked instead of hiding it.
+- Due date edited in the admin's browser time zone and saved on blur — datetime-local fires on every keystroke; local time is what the admin means. Rendered after hydration to avoid server/client time-zone mismatch.
+- Admin preview is a separate admin-only page rendering the key server-side — answer keys never enter the learner challenge page or any client bundle.
+- Profile headline = best published attempt (ties: first to reach it, like the leaderboard); other published attempts are "Earlier attempt" if before it, else "Not counted" — "earlier" would be wrong for a later, lower score.
+- Collapsible attempts via native `<details>` — no client JS needed on the profile.
+- New `warning` colour token (#a14a00 / #f0b44c) plus an icon for scores < 50% — AA on every surface in both themes (unit-tested), and not colour-only.

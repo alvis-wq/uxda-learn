@@ -55,19 +55,28 @@ export type ChallengeRow = {
   questions: PublicQuestion[];
   submission_spec: Record<string, unknown>;
   rubric: unknown[];
-  due_at: string | null;
   content_hash: string;
-  // Assignment metadata — like status, not part of content_hash, so changing it doesn't bump the version.
-  status: "draft" | "published" | "archived";
-  required_for: Audience[];
 };
 
-/** The public fields content_hash covers (everything in ChallengeRow except hash/status/required_for). */
-export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "status" | "required_for">;
+/**
+ * Operational settings, owned by the admin panel. A content file sets them only when a challenge
+ * is first created; content:sync never writes them afterwards. Not part of content_hash, so
+ * changing them never bumps the version.
+ */
+export type ChallengeSettings = {
+  status: "draft" | "published" | "archived";
+  required_for: Audience[];
+  due_at: string | null;
+};
+export const SETTING_FIELDS = ["status", "required_for", "due_at"] as const satisfies readonly (keyof ChallengeSettings)[];
+export type SettingField = (typeof SETTING_FIELDS)[number];
+
+/** The public fields content_hash covers (everything in ChallengeRow except the hash). */
+export type PublicChallengeContent = Omit<ChallengeRow, "content_hash">;
 
 const PUBLIC_KEYS = [
   "slug", "category_slug", "title", "summary", "body_md", "type", "audiences", "difficulty", "points",
-  "estimated_minutes", "questions", "submission_spec", "rubric", "due_at",
+  "estimated_minutes", "questions", "submission_spec", "rubric",
 ] as const satisfies readonly (keyof PublicChallengeContent)[];
 
 /** Timestamps compare by instant: the DB returns `+00:00` where content may say `Z`. */
@@ -81,7 +90,6 @@ export function normalizeTimestamp(value: string | null | undefined): string | n
  */
 export function hashPublicContent(content: PublicChallengeContent): string {
   const picked = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, content[k] ?? null]));
-  picked.due_at = normalizeTimestamp(content.due_at);
   return createHash("sha256").update(canonicalJson(picked)).digest("hex");
 }
 
@@ -114,14 +122,15 @@ export function toCategoryRow(c: Category): CategoryRow {
 /**
  * Split a challenge into its public row and its private key row.
  *
- * content_hash covers ONLY public fields: users can read it, and a hash over answers
- * could be brute-forced for small quizzes. Status and required_for are excluded so publishing
- * or (un)requiring a challenge doesn't bump the version. Private (key) changes are detected by comparing challenge_keys directly.
+ * content_hash covers ONLY public content fields: users can read it, and a hash over answers
+ * could be brute-forced for small quizzes. The operational settings (status, required_for,
+ * due_at) are returned separately and excluded from the hash. Private (key) changes are
+ * detected by comparing challenge_keys directly.
  */
 export function toChallengeRows(
   ch: LoadedChallenge,
   categories: Category[],
-): { challenge: ChallengeRow; key: ChallengeKeyRow } {
+): { challenge: ChallengeRow; settings: ChallengeSettings; key: ChallengeKeyRow } {
   const c = ch.data;
   const category = categories.find((cat) => cat.slug === c.category);
   const audiences = c.audiences ?? category?.audiences ?? ["all"];
@@ -139,7 +148,6 @@ export function toChallengeRows(
     questions: c.questions.map(toPublicQuestion),
     submission_spec: (c.submission ?? {}) as Record<string, unknown>,
     rubric: c.rubric,
-    due_at: normalizeTimestamp(c.due_at),
   };
   const content_hash = hashPublicContent(publicContent);
 
@@ -150,7 +158,8 @@ export function toChallengeRows(
   }
 
   return {
-    challenge: { ...publicContent, content_hash, status: c.status, required_for: c.required_for ?? [] },
+    challenge: { ...publicContent, content_hash },
+    settings: { status: c.status, required_for: c.required_for ?? [], due_at: normalizeTimestamp(c.due_at) },
     key: { challenge_slug: c.slug, answer_key, grader_notes: c.grader_notes?.trim() || null },
   };
 }

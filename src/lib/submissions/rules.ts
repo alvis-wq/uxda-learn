@@ -84,3 +84,87 @@ export function rankRows<T extends { total_score: number }>(rows: T[]): (T & { r
     rank: rows.findIndex((x) => Number(x.total_score) === Number(r.total_score)) + 1,
   }));
 }
+
+/** How one attempt reads in the learner's history. */
+export type AttemptLabel = "best" | "earlier" | "not_counted" | "pending" | "resubmission";
+
+export const ATTEMPT_LABEL: Record<AttemptLabel, string> = {
+  best: "Best score",
+  earlier: "Earlier attempt",
+  not_counted: "Not counted",
+  pending: "Awaiting review",
+  resubmission: "Resubmission requested",
+};
+
+/** Below half the points: shown in the warning colour. */
+export function isLowScore(score: number | null, max: number): boolean {
+  return score !== null && max > 0 && Number(score) / Number(max) < 0.5;
+}
+
+type HistoryAttempt = {
+  challenge_slug: string;
+  attempt: number;
+  status: SubmissionStatus;
+  final_score: number | null;
+  max_score: number;
+  submitted_at: string;
+};
+
+export type ChallengeHistory<T extends HistoryAttempt> = {
+  slug: string;
+  /** The best published attempt (the one that counts), else the latest attempt. */
+  headline: T & { label: AttemptLabel };
+  /** Every other attempt, newest first. */
+  others: (T & { label: AttemptLabel })[];
+  /** The newest attempt, when it isn't the headline (e.g. a retry awaiting review). */
+  newer: (T & { label: AttemptLabel }) | null;
+  /** Score that counts towards totals and the leaderboard, if any. */
+  bestScore: number | null;
+  attemptsUsed: number;
+};
+
+/**
+ * Group a learner's attempts per challenge. The best published score counts (ties: the first
+ * attempt that reached it — mirrors summarizeScores / get_leaderboard). Other published attempts
+ * are "Earlier attempt" when they came before it and "Not counted" when after. Challenges are
+ * ordered by their most recent attempt.
+ */
+export function groupAttemptHistory<T extends HistoryAttempt>(subs: T[]): ChallengeHistory<T>[] {
+  const bySlug = new Map<string, T[]>();
+  for (const s of subs) bySlug.set(s.challenge_slug, [...(bySlug.get(s.challenge_slug) ?? []), s]);
+
+  const latestAt = (list: T[]) => list.reduce((max, a) => (a.submitted_at > max ? a.submitted_at : max), "");
+  const ordered = [...bySlug].sort(([, x], [, y]) => latestAt(y).localeCompare(latestAt(x)));
+
+  return ordered.map(([slug, list]): ChallengeHistory<T> => {
+    const sorted = [...list].sort((a, b) => b.attempt - a.attempt); // newest first
+    const best = sorted
+      .filter((a) => a.status === "published" && a.final_score !== null)
+      .reduce<T | null>(
+        (top, a) =>
+          !top ||
+          Number(a.final_score) > Number(top.final_score) ||
+          (Number(a.final_score) === Number(top.final_score) && a.attempt < top.attempt)
+            ? a
+            : top,
+        null,
+      );
+    const label = (a: T): AttemptLabel => {
+      if (a.status === "submitted" || a.status === "ai_reviewed") return "pending";
+      if (a.status === "needs_resubmission") return "resubmission";
+      if (a === best) return "best";
+      return best && a.attempt < best.attempt ? "earlier" : "not_counted";
+    };
+    const labelled = sorted.map((a) => ({ ...a, label: label(a) }));
+    const headlineIndex = best ? sorted.indexOf(best) : 0;
+    const headline = labelled[headlineIndex];
+    return {
+      slug,
+      headline,
+      others: labelled.filter((_, i) => i !== headlineIndex),
+      newer: headlineIndex === 0 ? null : labelled[0],
+      bestScore: best ? Number(best.final_score) : null,
+      attemptsUsed: sorted.length,
+    };
+  });
+}
