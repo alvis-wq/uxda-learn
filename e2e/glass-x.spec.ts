@@ -138,27 +138,42 @@ test.describe("login sequence (motion)", () => {
 test.describe("post-sign-in loader (motion)", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("shows after sign-in, fades when the page is ready, is skippable, and never repeats this browser session", async ({ page }) => {
+  test("shows after every new sign-in, fades when the page is ready, and not on reloads or navigation", async ({ page }) => {
+    const introCookie = async () => (await page.context().cookies()).find((c) => c.name === "uxda_intro")?.value;
     await page.context().clearCookies();
     await signIn(page);
 
     await expect(loader(page)).toBeVisible();
-    expect((await page.context().cookies()).find((c) => c.name === "uxda_intro")?.value).toBe("seen");
+    expect(await introCookie()).toBe("seen");
+    // The X sits on plain #101010: no glow or gradient behind it.
+    await expect(loader(page)).toHaveCSS("background-color", STAGE);
+    await expect(loader(page)).toHaveCSS("background-image", "none");
+    await expect(loader(page).locator(".stage-glow")).toHaveCount(0);
     // Real loader: gone once the app's first page is ready (no fixed length), but not before its ~0.8 s minimum.
     const shownAt = Date.now();
     await expect(loader(page)).toBeHidden({ timeout: 15_000 });
     expect(Date.now() - shownAt).toBeGreaterThanOrEqual(600);
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 
-    // Not on reload, and not after signing out and in again within the same browser session.
+    // Not on reload, and not when navigating inside the app.
     await page.reload();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(loader(page)).toHaveCount(0);
-    await page.getByRole("button", { name: "Sign out" }).click();
-    await expect(page).toHaveURL(/\/login$/);
-    await signIn(page);
+    await page.getByRole("link", { name: "Leaderboard" }).first().click();
+    await expect(page).toHaveURL(/\/leaderboard/);
+    await page.getByRole("link", { name: "Home" }).first().click();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(loader(page)).toHaveCount(0);
+
+    // Signing out clears the "already shown" state; signing in again is a new sign-in and shows the loader again.
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    expect(await introCookie()).toBeUndefined();
+    await signIn(page);
+    await expect(loader(page)).toBeVisible();
+    expect(await introCookie()).toBe("seen");
+    await expect(loader(page)).toBeHidden({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
   });
 
   test("a key skips it", async ({ page }) => {

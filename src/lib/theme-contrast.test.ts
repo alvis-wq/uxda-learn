@@ -101,6 +101,34 @@ describe.each([
   });
 });
 
+// Loading skeletons: neutral greys on the card surface (dark: slightly lighter, light: slightly darker), with a low-contrast
+// sweep, and no violet anywhere near them.
+describe.each([
+  ["light", ":root", -1],
+  ["dark", ".dark", 1],
+] as const)("%s mode skeletons", (_mode, selector, direction) => {
+  const t = { ...tokens(":root"), ...tokens(selector) };
+  const shine = css.match(new RegExp(`(?:^|\\n)${selector.replace(".", "\\.")} \\{[^}]*--skeleton-shine:\\s*rgb\\((\\d+) (\\d+) (\\d+) / ([\\d.]+)\\)`));
+  const peak = shine ? blend(`#${[1, 2, 3].map((i) => (+shine[i]).toString(16).padStart(2, "0")).join("")}`, t.skeleton, +shine[4]) : t.skeleton;
+
+  it("is a neutral grey", () => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(t.skeleton.slice(i, i + 2), 16));
+    expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThanOrEqual(4);
+  });
+
+  it(`is slightly ${direction > 0 ? "lighter" : "darker"} than the card surface, and still visible on the page`, () => {
+    expect(Math.sign(luminance(t.skeleton) - luminance(t.card))).toBe(direction);
+    expect(contrast(t.skeleton, t.card)).toBeGreaterThanOrEqual(1.05);
+    expect(contrast(t.skeleton, t.background)).toBeGreaterThanOrEqual(1.05);
+    expect(contrast(t.skeleton, t.card)).toBeLessThanOrEqual(1.3);
+  });
+
+  it("keeps the shimmer highlight low-contrast", () => {
+    expect(shine, "--skeleton-shine must be rgb(r g b / a)").not.toBeNull();
+    expect(contrast(peak, t.skeleton)).toBeLessThanOrEqual(1.25);
+  });
+});
+
 // The login glass card sits over the violet glow on the #101010 stage. Composite the CSS values (worst case: the
 // glow's centre, with the card's brightest fill on top) and hold the card's text to AA.
 describe("login glass card", () => {
@@ -123,6 +151,21 @@ describe("login glass card", () => {
 
   it("the Google button's text (#f5f5f5) meets 4.5:1 on it", () => {
     expect(contrast("#f5f5f5", card)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("stage glow", () => {
+  it("is half its original spread (110vmin / 860px → 55vmin / 430px), same colour and peak intensity", () => {
+    expect(css).toMatch(/\.stage-glow \{[^}]*width: min\(55vmin, 430px\);/);
+    expect(css).toMatch(/\.stage-glow \{[^}]*radial-gradient\(closest-side, rgb\(128 48 255 \/ 0\.24\), rgb\(89 39 232 \/ 0\.1\) 55%, transparent\)/);
+  });
+
+  it("is not part of the post-sign-in loader, which sits on the plain #101010 stage", () => {
+    const loader = readFileSync(path.resolve(__dirname, "../components/glass-x/sign-in-loader.tsx"), "utf8");
+    expect(loader).not.toMatch(/<div[^>]*stage-glow/);
+    expect(loader).toContain("STAGE_BACKGROUND");
+    expect(STAGE_BACKGROUND.toLowerCase()).toBe("#101010");
+    expect(css).not.toMatch(/\.sign-in-loader[^{]*\{[^}]*(gradient|box-shadow)/);
   });
 });
 

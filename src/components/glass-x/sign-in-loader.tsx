@@ -13,7 +13,7 @@ type Phase = "showing" | "leaving" | "done";
  * The loader shown right after sign-in, while the app's first page loads. Rendered by SignInLoaderGate in the
  * first HTML only while this session's loader is pending (so the app never flashes underneath).
  *
- * - Shows the glass X on the dark stage with a violet glow, for at least LOADER_MIN_MS so it doesn't flash.
+ * - Shows the glass X on the plain #101010 stage (no glow or gradient behind it), for at least LOADER_MIN_MS so it doesn't flash.
  * - There is no maximum: it fades out as soon as the page is ready (document loaded, no loading skeleton left).
  * - A click or key skips it. A CSS backstop (globals.css) clears it after a very long time if scripts never run.
  * - Reduced motion: no X, just the dark stage and a quick fade. Without WebGL2 the static image stands in.
@@ -77,7 +77,6 @@ export function SignInLoader() {
       <noscript>
         <style>{".sign-in-loader{display:none}"}</style>
       </noscript>
-      <div className="stage-glow stage-glow--on" />
       {!reducedMotion && <GlassX eager replayOnClick={false} className="w-[min(78vmin,640px)]" />}
     </div>
   );

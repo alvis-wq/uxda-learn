@@ -2,11 +2,11 @@
  * Post-sign-in loader: a full-screen glass X shown while the app's first page loads, once per browser session.
  *
  * State lives in one session cookie (no Max-Age → gone when the browser closes):
- *   - absent    nothing queued yet
- *   - "pending" a sign-in happened and the loader hasn't played; the (app) / (admin) layouts render the loader
- *   - "seen"    played this browser session; later sign-ins don't queue it again
- * The server sets "pending" on sign-in; the loader itself writes "seen" when it mounts, so a reload
- * during or after it never replays it. A cookie (not sessionStorage) so the server can render the
+ *   - absent    nothing queued (not signed in, or signed out)
+ *   - "pending" a sign-in just happened and the loader hasn't played; the (app) / (admin) layouts render the loader
+ *   - "seen"    played for the current sign-in; reloads and navigation don't show it again
+ * Every new sign-in (OAuth callback, dev test login) sets "pending", whatever the cookie held before; sign-out
+ * clears it. The loader itself writes "seen" when it mounts, so a reload during or after it never replays it. A cookie (not sessionStorage) so the server can render the
  * overlay in the first HTML, with no flash of the app underneath.
  */
 export const INTRO_COOKIE = "uxda_intro";
@@ -33,10 +33,13 @@ export function loaderFadeDelay(elapsedMs: number, pageReady: boolean, reducedMo
 
 export const INTRO_COOKIE_OPTIONS = { path: "/", sameSite: "lax" } as const;
 
-/** What to store when someone signs in, or null to leave the cookie alone (already shown this session). */
-export function introCookieOnSignIn(current: string | undefined): "pending" | null {
-  return current === "seen" ? null : "pending";
+/** Every new sign-in queues the loader, even if an earlier sign-in's "seen" is still there. */
+export function introCookieOnSignIn(): "pending" {
+  return "pending";
 }
+
+/** Sign-out expires the cookie, so the next sign-in starts from nothing. */
+export const INTRO_COOKIE_CLEAR_OPTIONS = { path: "/", maxAge: 0 } as const;
 
 export function shouldShowIntro(current: string | undefined): boolean {
   return current === "pending";
