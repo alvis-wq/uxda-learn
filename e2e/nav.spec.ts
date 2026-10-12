@@ -72,6 +72,36 @@ test.describe("page entry animation", () => {
     await expect(page.locator("header")).toHaveCSS("filter", "none");
   });
 
+  test("the server renders the final visible state: SSR HTML has no opacity:0 / blur / translate styles", async ({ page }) => {
+    await loginAs(page, "strategist");
+    for (const path of ["/", "/leaderboard", "/profile"]) {
+      const html = await (await page.request.get(path)).text(); // exactly what a no-JS visitor and hydration receive
+      expect(html, path).toContain("<main");
+      const body = html.slice(html.indexOf("<main"));
+      expect(body, `${path}: hidden/animated inline styles in SSR HTML`).not.toMatch(/opacity\s*:\s*0(?![.\d])|blur\(|translateY\(/i);
+    }
+  });
+
+  test("no hydration warnings on a first load or after client-side navigations", async ({ page }) => {
+    const problems: string[] = [];
+    page.on("console", (msg) => {
+      if (["error", "warning"].includes(msg.type()) && /hydrat|did not match|server rendered HTML/i.test(msg.text())) problems.push(msg.text().slice(0, 200));
+    });
+    page.on("pageerror", (err) => problems.push(`pageerror: ${err.message}`));
+    await loginAs(page, "strategist");
+    await page.goto("/"); // first load
+    await expect(page.getByRole("heading", { name: "Welcome, Test" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const nav = mainNav(page);
+    await nav.getByRole("link", { name: "Leaderboard" }).click();
+    await expect(page).toHaveURL(/\/leaderboard$/);
+    await nav.getByRole("link", { name: "Profile" }).click();
+    await expect(page).toHaveURL(/\/profile$/);
+    await page.goto("/leaderboard"); // a hard load of a page that streams in behind loading.tsx
+    await page.waitForLoadState("networkidle");
+    expect(problems).toEqual([]);
+  });
+
   test("does not re-run on a server-action refresh or when the content is already interactive", async ({ page }) => {
     await loginAs(page, "strategist");
     await expect(page.getByRole("heading", { name: "Welcome, Test" })).toBeVisible();

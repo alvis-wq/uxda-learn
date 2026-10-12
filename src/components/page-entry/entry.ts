@@ -16,6 +16,21 @@ export function entryDelay(index: number, reduced = false): number {
   return Math.min(index, ENTRY.maxStaggered - 1) * ENTRY.stagger;
 }
 
+export type EntryState = { lastPath: string | undefined; clientNavigated: boolean };
+
+/**
+ * Decides what a template mount / pathname change should do. The page is server-rendered fully visible and
+ * must stay untouched until a client-side route change has really happened:
+ *   - first mount (hard load): skip, whatever streams in later is still part of the initial render being hydrated;
+ *   - same pathname again (StrictMode re-run, re-render): skip;
+ *   - pathname changed after that: play, and from then on content arriving later (a skeleton being replaced) may play too.
+ */
+export function nextEntryState(prev: EntryState, pathname: string): { state: EntryState; play: boolean } {
+  if (prev.lastPath === undefined) return { state: { lastPath: pathname, clientNavigated: false }, play: false };
+  if (prev.lastPath === pathname) return { state: prev, play: false };
+  return { state: { lastPath: pathname, clientNavigated: true }, play: true };
+}
+
 /** A route's real content, as opposed to its loading skeleton (loading.tsx roots are aria-busy). */
 export function isContentRoot(el: Element): boolean {
   return el.getAttribute("aria-busy") !== "true" && !el.matches("script, style, template, link");

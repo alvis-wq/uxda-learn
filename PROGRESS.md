@@ -455,3 +455,14 @@ stretch ~2 slots wide, squash overshoot, Tab order, arrows inert, aria-current, 
 no-JS fallback, axe light + dark) and 17 entry checks (stagger timing, header untouched, skeleton skipped, no CLS,
 no re-run on refresh, pointer-events, inline styles cleaned, reduced motion) all pass. New `e2e/nav.spec.ts` is written
 but NOT run (no test Supabase project here); it typechecks and lints.
+
+### Fix: hydration mismatch from the page entry animation
+Hard load of a page that streams in behind `loading.tsx` logged "A tree hydrated but some attributes of the server
+rendered HTML didn't match": my content-arrival observer saw the streamed page as "new" and hid/animated it while
+React was hydrating it. The SSR HTML never contained hidden styles (checked), but the DOM did by hydration time.
+Now `nextEntryState()` guarantees nothing is touched until a client-side route change has happened (first mount,
+same-path re-runs and streamed arrivals on a hard load are all skipped). Reproduced before, clean after (first load,
+streaming first load, navigations; JS disabled shows content). New tests: unit (`entry.test.ts` state rules,
+`page-entry.ssr.test.ts` — the template's SSR output has no inline styles / opacity:0 / blur / translate) and two
+`e2e/nav.spec.ts` tests (SSR HTML of /, /leaderboard, /profile; console free of hydration warnings on first load and
+after navigating) — the E2E ones are not run here (no test project).

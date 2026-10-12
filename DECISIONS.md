@@ -139,3 +139,4 @@
 - Page entry animates the page root's children (lists flattened to rows) and only those on screen — "blocks" is what a reader sees appear; below-the-fold blocks need no animation and animating dozens of blurred rows is wasted work.
 - Admin template lives in `(admin)/admin/` (inside the admin layout) — the admin sub-navigation is navigation and must not animate.
 - Dark `--nav-text-active` is pure #ffffff as specified, so the "no pure white in dark mode" test has one explicit, asserted exception for that token rather than being loosened.
+- Page entry mutates the DOM only after a client-side route change (`nextEntryState`): anything touched before hydration finishes — including content streamed in behind loading.tsx on a hard load — is a hydration mismatch, and the server must always render the visible final state.
