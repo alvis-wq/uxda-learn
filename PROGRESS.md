@@ -650,3 +650,21 @@ Checks: `npm run check` ✅ · `npm run build` ✅. E2E (`home.spec.ts` header t
 
 Checks: `npm run check` ✅ · `npm run build` ✅.
 
+## Login intro sound (`feat/login-sound`)
+
+- `public/brand/login-intro.mp3` (6 s, trimmed with a fade-out) belongs to the X sequence. **Off by default**; a speaker toggle (`aria-label="Sound on/off"`,
+  `aria-pressed`) in the top-right corner of the login stage turns it on/off, remembered in localStorage (`uxda:login-sound`: "on" / "off"; guarded, falls back to
+  the page view if storage is unavailable).
+- On: it starts when the X sequence starts (`onReady`, position 0). Turned on mid-sequence it starts at the sequence's position (`soundStartOffset(elapsed)`),
+  nothing starts if the sequence is over. Off never plays, and stops what is playing. A click or any other key skips the sequence and fades the sound out
+  linearly over 300 ms (an explicit rAF ramp, `fadeVolume`, then pause and volume reset); Enter/Space/click on the toggle itself are not "skip" gestures.
+- Reduced motion: no sound unless the toggle is on; on, it plays at once (there is no sequence). No WebGL2 / an X that gives up: no sequence, so no sound.
+- Autoplay: `play()` is guarded (sync and promise); a blocked autoplay stays silent with no console output or page error. `<audio preload>` is `auto`
+  only while the sound is on, `none` otherwise. Server and first client render use "off" (stored value read after hydration).
+- `src/proxy.ts`: `.mp3` added to the auth matcher's static exclusions (like `.glb`): the audio request is made before sign-in and would otherwise get the login HTML.
+
+Checks: `npm run check` ✅ · `npm run build` ✅. Playwright E2E for the sound (7 specs in `e2e/glass-x.spec.ts`, with a stubbed audio element) all pass here through a scratch config; axe clean and no overflow or card overlap at 1280/375px, sound off and on. Browser-verified in `next dev` (20 checks: default off, toggle label/pressed/corner, turn-on mid-sequence starts at ~0.7 s without
+skipping, remembered on reload, off stops it and is remembered, on after the sequence starts nothing, key and click skips stop it, blocked autoplay silent, reduced motion
+on/off) and the fade ramp measured per frame on a light page (1 -> 0.09 over ~0.3 s, paused at 329 ms, volume restored). A caveat of this machine: software GL makes Playwright's own
+clicks/keys take seconds on the page while the X renders, so a few checks drive the page in-page instead.
+- Known: the existing spec "login: the X plays, the glass card fades in…" is timing-sensitive under this machine's software GL; it fails the same way on `main` without these changes (checked by stashing), so it is not affected by the sound work.

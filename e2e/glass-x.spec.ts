@@ -160,6 +160,131 @@ test.describe("login sequence (motion)", () => {
   });
 });
 
+/** A fake <audio> playback, so the tests are deterministic and silent: records every play (with its position) and pause (with its volume). */
+async function stubAudio(page: Page, { blocked = false }: { blocked?: boolean } = {}) {
+  await page.addInitScript((block) => {
+    const record = { plays: [] as number[], pauseVolumes: [] as number[], windowPointerDowns: 0 };
+    (window as unknown as { __audio: typeof record }).__audio = record;
+    // Pointer events that reach the window are what skip the sequence; the toggle must not let its own through.
+    window.addEventListener("pointerdown", () => record.windowPointerDowns++);
+    const state = new WeakMap<HTMLMediaElement, boolean>();
+    Object.defineProperty(HTMLMediaElement.prototype, "paused", { get() { return !state.get(this); } });
+    HTMLMediaElement.prototype.play = function () {
+      record.plays.push(this.currentTime);
+      if (block) return Promise.reject(new DOMException("play() failed: no user gesture", "NotAllowedError"));
+      state.set(this, true);
+      return Promise.resolve();
+    };
+    HTMLMediaElement.prototype.pause = function () {
+      record.pauseVolumes.push(this.volume);
+      state.set(this, false);
+    };
+  }, blocked);
+}
+const audioLog = (page: Page) => page.evaluate(() => (window as unknown as { __audio: { plays: number[]; pauseVolumes: number[]; windowPointerDowns: number } }).__audio);
+const soundToggle = (page: Page) => page.getByRole("button", { name: "Sound on/off" });
+/** A real pointer click on the toggle, without waiting for "actionability" (the X is rendering, and that wait can outlast the sequence). */
+async function tapSoundToggle(page: Page) {
+  const box = (await soundToggle(page).boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+/** Start the page with a saved choice, set once per tab (an init script runs on every load, and must not undo a later toggle). */
+const rememberSound = (page: Page, value: "on" | "off") =>
+  page.addInitScript((v) => {
+    if (sessionStorage.getItem("test-seeded-sound")) return;
+    sessionStorage.setItem("test-seeded-sound", "1");
+    localStorage.setItem("uxda:login-sound", v);
+  }, value);
+
+test.describe("login intro sound (motion)", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("off by default: a labelled toggle in the corner, nothing plays, nothing preloaded or stored", async ({ page }) => {
+    await stubAudio(page);
+    await page.context().clearCookies();
+    await page.goto("/login");
+    const toggle = soundToggle(page);
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    const box = (await toggle.boundingBox())!;
+    expect(box.x).toBeGreaterThan(page.viewportSize()!.width - 100); // top-right corner
+    expect(box.y).toBeLessThan(80);
+    await expect(page.locator("audio")).toHaveAttribute("preload", "none");
+    await expect(page.locator("audio")).toHaveAttribute("src", "/brand/login-intro.mp3");
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 7000 });
+    expect((await audioLog(page)).plays).toEqual([]);
+    expect(await page.evaluate(() => localStorage.getItem("uxda:login-sound"))).toBeNull();
+  });
+
+  test("on: plays when the sequence starts (preload auto); the choice is remembered across reloads", async ({ page }) => {
+    await stubAudio(page);
+    await rememberSound(page, "on");
+    await page.goto("/login");
+    await expect(page.locator(X_CANVAS)).toHaveCount(1);
+    await expect(page.locator("audio")).toHaveAttribute("preload", "auto");
+    await expect(toggleOn(page)).toBeVisible();
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
+    expect((await audioLog(page)).plays[0]).toBe(0); // from the start of the sequence
+    await page.reload();
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1); // plays again on every load
+  });
+
+  test("turning it on mid-sequence starts from the sequence's position and does not skip the sequence", async ({ page }) => {
+    await stubAudio(page);
+    await page.goto("/login");
+    await expect(page.locator(X_CANVAS)).toHaveCount(1);
+    await tapSoundToggle(page);
+    // Clicking the toggle is not the "click skips" gesture: its pointer event never reaches the window.
+    expect((await audioLog(page)).windowPointerDowns).toBe(0);
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
+    const [position] = (await audioLog(page)).plays;
+    expect(position).toBeGreaterThan(0); // from where the sequence has got to, not from 0
+    expect(position).toBeLessThan(6);
+    expect(await page.evaluate(() => localStorage.getItem("uxda:login-sound"))).toBe("on");
+    await expect(page.locator("audio")).toHaveAttribute("preload", "auto");
+  });
+
+  test("turning it off stops it (faded) and it never plays again", async ({ page }) => {
+    await stubAudio(page);
+    await rememberSound(page, "on");
+    await page.goto("/login");
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
+    await tapSoundToggle(page);
+    await expect(soundToggle(page)).toHaveAttribute("aria-pressed", "false");
+    await expect.poll(async () => (await audioLog(page)).pauseVolumes.length).toBeGreaterThan(0);
+    expect(await page.evaluate(() => localStorage.getItem("uxda:login-sound"))).toBe("off");
+    await page.reload();
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 7000 });
+    expect((await audioLog(page)).plays).toEqual([]);
+  });
+
+  test("a click or key skips the sequence and the sound fades out (it is silent before it stops)", async ({ page }) => {
+    await stubAudio(page);
+    await rememberSound(page, "on");
+    await page.goto("/login");
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
+    await page.keyboard.press("x");
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 1500 });
+    await expect.poll(async () => (await audioLog(page)).pauseVolumes.length, { timeout: 4000 }).toBeGreaterThan(0);
+    expect((await audioLog(page)).pauseVolumes.at(-1)!).toBeLessThanOrEqual(0.05); // faded to silence, then stopped
+  });
+
+  test("blocked autoplay fails silently: no errors, no console output", async ({ page }) => {
+    await stubAudio(page, { blocked: true });
+    await rememberSound(page, "on");
+    const noise: string[] = [];
+    page.on("pageerror", (e) => noise.push(`pageerror: ${e.message}`));
+    page.on("console", (m) => {
+      if (["error", "warning"].includes(m.type()) && !/GL Driver/.test(m.text())) noise.push(`${m.type()}: ${m.text().slice(0, 120)}`);
+    });
+    await page.goto("/login");
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 7000 });
+    expect(noise).toEqual([]);
+  });
+});
+
+const toggleOn = (page: Page) => soundToggle(page).and(page.locator('[aria-pressed="true"]'));
+
 test.describe("post-sign-in loader (motion)", () => {
   test.use({ reducedMotion: "no-preference" });
 
@@ -220,6 +345,20 @@ test.describe("reduced motion", () => {
     await expect(page.locator(X_CANVAS)).toHaveCount(0);
     await expect(cardWrap(page)).toHaveCSS("opacity", "1");
     await expect(page.getByRole("button", { name: SIGN_IN })).toBeEnabled();
+  });
+
+  test("login sound: none unless the toggle is on; on, it plays at once (there is no sequence)", async ({ page }) => {
+    await stubAudio(page);
+    await page.context().clearCookies();
+    await page.goto("/login");
+    await expect(stage(page)).toHaveAttribute("data-seq", "done");
+    await page.waitForTimeout(500);
+    expect((await audioLog(page)).plays).toEqual([]);
+
+    await tapSoundToggle(page);
+    await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
+    await tapSoundToggle(page);
+    await expect.poll(async () => (await audioLog(page)).pauseVolumes.length).toBeGreaterThan(0);
   });
 
   test("post-sign-in loader: no X and a plain quick fade", async ({ page }) => {
