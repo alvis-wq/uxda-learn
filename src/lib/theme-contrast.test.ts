@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { STAGE_BACKGROUND } from "@/components/glass-x/constants";
 
 /**
  * WCAG AA contrast for the theme tokens in globals.css, in light and dark mode.
@@ -85,5 +86,18 @@ describe("softer palette", () => {
   it("raises dark surfaces slightly above the background", () => {
     expect(luminance(dark.card)).toBeGreaterThan(luminance(dark.background));
     expect(luminance(dark.popover)).toBeGreaterThan(luminance(dark.background));
+  });
+
+  it("layers dark surfaces: background < card < popover, and borders read on both", () => {
+    expect(dark.background.toLowerCase()).toBe("#101010");
+    expect(luminance(dark.popover)).toBeGreaterThan(luminance(dark.card));
+    // Outlines stay calm but visible: floors set just below today's values so layering can't quietly collapse.
+    expect(contrast(dark.input, dark.card)).toBeGreaterThanOrEqual(1.5);
+    expect(contrast(dark.border, dark.background)).toBeGreaterThanOrEqual(1.3);
+    expect(contrast(dark.border, dark.card)).toBeGreaterThanOrEqual(1.15);
+  });
+
+  it("keeps the glass X stage the same colour as the dark background", () => {
+    expect(STAGE_BACKGROUND.toLowerCase()).toBe(dark.background.toLowerCase());
   });
 });

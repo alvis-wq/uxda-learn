@@ -6,7 +6,7 @@ import { requireTestProject } from "./project";
 requireTestProject();
 test.describe.configure({ mode: "serial" });
 
-const STAGE = "rgb(23, 24, 28)"; // #17181C
+const STAGE = "rgb(16, 16, 16)"; // #101010
 const FALLBACK = 'img[src*="glass-x.png"]';
 
 const card = (page: Page) => page.locator(".stage-card-in");

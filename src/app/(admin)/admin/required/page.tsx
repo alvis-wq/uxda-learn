@@ -48,7 +48,7 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
         </Button>
       </div>
 
-      <nav aria-label="Filter by track" className="bg-muted inline-flex w-fit max-w-full flex-wrap rounded-lg p-1">
+      <nav aria-label="Filter by track" className="bg-muted inline-flex w-fit max-w-full flex-wrap rounded-3xl p-1 sm:rounded-full">
         {filters.map((f) => {
           const active = f.value === track;
           return (
@@ -57,7 +57,7 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
               href={f.value ? `/admin/required?track=${f.value}` : "/admin/required"}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
                 active ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
               )}
             >

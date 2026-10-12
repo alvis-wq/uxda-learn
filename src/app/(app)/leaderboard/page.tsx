@@ -29,14 +29,14 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
     <main className="mx-auto w-full max-w-3xl px-4 py-10">
       <PageHeader title="Leaderboard" description="Best published score per challenge." />
 
-      <nav aria-label="Leaderboard groups" className="bg-muted mb-6 inline-flex max-w-full flex-wrap rounded-lg p-1">
+      <nav aria-label="Leaderboard groups" className="bg-muted mb-6 inline-flex max-w-full flex-wrap rounded-full p-1">
         {LEADERBOARD_GROUPS.map((g) => (
           <Link
             key={g.id}
             href={`/leaderboard?group=${g.id}`}
             aria-current={g.id === group.id ? "page" : undefined}
             className={cn(
-              "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
               g.id === group.id ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >

@@ -399,3 +399,21 @@ WebGL context, DPR 3 → 2; intro auto-dismiss ≈ 2 s, skip by key (~250 ms) an
 stops replays, CSS fade-out works with JS off. New `e2e/glass-x.spec.ts`: the 5 login-page tests ran ✅
 (incl. axe); the sign-in/intro tests are written but NOT run — no test Supabase project or Docker here.
 The default E2E suite now runs with `reducedMotion: "reduce"` (no intro, static X) to stay deterministic.
+
+## UI refresh: Urbanist, #101010 dark mode, pill shapes, UXDA logo
+Branch `feat/ui-refresh`.
+- Font: Urbanist (variable, latin + latin-ext) via `next/font/google` replaces Geist everywhere; Geist Mono is
+  gone, `--font-mono` is the system monospace stack.
+- Dark mode: page `#101010`; card `#1a1a1a` < popover `#212121`; muted `#242424`, secondary `#2b2b2b`, border
+  `#303030`, input `#3d3d3d` (neutral greys; accent keeps its violet tint). The glass X stage and the fallback PNG
+  are `#101010` too (theme-contrast test now asserts they match).
+- Shapes: all `Button` sizes, tabs (shadcn Tabs, leaderboard, admin filter) and the header/admin nav active
+  state are pills; inputs, cards, alerts keep their radius.
+- Logo: `src/components/uxda-logo.tsx` (inline, `currentColor`, labelled "UXDA Learn") + the word "Learn" in the
+  header (word hidden below `sm`) and on the login card.
+- Mobile: the admin header (4 nav items) overflowed 375px with the wider logo and pills, so mobile nav padding
+  and logo height are tighter; 360px fits, 320px admin header still overflows (not checked by the suite).
+
+Checks: `npm run check` ✅ (226 unit tests) · `npm run build` ✅. Browser-verified against `next dev`
+(temporary preview route, removed): both themes at 1280px and 375px, axe A/AA clean, no horizontal overflow,
+Urbanist loaded, live X canvas blends seamlessly into `#101010`. Full E2E not run (no test project here).
