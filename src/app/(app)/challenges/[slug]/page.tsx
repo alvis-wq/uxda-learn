@@ -11,9 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { getChallengePage } from "@/lib/data/learner";
 import { isResultVisible, MAX_ATTEMPTS } from "@/lib/submissions/rules";
+import { planSteps } from "@/lib/submissions/steps";
 import { formatDateTime } from "@/lib/utils";
 import { AcknowledgeForm } from "./acknowledge-form";
 import { ChallengeForm } from "./challenge-form";
+import { SteppedChallengeForm } from "./stepped-challenge-form";
 
 export const metadata: Metadata = { title: "Challenge · UXDA Learn" };
 
@@ -25,6 +27,28 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   const { challenge, categoryTitle, progress, attempts, preview } = data;
   const { state } = progress;
   const isAck = challenge.type === "acknowledge";
+
+  // Multi-step challenges fill in a Stepper. A mixed challenge's brief is its first step, so it's only
+  // shown above the page when there's no stepper (preview, no attempts left, single-step, acknowledge).
+  const plan = planSteps({ questions: challenge.questions, submission_spec: challenge.submission_spec });
+  const stepped = !preview && !isAck && state.canSubmit && plan.mode !== "single";
+  const briefInStepper = stepped && plan.mode === "mixed";
+
+  const rubric = challenge.rubric.length > 0 && (
+    <section aria-labelledby="rubric-heading" className="grid gap-3">
+      <h2 id="rubric-heading" className="text-lg font-semibold">
+        How it&apos;s scored
+      </h2>
+      <ul className="grid gap-2">
+        {challenge.rubric.map((r) => (
+          <li key={r.id} className="flex justify-between gap-4 rounded-lg border px-4 py-3 text-sm">
+            <span>{r.criterion}</span>
+            <span className="text-muted-foreground text-meta shrink-0">{r.points} pts</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-8 px-4 py-10">
@@ -55,22 +79,11 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
         </Alert>
       )}
 
-      <Markdown>{challenge.body_md}</Markdown>
-
-      {challenge.rubric.length > 0 && (
-        <section aria-labelledby="rubric-heading" className="grid gap-3">
-          <h2 id="rubric-heading" className="text-lg font-semibold">
-            How it&apos;s scored
-          </h2>
-          <ul className="grid gap-2">
-            {challenge.rubric.map((r) => (
-              <li key={r.id} className="flex justify-between gap-4 rounded-lg border px-4 py-3 text-sm">
-                <span>{r.criterion}</span>
-                <span className="text-muted-foreground text-meta shrink-0">{r.points} pts</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {!briefInStepper && (
+        <>
+          <Markdown>{challenge.body_md}</Markdown>
+          {rubric}
+        </>
       )}
 
       {attempts.length > 0 && (
@@ -134,7 +147,26 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
           <h2 id="submit-heading" className="text-lg font-semibold">
             {attempts.length ? "Submit again" : "Your submission"}
           </h2>
-          {state.canSubmit ? (
+          {state.canSubmit && stepped ? (
+            <SteppedChallengeForm
+              slug={challenge.slug}
+              userId={profile.id}
+              version={challenge.version}
+              questions={challenge.questions}
+              spec={challenge.submission_spec}
+              plan={plan}
+              brief={
+                briefInStepper ? (
+                  <div className="grid gap-8">
+                    <Markdown>{challenge.body_md}</Markdown>
+                    {rubric}
+                  </div>
+                ) : undefined
+              }
+              attemptNumber={state.attemptsUsed + 1}
+              maxAttempts={MAX_ATTEMPTS}
+            />
+          ) : state.canSubmit ? (
             <ChallengeForm
               slug={challenge.slug}
               userId={profile.id}

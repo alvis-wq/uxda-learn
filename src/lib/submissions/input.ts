@@ -34,7 +34,10 @@ export type SubmissionInput = {
 };
 
 /** Build a Zod schema for one challenge's submission, derived from its questions and spec. */
-export function submissionInputSchema(challenge: Challenge, userId: string) {
+export function submissionInputSchema(
+  challenge: Pick<Challenge, "slug" | "questions" | "submission_spec">,
+  userId: string,
+) {
   const answerShape: Record<string, z.ZodType<string | string[]>> = {};
   for (const q of challenge.questions) {
     if (q.kind === "single") {
@@ -44,7 +47,7 @@ export function submissionInputSchema(challenge: Challenge, userId: string) {
     } else if (q.kind === "multi") {
       const ids = q.options.map((o) => o.id) as [string, ...string[]];
       answerShape[q.id] = z
-        .array(z.enum(ids))
+        .array(z.enum(ids), { error: "Choose at least one option." })
         .min(1, "Choose at least one option.")
         .refine((a) => new Set(a).size === a.length, "Each option can only be chosen once.");
     } else {

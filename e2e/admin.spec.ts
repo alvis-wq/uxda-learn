@@ -1,7 +1,6 @@
-import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
-import { adminDb, loginAs, profileId, TEST_EMAILS } from "./helpers";
+import { adminDb, fillScreenshotChallenge, loginAs, profileId, stepButtons, TEST_EMAILS } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
@@ -29,11 +28,8 @@ test.describe("admin", () => {
     // 1. Strategist submits the screenshot challenge.
     await loginAs(page, "strategist");
     await page.goto("/challenges/e2e-screenshot");
-    await expect(page.getByRole("button", { name: "Add screenshots" })).toBeEnabled();
-    await page.getByLabel("Choose screenshot files").setInputFiles(path.join(__dirname, "fixtures", "screenshot.png"));
-    await expect(page.getByRole("img", { name: "screenshot.png" })).toBeVisible();
-    await page.getByLabel(/^Reflection/).fill("The AI skipped the loading state and mislabelled a button.");
-    await page.getByRole("button", { name: "Submit" }).click();
+    await fillScreenshotChallenge(page, "The AI skipped the loading state and mislabelled a button.");
+    await stepButtons(page).submit.click();
     await expect(page.getByText("Your submission is awaiting review.")).toBeVisible();
 
     // 2. Simulate /evaluate + eval:push (Phase 7): evaluation row + status ai_reviewed.

@@ -10,49 +10,36 @@ export type UploadedImage = { path: string; previewUrl: string; name: string };
 type Pending = { id: string; name: string };
 
 /**
- * Uploads straight to Storage at {user_id}/{challenge_slug}/{uuid}.{ext}.
- * Storage RLS only allows writes into the user's own folder; the server re-checks paths on submit.
+ * Upload logic and state for screenshots. Call it in a component that stays mounted (the form, not a Stepper
+ * step: the Stepper unmounts steps you aren't on, and an upload in flight must survive that).
+ *
+ * Uploads straight to Storage at {user_id}/{challenge_slug}/{uuid}.{ext}. Storage RLS only allows writes into the
+ * user's own folder; the server re-checks paths on submit.
  */
-export function ScreenshotUploader({
+export function useScreenshotUploads({
   userId,
   slug,
-  label,
-  min,
   max,
   images,
-  onChange,
-  error,
-  disabled,
+  setImages,
 }: {
   userId: string;
   slug: string;
-  label: string;
-  min: number;
   max: number;
   images: UploadedImage[];
-  onChange: (images: UploadedImage[]) => void;
-  error?: string;
-  disabled?: boolean;
+  setImages: (update: (previous: UploadedImage[]) => UploadedImage[]) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Pending[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  // Disabled until hydrated: a file picked before React attaches onChange would be silently lost.
-  const ready = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
   const remaining = max - images.length - pending.length;
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
+  async function add(files: File[]) {
+    if (files.length === 0) return;
     setUploadError(null);
-    const list = Array.from(files).slice(0, Math.max(remaining, 0));
+    const list = files.slice(0, Math.max(remaining, 0));
     if (files.length > list.length) setUploadError(`You can upload up to ${max} screenshots.`);
 
     const supabase = createClient();
-    const added: UploadedImage[] = [];
     await Promise.all(
       list.map(async (file) => {
         const ext = IMAGE_TYPES[file.type as keyof typeof IMAGE_TYPES];
@@ -66,18 +53,62 @@ export function ScreenshotUploader({
           .upload(path, file, { contentType: file.type, upsert: false });
         setPending((p) => p.filter((x) => x.id !== id));
         if (error) return setUploadError(`${file.name}: upload failed (${error.message}).`);
-        added.push({ path, previewUrl: URL.createObjectURL(file), name: file.name });
+        const added = { path, previewUrl: URL.createObjectURL(file), name: file.name };
+        setImages((previous) => [...previous, added]);
       }),
     );
-    if (added.length) onChange([...images, ...added]);
-    if (inputRef.current) inputRef.current.value = "";
   }
 
+  function remove(path: string) {
+    const gone = images.find((i) => i.path === path);
+    if (gone) URL.revokeObjectURL(gone.previewUrl);
+    setImages((previous) => previous.filter((i) => i.path !== path));
+  }
+
+  return { pending, uploadError, remaining, add, remove, uploading: pending.length > 0 };
+}
+
+export function ScreenshotUploader({
+  label,
+  min,
+  max,
+  images,
+  pending,
+  remaining,
+  onAdd,
+  onRemove,
+  uploadError,
+  error,
+  disabled,
+  compact,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  images: UploadedImage[];
+  pending: { id: string; name: string }[];
+  remaining: number;
+  onAdd: (files: File[]) => void;
+  onRemove: (path: string) => void;
+  uploadError: string | null;
+  error?: string;
+  disabled?: boolean;
+  /** The surrounding Stepper step already shows the "Screenshots" heading, so the legend is screen-reader only. */
+  compact?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Disabled until hydrated: a file picked before React attaches onChange would be silently lost.
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const describedBy = error || uploadError ? "screenshots-error" : "screenshots-hint";
+  const blocked = !ready || disabled || remaining <= 0;
 
   return (
     <fieldset className="grid gap-3" aria-describedby={describedBy}>
-      <legend className="mb-1 font-medium">Screenshots</legend>
+      <legend className={compact ? "sr-only" : "mb-1 font-medium"}>Screenshots</legend>
       <p id="screenshots-hint" className="text-muted-foreground text-sm">
         {label} · {min === max ? `${min}` : `${min}–${max}`} image{max > 1 ? "s" : ""}, PNG/JPG/WebP, max 10 MB each.
       </p>
@@ -95,7 +126,7 @@ export function ScreenshotUploader({
                 className="absolute top-1 right-1 size-7"
                 aria-label={`Remove ${img.name}`}
                 disabled={disabled}
-                onClick={() => onChange(images.filter((i) => i.path !== img.path))}
+                onClick={() => onRemove(img.path)}
               >
                 <X />
               </Button>
@@ -119,14 +150,18 @@ export function ScreenshotUploader({
         className="sr-only"
         aria-label="Choose screenshot files"
         tabIndex={-1}
-        disabled={!ready || disabled || remaining <= 0}
-        onChange={(e) => handleFiles(e.target.files)}
+        disabled={blocked}
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          onAdd(files);
+        }}
       />
       <Button
         type="button"
         variant="outline"
         className="w-fit"
-        disabled={!ready || disabled || remaining <= 0}
+        disabled={blocked}
         onClick={() => inputRef.current?.click()}
       >
         <ImagePlus aria-hidden />

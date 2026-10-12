@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
-import { loginAs } from "./helpers";
+import { loginAs, stepButtons } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
@@ -18,9 +18,12 @@ test("published score appears on the dashboard and the correct leaderboard tab",
 
   // Partial quiz score: q1 right (4 pts), q2 wrong (0).
   await page.goto("/challenges/e2e-quiz");
+  const { next, submit } = stepButtons(page);
   await page.getByLabel("Lavender").check();
+  await next.click();
   await page.getByLabel("3", { exact: true }).check();
-  await page.getByRole("button", { name: "Submit" }).click();
+  await next.click();
+  await submit.click();
   await expect(page.getByTestId("attempt-score")).toHaveText("4 / 10");
 
   await page.goto("/profile");
