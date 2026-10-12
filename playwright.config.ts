@@ -31,6 +31,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "retain-on-failure",
+    // The glass X intro and login animation are skipped under reduced motion (static X, card shown at once),
+    // which keeps every other spec fast and deterministic. e2e/glass-x.spec.ts opts back in to test them.
+    reducedMotion: "reduce",
   },
   projects: [
     {

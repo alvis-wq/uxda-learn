@@ -116,3 +116,12 @@
 - Profile headline = best published attempt (ties: first to reach it, like the leaderboard); other published attempts are "Earlier attempt" if before it, else "Not counted" — "earlier" would be wrong for a later, lower score.
 - Collapsible attempts via native `<details>` — no client JS needed on the profile.
 - New `warning` colour token (#a14a00 / #f0b44c) plus an icon for scores < 50% — AA on every surface in both themes (unit-tested), and not colour-only.
+- The X renders on pure black and the canvas is `mix-blend-mode: screen`-ed onto #17181C instead of passing the stage colour as `background` — glass-x's post-processing washes any non-black clear colour out to grey once the reveal ends (reproduced on the untouched original, real GPU), black is stable and exactly as designed.
+- Soft radial mask on the glass canvas — the wide bloom glow otherwise shows a hard square edge where the canvas ends during the burst.
+- Intro plays the reveal at 2.5× (`speed` option, default 1) instead of cutting it at 2 s — one clock drives everything, so the whole designed sequence still finishes inside the budget; DEFAULTS are otherwise untouched.
+- Intro state is a session cookie (`uxda_intro`: pending → seen), queued server-side on sign-in — the server renders the overlay in the first HTML (no flash of the app), it's "once per browser session" literally, and sessionStorage can't do either.
+- Intro overlay also fades out via CSS at 1.7 s — if JS never runs it still clears itself and can't trap the app.
+- Reduced motion shows the static PNG and never loads three (no intro, no fade) — "static settled X" with zero WebGL cost.
+- `.glb` is exempt from the auth proxy matcher — signed-out visitors need the model on /login, and the proxy was answering with the login HTML.
+- Default E2E runs with `reducedMotion: "reduce"` — skips the intro and animations everywhere; `glass-x.spec.ts` opts back in.
+- ESLint ignores `design-assets/` — reference-only handoff files, not app code.

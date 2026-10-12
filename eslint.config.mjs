@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "supabase/.temp/**",
+    // Reference-only design handoff (e.g. the original glass X source); not app code.
+    "design-assets/**",
   ]),
 ]);
 

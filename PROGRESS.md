@@ -371,3 +371,31 @@ diff vs hand-written) · `content:sync --dry-run` ✅ (9 hash refreshes, no vers
 settings drift) · `content:sync` ✅ (9 changes; second dry run 0) · `db:check` ✅ (incl. audit
 table RLS and function grants). Data after: 9 challenges (all v2, statuses unchanged),
 3 submissions untouched, 0 audit rows.
+
+## Animated glass X (login + sign-in intro)
+From `design-assets/web-x` (three r186). Branch `feat/glass-x`.
+- `three@0.186.0` + `@types/three@0.186.0` pinned exactly. `glass-x.js` ported to
+  `src/components/glass-x/glass-x-scene.ts` (animation, studio and DEFAULTS unchanged; only the model
+  URL → `/brand/glass_x.glb`, a `speed` option defaulting to 1, and stricter dispose/failure cleanup).
+  `GlassX` is a client component (`next/dynamic`, `ssr: false`); three and the model load after the
+  page is idle, so they never block the app.
+- Login: always-dark stage (#17181C, also in light mode), the X plays its reveal, the sign-in card
+  fades in after 1.5 s but is clickable immediately.
+- After sign-in: full-screen intro, ≤ 2 s, click/key skips, once per browser session (session cookie
+  `uxda_intro`, queued by the OAuth callback and test login, rendered in the first HTML by the (app) and
+  (admin) layouts). Reduced motion: no intro, static settled X, card shown at once.
+- Fallback `public/brand/glass-x.png` (settled state, rendered from the real component) for reduced
+  motion, no WebGL2, model load failure or a lost GPU context. Renderer disposed on unmount (context
+  released), devicePixelRatio capped at 2.
+- Bug found on the way: the auth proxy answered `/brand/glass_x.glb` with the login page for signed-out
+  visitors; `.glb` is now exempt like images.
+- Bundle: three + the scene are one lazy chunk (647 KB raw / 161 KB gzip), referenced only by two ~17 KB
+  loader chunks; no route lists it among its up-front chunks.
+
+Checks: `npm run check` ✅ (224 unit tests, +6 for the intro rules) · `npm run build` ✅.
+Browser-verified (headless Chromium on Apple GPU, against `next dev`): login at 1440×900 and 375×812
+(no horizontal scroll), reduced motion, no-WebGL2 and blocked-model fallbacks, dispose releases every
+WebGL context, DPR 3 → 2; intro auto-dismiss ≈ 2 s, skip by key (~250 ms) and click, "seen" cookie
+stops replays, CSS fade-out works with JS off. New `e2e/glass-x.spec.ts`: the 5 login-page tests ran ✅
+(incl. axe); the sign-in/intro tests are written but NOT run — no test Supabase project or Docker here.
+The default E2E suite now runs with `reducedMotion: "reduce"` (no intro, static X) to stay deterministic.

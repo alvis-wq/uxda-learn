@@ -5,6 +5,7 @@ const createClient = vi.fn();
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
 vi.mock("@/lib/supabase/server", () => ({ createClient }));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
+vi.mock("@/lib/intro-server", () => ({ queueSignInIntro: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
