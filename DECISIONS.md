@@ -147,3 +147,13 @@
 - The sequence's clock starts when the X is ready and gives up after ~1 s — a slow model must never delay signing in, and a late model is discarded rather than started mid-card.
 - The post-login loader waits for `load` and for `aria-busy` skeletons to leave `#main` — "page ready" means the content the user came for, not just hydration; no maximum, only a CSS backstop (30 s) for pages whose scripts never run, since an SSR'd full-screen overlay with dead JS would otherwise trap the app.
 - Glow strength is bounded by a unit test of the composited glass card (muted text ≥ 4.5:1 at the glow's centre) — measured pixels at five sample points missed the brightest spot, the modelled worst case didn't.
+- Step validity reuses the server's `submissionInputSchema` (issues mapped to steps) — one rule set, so Continue can never allow what the server would reject.
+- Step state lives in the form above the Stepper, and uploads are a hook there — the Stepper unmounts every non-current step (and mounts a second copy of the one being left for ~200 ms), so a component holding its own upload state would drop or duplicate uploads.
+- Forward jumps are clamped to the first invalid step (`clampStep`), on top of the Stepper's `linear` mode — going back to change an answer can't leave a path past a now-invalid step to Review.
+- The brief is step 1 only for mixed challenges that show a stepper; on the page otherwise (preview, no attempts left, single-step, acknowledge), so it is never hidden.
+- A challenge with a single input (one question, or only a reflection) keeps the plain form — a Brief/Input/Review stepper around one field is more ceremony than help.
+- Draft restore remounts the form once after hydration instead of reading sessionStorage during the first render — otherwise server and client HTML differ; the pre-hydration instance doesn't write, so it can't wipe the draft.
+- Drafts skip screenshots — their previews are object URLs that don't survive a refresh; the uploaded files stay in the learner's own folder and are simply re-added.
+- Removed `aria-live` from the Stepper viewport — it would re-announce the form's fields on every change; focus on the step heading announces the new step instead.
+- Review's step button is named "Review & submit", so E2E selects the real button with `{ name: "Submit", exact: true }`.
+

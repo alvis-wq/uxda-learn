@@ -495,3 +495,28 @@ Checks: `npm run check` ✅ · `npm run build` ✅. Browser-verified in `next de
 skip, once-per-session, reduced motion, no WebGL2, failed/slow model, no JS, axe, no hydration warnings) and a 15-point
 loader matrix (first-HTML, min 0.8 s, 3 s and 6.5 s loads, reduced motion, no WebGL2 fallback, skip, no JS). The 8
 login-page tests in `e2e/glass-x.spec.ts` were run ✅; the sign-in/loader E2E tests are written but NOT run (no test project).
+
+## React Bits Stepper for multi-step challenges (`feat/stepper`)
+
+- `src/components/stepper/Stepper.tsx` + `.css`: React Bits "Stepper-TS-CSS", credited in a header comment. Hugeicons →
+  lucide (ChevronLeft / ChevronRight / Check); the fixed `theme`/`accentColor` props are gone and the `--stepper-*` variables
+  map to our theme tokens (follows light/dark); pill buttons; the viewport's `aria-live` removed (focus moves to the step
+  heading instead); a `completeIcon` prop for the submit spinner. Settings: bars, radius 32, no frame, linear, Back /
+  Continue, width 100%.
+- Layout rules (`src/lib/submissions/steps.ts`): quiz (all auto-graded, ≥ 2 questions) = one question per step → Review;
+  mixed (anything with screenshots, Figma, reflection or text questions, ≥ 2 inputs) = Brief → Questions → Screenshots →
+  Figma link → Reflection → Review & submit, only what applies; one-input challenges and acknowledge keep the plain form.
+- State lives above the Stepper (it unmounts non-current steps): answers, Figma, reflection, images, and the upload logic
+  (`useScreenshotUploads` — an upload in flight survives leaving the step). Continue is disabled until the step is valid, using
+  the **same Zod schema as the server action**, and the reason is shown (and `aria-describedby` on the button). Submit goes
+  through the unchanged server action. Draft in sessionStorage (`draft.ts`), cleared on success; screenshots aren't drafted.
+- Focus moves to the new step's heading; reduced motion uses the Stepper's own fade mode. Question/field components
+  (`question-field.tsx`, `submission-fields.tsx`, presentational uploader) are shared with the plain form.
+- Server input schema: an unanswered multi-select now says "Choose at least one option." instead of Zod's raw message.
+
+Checks: `npm run check` ✅ (279 tests: steps, draft) · `npm run build` ✅. Browser-verified in `next dev` on a temporary harness
+(removed): quiz and mixed flows in light, dark, 375px and reduced motion (120 checks incl. axe on every step, no console
+warnings, no overflow), upload in flight while leaving the step (one request, image present on return), draft restore, keyboard
+flow, and the exact server-action payload. E2E specs updated (quiz, screenshot, dashboard, admin, quality: axe + 375px on every
+step) but NOT run — they need the test Supabase project; the real Submit success path is only covered there.
+

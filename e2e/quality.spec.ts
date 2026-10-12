@@ -1,7 +1,8 @@
+import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
-import { loginAs, type Role } from "./helpers";
+import { loginAs, stepButtons, type Role } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
@@ -92,3 +93,38 @@ test("keyboard: skip link moves focus to the main content", async ({ page }) => 
   await page.keyboard.press("Enter");
   await expect(page.locator("#main")).toBeFocused();
 });
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`stepped challenge: every step passes axe and fits at 375px (${scheme} mode)`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize({ width: 375, height: 812 });
+    await loginAs(page, "strategist");
+    await visit(page, "/challenges/e2e-screenshot");
+
+    const problems: string[] = [];
+    const { next } = stepButtons(page);
+    const checkStep = async (label: string) => {
+      await expect(page.locator(".stepper__pane--leaving")).toHaveCount(0); // the step change has finished animating
+      problems.push(...(await axe(page)).map((v) => `${label}: ${v}`));
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (overflow > 0) problems.push(`${label}: overflows by ${overflow}px`);
+    };
+
+    await checkStep("Brief");
+    await next.click();
+    await expect(page.getByRole("heading", { name: "Screenshots", exact: true })).toBeFocused();
+    await checkStep("Screenshots (empty, Continue disabled)");
+    await page.getByLabel("Choose screenshot files").setInputFiles(path.join(__dirname, "fixtures", "screenshot.png"));
+    await expect(page.getByRole("img", { name: "screenshot.png" })).toBeVisible();
+    await checkStep("Screenshots (uploaded)");
+    await next.click();
+    await expect(page.getByRole("heading", { name: "Reflection", exact: true })).toBeFocused();
+    await checkStep("Reflection (empty)");
+    await page.getByLabel(/^Reflection/).fill("The AI forgot the error state entirely.");
+    await next.click();
+    await expect(page.getByRole("heading", { name: "Review & submit", exact: true })).toBeFocused();
+    await checkStep("Review");
+
+    expect(problems, problems.join("\n")).toEqual([]);
+  });
+}

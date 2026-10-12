@@ -1,3 +1,4 @@
+import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { profileIdFor, TEST_EMAILS } from "../tests/support/fixtures";
 import { anonClient, serviceClient } from "../tests/support/test-project";
@@ -52,4 +53,30 @@ export async function loginAs(page: Page, role: Role) {
     await onboard.click();
   }
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+}
+
+/** The Stepper's Continue / Back / Submit buttons (Submit is exact: the "Review & submit" step button also matches). */
+export const stepButtons = (page: Page) => ({
+  next: page.getByRole("button", { name: "Continue" }),
+  back: page.getByRole("button", { name: "Back" }),
+  submit: page.getByRole("button", { name: "Submit", exact: true }),
+});
+
+/**
+ * Walks the e2e-screenshot challenge (Brief → Screenshots → Reflection → Review) and stops on the Review step, ready to
+ * submit. Expects to start on the challenge page.
+ */
+export async function fillScreenshotChallenge(page: Page, reflection: string) {
+  const { next } = stepButtons(page);
+  await expect(page.getByRole("heading", { name: "Brief", exact: true })).toBeVisible();
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Screenshots", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Add screenshots" })).toBeEnabled();
+  await page.getByLabel("Choose screenshot files").setInputFiles(path.join(__dirname, "fixtures", "screenshot.png"));
+  await expect(page.getByRole("img", { name: "screenshot.png" })).toBeVisible();
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Reflection", exact: true })).toBeFocused();
+  await page.getByLabel(/^Reflection/).fill(reflection);
+  await next.click();
+  await expect(page.getByRole("heading", { name: "Review & submit", exact: true })).toBeFocused();
 }
