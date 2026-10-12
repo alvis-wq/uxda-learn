@@ -177,4 +177,8 @@
 - The aurora's size is one formula (`aurora/geometry.ts`) used by the component, the page padding and the tests — halving the glow is one change, and the padding follows it.
 - Header = three-column grid with equal `minmax(0,1fr)` outer columns at every width — the only way to put the nav at the true viewport centre; the cost is that the nav needs room on both sides, so labels moved from md to lg and phones under ~400px get a tighter nav.
 - The login sequence no longer remembers that it played (supersedes the session-cookie decision above): a stored "seen" flag meant a reload or a sign-out landed on a bare card; it plays on every load, and since nothing is stored the server always renders the same first HTML.
+- The sound is tied to the sequence, not to the page: it starts at `onReady` (when the X is), is turned on mid-sequence from the sequence's position, and a skip fades it — so audio and picture can't drift apart; with no sequence (reduced motion) the toggle alone decides.
+- Default off and silent on failure: browsers block unprompted audio, so the default is an opt-in toggle; a blocked or failed `play()` is swallowed — a missing sound must never look like an error.
+- A hand-rolled linear fade instead of `motion`'s `animate`: it ran in the zoom but never ticked for the volume in the toggle path; the explicit ramp is time-based (a stalled frame jumps to the right volume), unit-tested (`fadeVolume`) and measured.
+- The toggle swallows only Enter/Space/pointer events: using it must not skip the sequence, but any other key still does ("any key skips" stays true).
 

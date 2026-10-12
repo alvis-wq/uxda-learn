@@ -3,8 +3,10 @@
 import { animate } from "motion/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { LOGIN_SEQ, LOGIN_X_DISTANCE } from "@/lib/login-sequence";
+import { soundStartOffset } from "@/lib/login-sound";
 import { STAGE_BACKGROUND } from "./constants";
 import { GlassX } from "./glass-x";
+import { LoginSoundAudio, SoundToggle, useLoginSound } from "./login-sound";
 import type { GlassXHandle } from "./glass-x-scene";
 import { supportsWebGL2 } from "./support";
 import { usePrefersReducedMotion } from "./use-prefers-reduced-motion";
@@ -27,6 +29,9 @@ export const useLoginCardInteractive = () => useContext(CardInteractive);
  * - Plays every time the login page loads (fresh visit, reload, after sign-out): there is no stored "already seen" state.
  * - Any click or key jumps to the end state. Reduced motion, a missing WebGL2, or an X that isn't ready within
  *   ~1 s skip straight to it, so signing in is never blocked.
+ * - The intro sound (src/lib/login-sound.ts) is off by default; when on it starts with the sequence, fades out over ~0.3 s
+ *   when the sequence is skipped, and (with reduced motion, where there is no sequence) plays only because it was turned on.
+ *   A speaker button in the corner turns it on/off; turning it on mid-sequence starts it from the sequence's position.
  * - Without JavaScript the card is shown by <noscript> at once, and by a CSS animation after a few seconds if
  *   scripts fail to run (globals.css).
  */
@@ -35,6 +40,10 @@ export function LoginSequence({ children }: { children: ReactNode }) {
   const webgl2 = useSyncExternalStore(noSubscription, supportsWebGL2, () => true);
   const hydrated = useSyncExternalStore(noSubscription, () => true, () => false);
   const [phase, setPhase] = useState<Phase>("play");
+  const sound = useLoginSound();
+  const { play, fadeOut } = sound;
+  /** performance.now() when the sequence started (the X was ready); null before it starts and after it ends. */
+  const startedAt = useRef<number | null>(null);
 
   const canPlay = !reducedMotion && webgl2;
   const current: Phase = canPlay ? phase : "done";
@@ -50,8 +59,14 @@ export function LoginSequence({ children }: { children: ReactNode }) {
   }, []);
   const finish = useCallback(() => {
     stopAll();
+    startedAt.current = null;
     setPhase("done");
   }, [stopAll]);
+  // A click or key skips the sequence, and the sound fades out with it.
+  const skip = useCallback(() => {
+    fadeOut();
+    finish();
+  }, [fadeOut, finish]);
 
   // The X has to be ready in time, otherwise skip straight to the card.
   useEffect(() => {
@@ -68,18 +83,36 @@ export function LoginSequence({ children }: { children: ReactNode }) {
   // Any click or key jumps to the end state.
   useEffect(() => {
     if (!sceneMounted) return;
-    window.addEventListener("keydown", finish);
-    window.addEventListener("pointerdown", finish);
+    window.addEventListener("keydown", skip);
+    window.addEventListener("pointerdown", skip);
     return () => {
-      window.removeEventListener("keydown", finish);
-      window.removeEventListener("pointerdown", finish);
+      window.removeEventListener("keydown", skip);
+      window.removeEventListener("pointerdown", skip);
     };
-  }, [sceneMounted, finish]);
+  }, [sceneMounted, skip]);
+
+  // The sound follows the preference: off never plays (and stops what is playing); on with reduced motion plays at
+  // once (there is no sequence); on mid-sequence starts from where the sequence is. A sequence that hasn't started
+  // yet starts it itself (onReady).
+  useEffect(() => {
+    if (!sound.on) {
+      fadeOut();
+      return;
+    }
+    if (reducedMotion) {
+      play(0);
+    } else if (startedAt.current !== null) {
+      const offset = soundStartOffset(performance.now() - startedAt.current, sound.audio.current?.duration);
+      if (offset !== null) play(offset);
+    }
+  }, [sound.on, sound.audio, reducedMotion, play, fadeOut]);
 
   const onReady = useCallback(
     (scene: GlassXHandle) => {
       if (started.current) return;
       started.current = true;
+      startedAt.current = performance.now();
+      play(0); // when the sound is on (the sequence starts the sound; a blocked autoplay just stays silent)
       const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
       scene.restart();
       setPhase("x");
@@ -92,9 +125,12 @@ export function LoginSequence({ children }: { children: ReactNode }) {
       });
       at(LOGIN_SEQ.cardAtMs, () => setPhase("card"));
       at(LOGIN_SEQ.xFadeAtMs, () => setPhase("out"));
-      at(LOGIN_SEQ.xFadeAtMs + LOGIN_SEQ.xFadeMs, () => setPhase("done"));
+      at(LOGIN_SEQ.xFadeAtMs + LOGIN_SEQ.xFadeMs, () => {
+        startedAt.current = null;
+        setPhase("done");
+      });
     },
-    [],
+    [play],
   );
 
   const seq = current === "x" ? "play" : current;
@@ -112,6 +148,8 @@ export function LoginSequence({ children }: { children: ReactNode }) {
         <style>{".login-card-wrap{opacity:1!important;transform:none!important;pointer-events:auto!important;animation:none!important}"}</style>
       </noscript>
       <div aria-hidden className="stage-glow" />
+      <LoginSoundAudio on={sound.on} audio={sound.audio} />
+      <SoundToggle on={sound.on} onToggle={sound.toggle} />
       {sceneMounted && (
         <div aria-hidden className="login-x-box pointer-events-none">
           <GlassX
