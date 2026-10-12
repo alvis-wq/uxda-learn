@@ -101,6 +101,34 @@ describe.each([
   });
 });
 
+// Loading skeletons: neutral greys on the card surface (dark: slightly lighter, light: slightly darker), with a low-contrast
+// sweep, and no violet anywhere near them.
+describe.each([
+  ["light", ":root", -1],
+  ["dark", ".dark", 1],
+] as const)("%s mode skeletons", (_mode, selector, direction) => {
+  const t = { ...tokens(":root"), ...tokens(selector) };
+  const shine = css.match(new RegExp(`(?:^|\\n)${selector.replace(".", "\\.")} \\{[^}]*--skeleton-shine:\\s*rgb\\((\\d+) (\\d+) (\\d+) / ([\\d.]+)\\)`));
+  const peak = shine ? blend(`#${[1, 2, 3].map((i) => (+shine[i]).toString(16).padStart(2, "0")).join("")}`, t.skeleton, +shine[4]) : t.skeleton;
+
+  it("is a neutral grey", () => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(t.skeleton.slice(i, i + 2), 16));
+    expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThanOrEqual(4);
+  });
+
+  it(`is slightly ${direction > 0 ? "lighter" : "darker"} than the card surface, and still visible on the page`, () => {
+    expect(Math.sign(luminance(t.skeleton) - luminance(t.card))).toBe(direction);
+    expect(contrast(t.skeleton, t.card)).toBeGreaterThanOrEqual(1.05);
+    expect(contrast(t.skeleton, t.background)).toBeGreaterThanOrEqual(1.05);
+    expect(contrast(t.skeleton, t.card)).toBeLessThanOrEqual(1.3);
+  });
+
+  it("keeps the shimmer highlight low-contrast", () => {
+    expect(shine, "--skeleton-shine must be rgb(r g b / a)").not.toBeNull();
+    expect(contrast(peak, t.skeleton)).toBeLessThanOrEqual(1.25);
+  });
+});
+
 // The login glass card sits over the violet glow on the #101010 stage. Composite the CSS values (worst case: the
 // glow's centre, with the card's brightest fill on top) and hold the card's text to AA.
 describe("login glass card", () => {

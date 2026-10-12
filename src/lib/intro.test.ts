@@ -4,35 +4,28 @@ import {
   LOADER_FADE_MS,
   LOADER_FADE_REDUCED_MS,
   LOADER_MIN_MS,
+  INTRO_COOKIE_CLEAR_OPTIONS,
   introCookieOnSignIn,
   loaderFadeDelay,
   shouldShowIntro,
 } from "./intro";
 
 describe("sign-in intro rules", () => {
-  it("queues the intro on the first sign-in of a browser session", () => {
-    expect(introCookieOnSignIn(undefined)).toBe("pending");
+  it("every sign-in queues the loader, including one after a loader already played", () => {
+    // The cookie's old value ("seen" from a previous sign-in in this browser session) is deliberately not an input.
+    expect(introCookieOnSignIn()).toBe("pending");
   });
 
-  it("keeps it queued if it hasn't played yet (signed in twice before it showed)", () => {
-    expect(introCookieOnSignIn("pending")).toBe("pending");
-  });
-
-  it("doesn't queue it again once it played this browser session", () => {
-    expect(introCookieOnSignIn("seen")).toBeNull();
-  });
-
-  it("treats unknown cookie values like a missing one", () => {
-    expect(introCookieOnSignIn("junk")).toBe("pending");
-    expect(shouldShowIntro("junk")).toBe(false);
-  });
-
-  it("only shows the intro while it is pending", () => {
+  it("only shows the loader while it is pending", () => {
     expect(shouldShowIntro("pending")).toBe(true);
     expect(shouldShowIntro("seen")).toBe(false);
     expect(shouldShowIntro(undefined)).toBe(false);
+    expect(shouldShowIntro("junk")).toBe(false);
   });
 
+  it("sign-out expires the cookie for the whole site", () => {
+    expect(INTRO_COOKIE_CLEAR_OPTIONS).toEqual({ path: "/", maxAge: 0 });
+  });
 });
 
 describe("post-sign-in loader timing", () => {

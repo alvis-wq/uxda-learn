@@ -520,3 +520,21 @@ warnings, no overflow), upload in flight while leaving the step (one request, im
 flow, and the exact server-action payload. E2E specs updated (quiz, screenshot, dashboard, admin, quality: axe + 375px on every
 step) but NOT run — they need the test Supabase project; the real Submit success path is only covered there.
 
+## Fix: neutral shimmer skeletons + loader on every new sign-in (`fix/skeletons-and-loader`)
+
+- Skeletons: `bg-accent` + `animate-pulse` replaced by `--skeleton` tokens (light `#ebebed`, slightly darker than the card; dark
+  `#262626`, slightly lighter) and a faint sweep every 2.8 s. One shared animation: `--shimmer-x` (a registered property) is
+  animated once on `:root` while a skeleton is on the page, and every `[data-slot="skeleton"]` paints the same band on a
+  viewport-fixed background, so all skeletons are in sync and the band crosses them as one. Reduced motion: static grey.
+  `Skeleton` is the only skeleton primitive, so it covers both `loading.tsx` files. Unit tests hold the tokens neutral, on the right
+  side of the card, and the highlight low-contrast.
+- Loader path verified: the OAuth callback's `uxda_intro=pending` does reach the redirect response (probed against `next dev`; route
+  tests also cover order and the failure cases). What actually broke a second sign-in was the old "once per browser session" rule: a
+  leftover `seen` cookie meant `queueSignInIntro` never set `pending` again. Now every sign-in (callback, dev test login) sets `pending`,
+  and `/auth/signout` expires the cookie. Reloads and in-app navigation still don't show it (the loader writes `seen`).
+- A first-time user goes callback → /onboarding → "/" (the loader is in the (app) layout, so it shows after onboarding).
+
+Checks: `npm run check` ✅ (290 tests) · `npm run build` ✅. Browser-verified skeletons (light/dark/reduced motion: one shared value, sweeping,
+static) and the loader gate cookie matrix on a temporary harness (removed). NOT verified: a real Google sign-in, and the updated
+sign-in/loader E2E (needs the test Supabase project).
+

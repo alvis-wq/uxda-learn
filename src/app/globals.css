@@ -92,6 +92,9 @@
   --nav-thumb: #ffffff;
   --nav-text: #27272a;
   --nav-text-active: #18181b;
+  /* Loading skeletons: a touch darker than the card surface, with a faint white sweep. */
+  --skeleton: #ebebed;
+  --skeleton-shine: rgb(255 255 255 / 0.6);
 }
 
 .dark {
@@ -120,6 +123,9 @@
   --nav-thumb: #282828;
   --nav-text: #fafafa;
   --nav-text-active: #ffffff;
+  /* A touch lighter than the card surface, with a barely-there light sweep. */
+  --skeleton: #262626;
+  --skeleton-shine: rgb(255 255 255 / 0.05);
 }
 
 @layer base {
@@ -289,5 +295,53 @@
   }
   .sign-in-loader {
     transition-duration: 150ms;
+  }
+}
+
+/*
+ * Loading skeletons: neutral theme greys with one slow, soft highlight sweeping across the viewport every 2.8 s.
+ * The sweep is a single shared animation: --shimmer-x is animated once on :root (only while a skeleton is on the page)
+ * and every skeleton paints the same band with a viewport-fixed background, so they are always in sync and
+ * the band moves across them as one. Reduced motion: static grey, no sweep.
+ */
+@property --shimmer-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: -30%;
+}
+
+@keyframes skeleton-sweep {
+  0% {
+    --shimmer-x: -30%;
+  }
+  70%,
+  100% {
+    --shimmer-x: 130%;
+  }
+}
+
+:root:has([data-slot="skeleton"]) {
+  animation: skeleton-sweep 2.8s ease-in-out infinite;
+}
+
+@layer components {
+  [data-slot="skeleton"] {
+    background-color: var(--skeleton);
+    background-image: linear-gradient(
+      100deg,
+      transparent calc(var(--shimmer-x) - 16%),
+      var(--skeleton-shine) var(--shimmer-x),
+      transparent calc(var(--shimmer-x) + 16%)
+    );
+    background-attachment: fixed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:has([data-slot="skeleton"]) {
+    animation: none;
+  }
+  [data-slot="skeleton"] {
+    background-image: none;
   }
 }
