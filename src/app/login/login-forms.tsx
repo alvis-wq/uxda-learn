@@ -4,6 +4,7 @@ import { useActionState, useSyncExternalStore } from "react";
 import { useFormStatus } from "react-dom";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { supportsWebGL2 } from "@/components/glass-x/support";
+import { useLoginCardInteractive } from "@/components/glass-x/login-sequence";
 import SpecularButton from "@/components/specular-button/SpecularButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/submit-button";
@@ -40,6 +41,7 @@ const noSubscription = () => () => {};
  */
 function GoogleButton() {
   const { pending } = useFormStatus();
+  const interactive = useLoginCardInteractive();
   const webgl2 = useSyncExternalStore(noSubscription, supportsWebGL2, () => true);
   return (
     <SpecularButton
@@ -62,6 +64,7 @@ function GoogleButton() {
       className="w-full"
       disabled={pending}
       aria-busy={pending}
+      tabIndex={interactive ? undefined : -1}
       style={webgl2 ? undefined : { border: `1px solid color-mix(in srgb, ${LINE_COLOR} 40%, transparent)` }}
     >
       {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <GoogleIcon />}
@@ -83,17 +86,18 @@ export function GoogleSignInForm({ next }: { next?: string }) {
 
 export function TestLoginForm({ next }: { next?: string }) {
   const [state, action] = useActionState(testLogin, {});
+  const tabIndex = useLoginCardInteractive() ? undefined : -1;
   return (
     <form action={action} className="grid gap-3">
       {next && <input type="hidden" name="next" value={next} />}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <SubmitButton variant="outline" name="role" value="strategist">
+        <SubmitButton variant="outline" name="role" value="strategist" tabIndex={tabIndex}>
           Strategist
         </SubmitButton>
-        <SubmitButton variant="outline" name="role" value="designer">
+        <SubmitButton variant="outline" name="role" value="designer" tabIndex={tabIndex}>
           Designer
         </SubmitButton>
-        <SubmitButton variant="outline" name="role" value="admin">
+        <SubmitButton variant="outline" name="role" value="admin" tabIndex={tabIndex}>
           Admin
         </SubmitButton>
       </div>

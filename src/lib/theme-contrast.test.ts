@@ -101,6 +101,31 @@ describe.each([
   });
 });
 
+// The login glass card sits over the violet glow on the #101010 stage. Composite the CSS values (worst case: the
+// glow's centre, with the card's brightest fill on top) and hold the card's text to AA.
+describe("login glass card", () => {
+  const dark = { ...tokens(":root"), ...tokens(".dark") };
+  const rgba = (selector: string, from = 0): { rgb: [number, number, number]; alpha: number } => {
+    const block = css.match(new RegExp(`(?:^|\\n)${selector.replace(".", "\\.")} \\{([^}]*)\\}`))?.[1] ?? ""; // the top-level rule, not a combined selector
+    const m = block.slice(block.indexOf("rgb(", from)).match(/rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/);
+    if (!m) throw new Error(`no rgb() in ${selector}`);
+    return { rgb: [+m[1], +m[2], +m[3]], alpha: +m[4] };
+  };
+  const over = (top: { rgb: number[]; alpha: number }, under: number[]) => top.rgb.map((c, i) => Math.round(c * top.alpha + under[i] * (1 - top.alpha)));
+  const hex = (rgb: number[]) => `#${rgb.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  const stage = [0x10, 0x10, 0x10];
+  const withGlow = over(rgba(".stage-glow"), stage); // the glow's alpha is its centre value
+  const card = hex(over(rgba(".glass-card"), withGlow));
+
+  it.each(["foreground", "card-foreground", "muted-foreground"])("%s meets 4.5:1 on the glass card", (fg) => {
+    expect(contrast(dark[fg], card), `${fg} on ${card}`).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the Google button's text (#f5f5f5) meets 4.5:1 on it", () => {
+    expect(contrast("#f5f5f5", card)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 describe("softer palette", () => {
   const light = tokens(":root");
   const dark = tokens(".dark");

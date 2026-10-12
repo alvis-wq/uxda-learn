@@ -466,3 +466,32 @@ streaming first load, navigations; JS disabled shows content). New tests: unit (
 `page-entry.ssr.test.ts` — the template's SSR output has no inline styles / opacity:0 / blur / translate) and two
 `e2e/nav.spec.ts` tests (SSR HTML of /, /leaderboard, /profile; console free of hydration warnings on first load and
 after navigating) — the E2E ones are not run here (no test project).
+
+## Login sequence + post-login loader
+Branch `feat/login-sequence`.
+- **Login sequence** (`LoginSequence`, `src/lib/login-sequence.ts`): the X appears at 1.6× with a fade + sharpen
+  (opacity + blur on the canvas host), eases down to size at +1.2 s over 0.6 s by moving the camera
+  (`zoom` / `setZoom()` in the scene, so it stays crisp), the glass card rises in at +1.8 s (0.98 → 1, 0.5 s), the X
+  fades out at +2.3 s over 0.6 s leaving a faint violet glow, and at +2.9 s the scene unmounts (renderer disposed,
+  context released). Times run from the moment the X is ready.
+- Glass card: translucent fill, `backdrop-filter` blur, 1px light border, top highlight, soft shadow; text contrast
+  is unit-tested against the composited glow (worst case) and measured on rendered pixels.
+- Skippable by any click/key; plays once per browser session (cookie `uxda_login_seq`, read by the server page so the
+  first HTML is right); skipped straight to the card when WebGL2 is missing, the model fails, or the X isn't ready
+  within ~1 s; reduced motion shows the card at once with no X. The card is in the DOM from the start; its controls
+  have `tabindex=-1` and pointer events are off until it is visible. No-JS: `<noscript>` shows it; CSS reveals it at 4 s
+  if scripts never run.
+- **Post-sign-in loader** (`SignInLoader`, replaces the timed intro): the X on the dark stage with the glow, shown
+  while the first page loads; ≥ 800 ms, then fades as soon as the page is ready (document loaded and no `aria-busy`
+  skeleton left in `#main`), no artificial maximum; a key/click skips it; same session-once cookie; reduced motion → no
+  X, no minimum, 150 ms fade. A 30 s CSS backstop only exists for pages whose scripts never run.
+- Scene: new `zoom` and `maxPixelRatio` options (defaults unchanged); the login canvas is `min(140vmin, 1100px)` at a
+  pixel-ratio cap of 1.5. `GlassX` gained `fallback`, `autoplay`, `distance`, `zoom`, `onReady`, `onFail`.
+- Bugs found while testing: a transformed ancestor isolates the X's `screen` blend (dark disc around the X) so the
+  canvas box is centred with margins; `inset-0 m-auto` can't centre a box wider than its container on phones.
+
+Checks: `npm run check` ✅ · `npm run build` ✅. Browser-verified in `next dev`: the timeline (events at +1.8 / +2.3 /
++2.9 s), frames at 1440×900 and 375×812 (no overflow), a 17-point behaviour matrix (hidden-but-reachable card, tabindex,
+skip, once-per-session, reduced motion, no WebGL2, failed/slow model, no JS, axe, no hydration warnings) and a 15-point
+loader matrix (first-HTML, min 0.8 s, 3 s and 6.5 s loads, reduced motion, no WebGL2 fallback, skip, no JS). The 8
+login-page tests in `e2e/glass-x.spec.ts` were run ✅; the sign-in/loader E2E tests are written but NOT run (no test project).
