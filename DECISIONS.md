@@ -129,3 +129,6 @@
 - Dark surfaces are neutral greys stepping up from #101010 (card → popover → muted → secondary) instead of the old cool tint — layering stays readable on a near-black page without a colour cast; accent keeps its violet tint.
 - "Learn" is hidden below `sm` and aria-hidden at all sizes — the logo's label already says "UXDA Learn", and the admin header only fits 375px with the logo alone.
 - Admin track filter keeps `rounded-3xl` on mobile, pill from `sm` — a fully rounded container looks wrong when its pills wrap to two rows.
+- SpecularButton's cleanup only calls `loseContext()` once the canvas is detached — under React StrictMode (`next dev`, so also Playwright) the effect re-runs on the same canvas and the published cleanup kills the context for good, leaving a white box; production was unaffected.
+- SpecularButton keeps its render-time `settingsRef.current = settings` behind a targeted `eslint-disable react-hooks/refs` — it's the published logic, and rewriting it would drift from React Bits for no gain.
+- Fallback border only when `supportsWebGL2()` is false — with WebGL the shader draws the edge, and an always-on border would double it.

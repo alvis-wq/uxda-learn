@@ -417,3 +417,17 @@ Branch `feat/ui-refresh`.
 Checks: `npm run check` ✅ (226 unit tests) · `npm run build` ✅. Browser-verified against `next dev`
 (temporary preview route, removed): both themes at 1280px and 375px, axe A/AA clean, no horizontal overflow,
 Urbanist loaded, live X canvas blends seamlessly into `#101010`. Full E2E not run (no test project here).
+
+## React Bits SpecularButton on the login page
+Branch `feat/specular-button`.
+- `src/components/specular-button/SpecularButton.tsx` + `.css` added from `https://reactbits.dev/r/SpecularButton-TS-CSS.json`
+  (two files, no dependencies, WebGL2). The login page's Google button is now this component with the requested
+  props; same server action, label, Google icon and pending state ("Redirecting to Google…", disabled while pending).
+- It is its own small client component with its own canvas, so it is usable immediately, independent of the glass X.
+- Without WebGL2 it gets a `1px` border in the line colour at 40% (the glass alone is near-invisible); otherwise no border.
+- Two deviations from the published source, both commented in the file: an `eslint-disable` for its render-time ref
+  write, and the WebGL context is only released once the canvas has left the DOM (see DECISIONS).
+
+Checks: `npm run check` ✅ · `npm run build` ✅. Browser-verified (`next dev` and a production build): usable at once,
+axe A/AA clean, no overflow at 375px (button 293×54), focus ring, no-WebGL2 border, hover highlight, no console output.
+`glass-x.spec.ts` scoped its canvas checks to the X's canvas; its 5 login tests were run ✅. Full E2E not run (no test project).
