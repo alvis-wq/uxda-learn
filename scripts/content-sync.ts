@@ -28,7 +28,7 @@ async function main() {
 
   const db = adminClient();
   const [cats, chs, keys] = await Promise.all([
-    db.from("categories").select("slug,title,description,audiences,sort_order,archived"),
+    db.from("categories").select("slug,title,description,audiences,sort_order,archived,image"),
     db.from("challenges").select("*"),
     db.from("challenge_keys").select("challenge_slug,answer_key,grader_notes"),
   ]);
@@ -57,6 +57,7 @@ async function main() {
     );
   }
   for (const u of plan.challengeHashRefreshes) console.log(`  challenge hash refresh: ${u.slug} (version unchanged)`);
+  for (const u of plan.challengeImageUpdates) console.log(`  challenge image: ${u.slug} → ${u.image ?? "none"} (version unchanged)`);
   for (const slug of plan.challengeArchives) console.log(`  challenge archived: ${slug}`);
   for (const slug of plan.categoryArchives) console.log(`  category archived: ${slug}`);
 
@@ -92,6 +93,9 @@ async function main() {
   }
   for (const { slug, content_hash } of plan.challengeHashRefreshes) {
     check(await db.from("challenges").update({ content_hash }).eq("slug", slug), `hash refresh ${slug}`);
+  }
+  for (const { slug, image } of plan.challengeImageUpdates) {
+    check(await db.from("challenges").update({ image }).eq("slug", slug), `image ${slug}`);
   }
   for (const slug of plan.challengeArchives) {
     // Through set_challenge_setting so the archive shows up in the challenge's audit log.

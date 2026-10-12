@@ -41,7 +41,9 @@ create table categories (
   description text,
   audiences audience[] not null check (public.valid_audiences(audiences)),
   sort_order int not null default 0,
-  archived boolean not null default false
+  archived boolean not null default false,
+  -- File name in public/challenges/ (card artwork); display only.
+  image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$')
 );
 
 create table challenges (
@@ -66,6 +68,8 @@ create table challenges (
   content_hash text not null,
   status text not null default 'published' check (status in ('draft','published','archived')),
   due_at timestamptz,
+  -- File name in public/challenges/ (card artwork); display only, not part of content_hash.
+  image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$'),
   updated_at timestamptz not null default now()
 );
 

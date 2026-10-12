@@ -9,6 +9,15 @@ const slug = z
 const id = z.string().regex(/^[a-z0-9][a-z0-9_-]*$/i, "must be a simple id (letters, digits, - or _)");
 const nonEmpty = z.string().trim().min(1, "must not be empty");
 
+/**
+ * Card artwork: a file name in public/challenges/ (no folders). The file's existence is checked in validate.ts.
+ * Keep the pattern in step with the check constraint in supabase/migrations/20261012090000_challenge_images.sql.
+ */
+export const IMAGE_FILE_PATTERN = /^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$/;
+const imageFile = z
+  .string()
+  .regex(IMAGE_FILE_PATTERN, "must be a file name in public/challenges/ ending in .png, .jpg, .webp or .avif (lowercase, no folders)");
+
 export const trackSchema = z.enum(TRACK_VALUES);
 
 /**
@@ -36,6 +45,7 @@ export const categorySchema = z.strictObject({
   audience: legacyAudience,
   description: z.string().trim().optional(),
   sort_order: z.number().int().default(0),
+  image: imageFile.optional(), // default artwork for the category's challenges
 });
 
 export const categoriesFileSchema = z.strictObject({
@@ -124,6 +134,7 @@ export const challengeFrontmatterSchema = z.strictObject({
   estimated_minutes: z.number().int().positive().optional(),
   status: challengeStatusSchema.default("draft"),
   summary: z.string().trim().max(300).optional(),
+  image: imageFile.optional(), // overrides the category's image
   due_at: z.iso.datetime({ offset: true }).optional(),
   questions: z.array(questionSchema).default([]),
   submission: submissionSpecSchema.optional(),

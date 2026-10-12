@@ -1,7 +1,10 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { categorySchema, loadAndValidate } from "./index";
 import { planSync, countChanges } from "./sync-plan";
+import { validateContent } from "./validate";
 import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows } from "./transform";
 
 const FIXTURES = path.resolve(__dirname, "../../../tests/fixtures/content");
@@ -298,5 +301,107 @@ describe("planSync", () => {
     db.challenges.push({ ...db.challenges[0], slug: "gone", content_hash: "x", version: 1, status: "archived" });
     db.categories.push({ ...db.categories[0], slug: "old-cat", archived: true });
     expect(countChanges(planSync(disk, db))).toBe(0);
+  });
+});
+
+describe("card images", () => {
+  const base = { slug: "c", title: "C", audiences: "all" };
+
+  it("accepts a plain image file name on a category and rejects anything else", () => {
+    for (const ok of ["a.webp", "red-flags.png", "x_1.2.jpeg", "photo.avif"]) {
+      expect(categorySchema.safeParse({ ...base, image: ok }).success, ok).toBe(true);
+    }
+    for (const bad of ["../a.png", "dir/a.png", "/a.png", "A.PNG", "a.gif", "a", "a.svg", ""]) {
+      expect(categorySchema.safeParse({ ...base, image: bad }).success, bad).toBe(false);
+    }
+    expect(categorySchema.safeParse(base).success).toBe(true); // optional
+  });
+
+  describe("validation", () => {
+    const withImages = (challengeImage?: string, categoryImage?: string) => {
+      const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+      content.challenges[0].data.image = challengeImage;
+      content.categories[0].image = categoryImage;
+      return content;
+    };
+    const dir = mkdtempSync(path.join(tmpdir(), "card-images-"));
+    writeFileSync(path.join(dir, "exists.webp"), "");
+
+    it("accepts images that exist in public/challenges", () => {
+      expect(validateContent(withImages("exists.webp", "exists.webp"), dir)).toEqual([]);
+    });
+
+    it("rejects a challenge or category image whose file is missing", () => {
+      const messages = validateContent(withImages("nope.webp", "nada.png"), dir).map((e) => `${e.file}: ${e.message}`);
+      expect(messages.some((m) => m.includes("image") && m.includes("nope.webp") && m.includes("public/challenges"))).toBe(true);
+      expect(messages.some((m) => m.startsWith("categories.yaml") && m.includes("nada.png"))).toBe(true);
+    });
+
+    it("needs no image at all", () => {
+      expect(validateContent(withImages(), dir)).toEqual([]);
+    });
+  });
+
+  describe("sync", () => {
+    const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+    const rowsFor = (image?: string) => ({
+      categories: content.categories.map(toCategoryRow),
+      challenges: content.challenges.map((c, i) => toChallengeRows(i === 0 ? { ...c, data: { ...c.data, image } } : c, content.categories)),
+    });
+    const dbFrom = (disk: ReturnType<typeof rowsFor>) => ({
+      categories: disk.categories.map((c) => ({ ...c })),
+      challenges: disk.challenges.map(({ challenge, settings }) => ({
+        ...challenge,
+        due_at: settings.due_at?.replace(/\.000Z$/, "+00:00") ?? null,
+        version: 3 as number,
+        status: settings.status as string,
+        required_for: [...settings.required_for] as string[],
+      })),
+      keys: disk.challenges.map(({ key }) => ({ challenge_slug: key.challenge_slug, answer_key: key.answer_key, grader_notes: key.grader_notes })),
+    });
+
+    it("keeps the image out of content_hash", () => {
+      const a = rowsFor().challenges[0].challenge;
+      const b = rowsFor("hero.webp").challenges[0].challenge;
+      expect(b.image).toBe("hero.webp");
+      expect(b.content_hash).toBe(a.content_hash);
+    });
+
+    it("a changed challenge image alone is its own write: no version bump, no hash refresh", () => {
+      const plan = planSync(rowsFor("new.webp"), dbFrom(rowsFor("old.webp")));
+      expect(plan.challengeWrites).toEqual([]);
+      expect(plan.challengeHashRefreshes).toEqual([]);
+      expect(plan.challengeImageUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp" }]);
+      expect(countChanges(plan)).toBe(1);
+    });
+
+    it("adding and removing an image are both detected", () => {
+      expect(planSync(rowsFor("a.webp"), dbFrom(rowsFor())).challengeImageUpdates).toHaveLength(1);
+      expect(planSync(rowsFor(), dbFrom(rowsFor("a.webp"))).challengeImageUpdates).toEqual([
+        { slug: content.challenges[0].data.slug, image: null },
+      ]);
+    });
+
+    it("an unchanged image changes nothing", () => {
+      expect(countChanges(planSync(rowsFor("a.webp"), dbFrom(rowsFor("a.webp"))))).toBe(0);
+    });
+
+    it("a content change that also changes the image is one write, carrying the image", () => {
+      const db = dbFrom(rowsFor("old.webp"));
+      const i = db.challenges.findIndex((c) => c.slug === content.challenges[0].data.slug);
+      db.challenges[i] = { ...db.challenges[i], title: "Old title", content_hash: "old" };
+      const plan = planSync(rowsFor("new.webp"), db);
+      expect(plan.challengeWrites).toHaveLength(1);
+      expect(plan.challengeWrites[0].row.image).toBe("new.webp");
+      expect(plan.challengeImageUpdates).toEqual([]);
+    });
+
+    it("a category image change updates the category", () => {
+      const disk = rowsFor();
+      const db = dbFrom(disk);
+      disk.categories[0] = { ...disk.categories[0], image: "cat.webp" };
+      const plan = planSync(disk, db);
+      expect(plan.categoryUpserts).toEqual([{ row: disk.categories[0], action: "update" }]);
+    });
   });
 });
