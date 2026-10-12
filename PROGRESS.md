@@ -624,3 +624,16 @@ Checks: `npm run check` ✅ (327 tests) · `npm run build` ✅. E2E updated (aur
 
 Checks: `npm run check` ✅ · `npm run build` ✅.
 
+### Full-width header (same PR)
+
+- The header is as wide as the viewport (page content keeps `max-w-5xl`): logo + "Learn" at the far left, theme toggle + sign-out at the far right,
+  side padding 16px (phones) -> 24 (sm) -> 40 (md) -> 80px (lg+). A `minmax(0,1fr) auto minmax(0,1fr)` grid on every width, so the rubber nav is
+  centred on the viewport itself, not between the logo and the actions. Sticky + transparent -> glass-on-scroll are untouched.
+- The nav's labels now appear from 1024px (were 768px): with equal outer columns, labels (~400px, ~530px with Admin) no longer fit beside the 158px
+  logo at tablet widths without overlapping it. Below that it is icon-only.
+- Measured in a browser (admin and non-admin) at 320, 360, 375, 414, 600, 768, 820, 1023, 1024, 1280, 1440, 1920, 2560px: nav centred to <1px, logo and actions clear of it,
+  no overflow, padding 16/16/40/80 as designed. Phones under ~400px get a slightly tighter nav (and under 340px a smaller logo and tighter side padding) so the
+  equal columns still fit; the one tight spot is an admin on a 320px screen (1px clear).
+
+Checks: `npm run check` ✅ · `npm run build` ✅. E2E (`home.spec.ts` header test: widths, padding, true centre, no overlap at 1024/768/375, icon-only below 1024) written, NOT run.
+

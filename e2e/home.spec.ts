@@ -120,17 +120,44 @@ test.describe("home page", () => {
     await expect(header).not.toHaveAttribute("data-scrolled", "");
   });
 
-  test("header layout: logo left, navigation centred, theme toggle and sign-out right", async ({ page }) => {
+  test("header: full viewport width, logo far left, actions far right, nav in the true centre of the viewport", async ({ page }) => {
     await loginAs(page, "designer");
     await page.goto("/");
     const box = async (loc: ReturnType<typeof page.locator>) => (await loc.boundingBox())!;
-    const logo = await box(page.locator("header.site-header").getByRole("link", { name: "UXDA Learn" }));
-    const nav = await box(page.getByRole("navigation", { name: "Main" }));
-    const out = await box(page.getByRole("button", { name: "Sign out" }));
-    const width = page.viewportSize()!.width;
-    expect(logo.x + logo.width).toBeLessThan(nav.x);
-    expect(nav.x + nav.width).toBeLessThan(out.x);
-    expect(Math.abs(nav.x + nav.width / 2 - width / 2)).toBeLessThan(2); // centred
+    const header = page.locator("header.site-header");
+    const geometry = async () => {
+      const width = page.viewportSize()!.width;
+      return {
+        width,
+        header: await box(header),
+        logo: await box(header.getByRole("link", { name: "UXDA Learn" })),
+        nav: await box(page.getByRole("navigation", { name: "Main" })),
+        toggle: await box(page.getByRole("button", { name: "Toggle dark mode" })),
+        signOut: await box(page.getByRole("button", { name: "Sign out" })),
+      };
+    };
+
+    // Desktop: ~80px side padding, header as wide as the viewport (the page content below keeps its max-width).
+    let g = await geometry();
+    expect(g.header.width).toBe(g.width);
+    expect(g.logo.x).toBeCloseTo(80, 0);
+    expect(g.width - (g.signOut.x + g.signOut.width)).toBeCloseTo(80, 0);
+    expect(g.nav.x + g.nav.width / 2).toBeCloseTo(g.width / 2, 0); // true centre, not between logo and actions
+    // The page content keeps its container width; only the header is full width.
+    expect(await page.locator("main > div").first().evaluate((el) => getComputedStyle(el).maxWidth)).toBe("1024px");
+
+    // Tablet and phone: side padding scales down, the nav stays centred, nothing overlaps or overflows.
+    for (const [width, padding] of [[1024, 80], [768, 40], [375, 16]] as const) {
+      await page.setViewportSize({ width, height: 800 });
+      g = await geometry();
+      expect(g.logo.x, `${width}px: left padding`).toBeCloseTo(padding, 0);
+      expect(g.nav.x + g.nav.width / 2, `${width}px: nav centred`).toBeCloseTo(width / 2, 0);
+      expect(g.logo.x + g.logo.width, `${width}px: logo clear of nav`).toBeLessThanOrEqual(g.nav.x);
+      expect(g.nav.x + g.nav.width, `${width}px: nav clear of actions`).toBeLessThanOrEqual(g.toggle.x);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    }
+    // Below 1024px the nav is icon-only (its links keep their accessible names).
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Leaderboard" }).locator("span")).toBeHidden();
   });
 
   test("required challenges and categories are cards: Start CTA, meta row, one link per card", async ({ page }) => {

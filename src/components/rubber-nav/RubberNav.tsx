@@ -44,11 +44,11 @@ const isActive = (pathname: string, item: RubberNavItem) =>
   item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
 function ItemContent({ item }: { item: RubberNavItem }) {
-  // Below md only the icon shows; the link keeps its accessible name through aria-label.
+  // Below lg only the icon shows (labels need ~450px, and the header keeps the nav in the true centre of the viewport); the link keeps its accessible name through aria-label.
   return (
     <>
       {item.icon}
-      <span className="hidden md:inline">{item.label}</span>
+      <span className="hidden lg:inline">{item.label}</span>
     </>
   );
 }
