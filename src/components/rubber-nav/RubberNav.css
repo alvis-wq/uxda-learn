@@ -1,0 +1,121 @@
+/*
+ * Adapted from React Bits' RubberSegment (https://reactbits.dev, https://reactbits.dev/r/RubberSegment-TS-CSS.json).
+ * Colours come from the --nav-* theme variables in globals.css.
+ */
+.rubber-nav {
+  --rn-radius: 24px;
+  --rn-inset: 3px;
+  --rn-thumb-radius: 21px;
+  --rn-h: 36px;
+  --rn-font: var(--text-meta);
+  --rn-pad: 10px;
+  --rn-min: 40px;
+  --rn-idle: 0.7;
+  --rn-hover: 0.9;
+  --rn-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr); /* equal slots */
+  vertical-align: middle;
+  padding: var(--rn-inset);
+  border-radius: var(--rn-radius);
+  background: var(--nav-track);
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 48rem) {
+  .rubber-nav {
+    --rn-pad: 14px;
+    --rn-min: 44px;
+  }
+}
+
+.rubber-nav__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: calc(var(--rn-h) - var(--rn-inset) * 2);
+  min-width: var(--rn-min);
+  margin: 0;
+  padding: 0 var(--rn-pad);
+  border-radius: var(--rn-thumb-radius);
+  color: var(--nav-text);
+  opacity: var(--rn-idle);
+  font: inherit;
+  font-size: var(--rn-font);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  outline: none;
+  transition:
+    opacity 160ms ease,
+    transform 160ms var(--rn-ease-out);
+}
+
+.rubber-nav__item[aria-current='page'] {
+  opacity: 1;
+}
+
+.rubber-nav__item:active {
+  transform: scale(0.96);
+}
+
+.rubber-nav__item:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rubber-nav__item:not([aria-current='page']):hover {
+    opacity: var(--rn-hover);
+  }
+}
+
+.rubber-nav__item svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* The thumb: a second copy of the row in the active colours, revealed through an animated clip-path. */
+.rubber-nav__thumb {
+  position: absolute;
+  inset: var(--rn-inset);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  background: var(--nav-thumb);
+  color: var(--nav-text-active);
+  pointer-events: none;
+}
+
+.rubber-nav__copy {
+  color: inherit;
+  opacity: 1;
+}
+
+/* Until JS has measured the slots (server HTML / first paint) the active link carries the thumb look itself. */
+.rubber-nav:not([data-ready]) .rubber-nav__thumb {
+  visibility: hidden;
+}
+.rubber-nav:not([data-ready]) .rubber-nav__item[aria-current='page'] {
+  background: var(--nav-thumb);
+  color: var(--nav-text-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rubber-nav__item {
+    transition: opacity 160ms ease;
+  }
+  .rubber-nav__item:active {
+    transform: none;
+  }
+}
