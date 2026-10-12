@@ -1,7 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
-import { AlertCircle } from "lucide-react";
+import { useActionState, useSyncExternalStore } from "react";
+import { useFormStatus } from "react-dom";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { supportsWebGL2 } from "@/components/glass-x/support";
+import SpecularButton from "@/components/specular-button/SpecularButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/submit-button";
 import { signInWithGoogle, testLogin, type LoginState } from "./actions";
@@ -27,15 +30,52 @@ function FormError({ state }: { state: LoginState }) {
   );
 }
 
+const LINE_COLOR = "#AA59C7";
+const noSubscription = () => () => {};
+
+/**
+ * The React Bits SpecularButton as the form's submit button. It is a plain client component (its own
+ * small WebGL canvas), so it works at once, independent of the glass X loading. Its edge highlight needs
+ * WebGL2; without it the near-transparent glass would all but vanish, so it gets a visible border.
+ */
+function GoogleButton() {
+  const { pending } = useFormStatus();
+  const webgl2 = useSyncExternalStore(noSubscription, supportsWebGL2, () => true);
+  return (
+    <SpecularButton
+      type="submit"
+      size="lg"
+      radius={40}
+      tint="#ffffff"
+      tintOpacity={0.04}
+      textColor="#f5f5f5"
+      lineColor={LINE_COLOR}
+      baseColor="#0e1a88"
+      intensity={1.1}
+      idleIntensity={0.35}
+      shineSize={10}
+      shineFade={69}
+      thickness={1.2}
+      glow={1}
+      followMouse
+      proximity={250}
+      className="w-full"
+      disabled={pending}
+      aria-busy={pending}
+      style={webgl2 ? undefined : { border: `1px solid color-mix(in srgb, ${LINE_COLOR} 40%, transparent)` }}
+    >
+      {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <GoogleIcon />}
+      {pending ? "Redirecting to Google…" : "Sign in with Google"}
+    </SpecularButton>
+  );
+}
+
 export function GoogleSignInForm({ next }: { next?: string }) {
   const [state, action] = useActionState(signInWithGoogle, {});
   return (
     <form action={action} className="grid gap-3">
       {next && <input type="hidden" name="next" value={next} />}
-      <SubmitButton size="lg" className="w-full" pendingLabel="Redirecting to Google…">
-        <GoogleIcon />
-        Sign in with Google
-      </SubmitButton>
+      <GoogleButton />
       <FormError state={state} />
     </form>
   );

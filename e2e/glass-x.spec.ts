@@ -8,6 +8,7 @@ test.describe.configure({ mode: "serial" });
 
 const STAGE = "rgb(16, 16, 16)"; // #101010
 const FALLBACK = 'img[src*="glass-x.png"]';
+const X_CANVAS = "canvas:not(button canvas)"; // the glass X; the sign-in button draws its own small canvas
 
 const card = (page: Page) => page.locator(".stage-card-in");
 const intro = (page: Page) => page.getByTestId("sign-in-intro");
@@ -32,12 +33,14 @@ test.describe("glass X with motion", () => {
     await page.goto("/login");
 
     await expect(page.locator("main")).toHaveCSS("background-color", STAGE);
-    await expect(page.locator("canvas")).toHaveCount(1); // the live scene (three loads lazily after idle)
+    await expect(page.locator(X_CANVAS)).toHaveCount(1); // the live scene (three loads lazily after idle)
 
     // Clickable before the card has faded in (returning users shouldn't wait).
     const signInButton = page.getByRole("button", { name: "Sign in with Google" });
     await expect(signInButton).toBeVisible();
     await expect(signInButton).toBeEnabled();
+    await expect(signInButton.locator("canvas")).toHaveCount(1); // SpecularButton's own light canvas
+    await expect(signInButton).toHaveCSS("border-top-width", "0px"); // WebGL draws its edge, no fallback border
     await expect(card(page)).toHaveCSS("opacity", "1", { timeout: 4000 });
 
     // The page itself never scrolls sideways, also with the canvas.
@@ -65,8 +68,10 @@ test.describe("glass X with motion", () => {
     await page.context().clearCookies();
     await page.goto("/login");
     await expect(page.locator(FALLBACK)).toBeVisible();
-    await expect(page.locator("canvas")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeEnabled();
+    await expect(page.locator(X_CANVAS)).toHaveCount(0);
+    const signInButton = page.getByRole("button", { name: "Sign in with Google" });
+    await expect(signInButton).toBeEnabled();
+    await expect(signInButton).toHaveCSS("border-top-width", "1px"); // visible without WebGL2: the glass edge is drawn by the shader
   });
 
   test("login: falls back to the static image when the model fails to load", async ({ page }) => {
@@ -74,7 +79,7 @@ test.describe("glass X with motion", () => {
     await page.context().clearCookies();
     await page.goto("/login");
     await expect(page.locator(FALLBACK)).toBeVisible();
-    await expect(page.locator("canvas")).toHaveCount(0); // the failed renderer left nothing behind
+    await expect(page.locator(X_CANVAS)).toHaveCount(0); // the failed renderer left nothing behind
     await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeEnabled();
   });
 
@@ -123,7 +128,7 @@ test.describe("glass X with reduced motion", () => {
     await page.context().clearCookies();
     await page.goto("/login");
     await expect(page.locator(FALLBACK)).toBeVisible();
-    await expect(page.locator("canvas")).toHaveCount(0);
+    await expect(page.locator(X_CANVAS)).toHaveCount(0);
     await expect(card(page)).toHaveCSS("opacity", "1"); // no fade delay
     await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeEnabled();
   });
