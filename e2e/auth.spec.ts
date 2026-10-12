@@ -31,7 +31,7 @@ test.describe("auth", () => {
 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { name: "Welcome, Test" })).toBeVisible();
-    await expect(page.getByText("You're on the Strategist track.")).toBeVisible();
+    await expect(page.getByText("Strategist track", { exact: true })).toBeVisible();
 
     // Onboarding is one-time: going back there now redirects home.
     await page.goto("/onboarding");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupAttemptHistory, isLowScore, rankRows, summarizeScores, type SubmissionStatus } from "./rules";
+import { groupAttemptHistory, isLowScore, rankOf, rankRows, summarizeScores, type SubmissionStatus } from "./rules";
 
 describe("summarizeScores", () => {
   it("counts the best published attempt per challenge, and pending reviews", () => {
@@ -92,5 +92,24 @@ describe("isLowScore", () => {
     expect(isLowScore(0, 10)).toBe(true);
     expect(isLowScore(null, 10)).toBe(false);
     expect(isLowScore(0, 0)).toBe(false);
+  });
+});
+
+describe("rankOf", () => {
+  const rows = [
+    { user_id: "a", total_score: 30 },
+    { user_id: "b", total_score: 20 },
+    { user_id: "c", total_score: 20 },
+    { user_id: "d", total_score: 0 },
+  ];
+  it("is the competition rank and the number ranked", () => {
+    expect(rankOf(rows, "a")).toEqual({ position: 1, of: 4 });
+    expect(rankOf(rows, "b")).toEqual({ position: 2, of: 4 });
+    expect(rankOf(rows, "c")).toEqual({ position: 2, of: 4 }); // tie
+    expect(rankOf(rows, "d")).toEqual({ position: 4, of: 4 });
+  });
+  it("is null when the user isn't on the board (hidden, or another group)", () => {
+    expect(rankOf(rows, "zzz")).toBeNull();
+    expect(rankOf([], "a")).toBeNull();
   });
 });

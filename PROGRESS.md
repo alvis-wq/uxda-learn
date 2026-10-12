@@ -543,3 +543,34 @@ sign-in/loader E2E (needs the test Supabase project).
 - Post-login loader: the violet `.stage-glow` is gone; the X sits on plain #101010 (no gradient). The login page is unchanged apart from the glow below.
 - Login glow: `.stage-glow` is half the size (`min(110vmin, 860px)` → `min(55vmin, 430px)`), same colour and peak intensity, so the card-contrast model (glow centre) is unchanged and its tests stay green. Tests also pin the new size and keep the glow out of the loader.
 
+## Home dashboard, Aurora, challenge cards, sticky header (`feat/home-dashboard`)
+
+- **Card images (phase 1):** optional `image` on challenges (frontmatter) and categories (`categories.yaml`): a file name in
+  `public/challenges/`, validated by Zod (lowercase, no folders, png/jpg/webp/avif) and for existence. Stored in new nullable
+  `image` columns (migration `20261012090000_challenge_images.sql`, applied by you; types regenerated with no diff). Display
+  only: outside `content_hash`, synced as its own version-neutral write. Resolution: challenge image → category image → none.
+- **Home dashboard:** hero with first name, total points (count-up on the first view of a browser session; the server renders
+  the final value, the animation is applied before first paint; static with reduced motion; screen readers get the final value
+  only), rank in the learner's leaderboard group ("#3 of 12 · Designers"; "Not ranked" when hidden), completed count. Required
+  section: "X of Y required done", progress bar, outstanding required challenges as cards (overdue first, then due date), or a
+  calm "All required challenges done" state. Categories as before. The page is now `HomeView` (data-free) + a thin page.
+- **Aurora** (`src/components/aurora/`, React Bits credit): your config, `mouseInteraction` off, `lightMode` in light theme,
+  StrictMode-safe context cleanup, lazy (`next/dynamic`), nothing drawn without WebGL2. A full-bleed, `aria-hidden`,
+  `pointer-events-none` layer behind a ~544px hero (600px with the header it runs under), fading out over its last 14%.
+  Mounted only after hydration (next-themes knows the theme on the client's first render, the server doesn't).
+- **Cards:** `ChallengeCard` for category pages and the home required list. Light heading (Urbanist 300), lavender
+  subheading, muted body, violet pill CTA (Start / Continue / View result), compact meta row. Dark: near-black tile; light: white
+  tile with a darker violet (`--brand-text`) for the subheading since `#B5A2FF` fails AA on white. 12-column grid on desktop
+  (7/5, then 5/7; a lone last card is full width), one column on mobile. The image gets its own grid column and bleeds off the
+  bottom-right corner through the padding; narrow cards shrink it. One link per card (the title), the CTA is decoration.
+- **Header:** logo / centred rubber nav / theme + sign-out; sticky; transparent at the top, translucent + blur + hairline border
+  once content scrolls under it (IntersectionObserver sentinel, server renders the top state); `transition: none` with reduced motion.
+
+Checks: `npm run check` ✅ (324 tests) · `npm run build` ✅. Browser-verified on a temporary harness (removed): home, cards and
+header in light/dark, 375 / 800 / 1024 / 1280px (no horizontal overflow, no text under any image, no console warnings or
+hydration errors), count-up, reduced motion, sticky header states, axe (all rules except colour contrast, which axe can't evaluate
+over a canvas) clean on all three layouts. Contrast over the aurora was **measured from rendered pixels** (text hidden, background
+sampled behind every text run, 4 moments of the animation, 5 viewports): ≥ 6.45:1 dark, ≥ 5.64:1 light. E2E updated
+(`home.spec.ts` new; auth, required, dashboard selectors) but NOT run: no test Supabase project. No artwork exists yet, so no
+card shows an image until files are added to `public/challenges/`.
+

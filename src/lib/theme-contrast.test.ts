@@ -34,6 +34,11 @@ const PAIRS: [string, string][] = [
   ["foreground", "background"],
   ["foreground", "muted"], // active tab text sits on bg-background inside bg-muted; inactive on muted
   ["foreground", "accent"], // highlighted leaderboard row
+  ["foreground", "tile"], // challenge cards
+  ["muted-foreground", "tile"],
+  ["brand-text", "tile"], // the lavender subheading on a challenge card
+  ["destructive", "tile"],
+  ["warning", "tile"],
   ["card-foreground", "card"],
   ["popover-foreground", "popover"],
   ["muted-foreground", "background"],

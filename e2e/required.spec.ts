@@ -16,7 +16,10 @@ test.describe("required challenges and acknowledgements", () => {
     const section = page.getByTestId("required-section");
     await expect(section.getByTestId("required-summary")).toContainText("0 of 1 required done");
     await expect(section.getByTestId("required-summary")).toContainText("1 overdue");
-    await expect(section.getByRole("link", { name: /\[E2E\] Read the rules/ })).toContainText("Overdue");
+    // Outstanding required challenges are cards: the title is the link, the overdue badge sits in the meta row.
+    const card = section.getByTestId("challenge-card").filter({ has: page.getByRole("link", { name: /\[E2E\] Read the rules/ }) });
+    await expect(card).toContainText("Overdue");
+    await expect(card).toContainText("Start");
 
     await page.goto("/categories/e2e-tests");
     const first = page.getByRole("listitem").first();
@@ -43,7 +46,8 @@ test.describe("required challenges and acknowledgements", () => {
 
     await page.goto("/");
     await expect(page.getByTestId("required-summary")).toContainText("1 of 1 required done");
-    await expect(page.getByText("All required challenges are done.")).toBeVisible();
+    await expect(page.getByTestId("required-all-done")).toContainText("All required challenges done");
+    await expect(page.getByTestId("required-section").getByTestId("challenge-card")).toHaveCount(0);
 
     await page.goto("/profile");
     await expect(page.getByTestId("stat-total")).toHaveText("0");

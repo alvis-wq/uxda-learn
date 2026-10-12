@@ -11,6 +11,12 @@ test.beforeAll(cleanTestUserData);
 test("published score appears on the dashboard and the correct leaderboard tab", async ({ page }) => {
   await loginAs(page, "designer");
 
+  // Home hero before any score: zero points, hidden from the leaderboard so not ranked.
+  await page.goto("/");
+  await expect(page.getByTestId("hero-points")).toContainText("0");
+  await expect(page.getByTestId("hero-rank")).toContainText("Not ranked");
+  await expect(page.getByTestId("hero-completed")).toContainText("0 of");
+
   // Hidden by default (E2E setup) — the leaderboard says so.
   await page.goto("/leaderboard");
   await expect(page.getByRole("link", { name: "Designers" })).toHaveAttribute("aria-current", "page");
@@ -25,6 +31,12 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await next.click();
   await submit.click();
   await expect(page.getByTestId("attempt-score")).toHaveText("4 / 10");
+
+  // The category's card now says "View result" instead of "Start".
+  await page.goto("/categories/e2e-tests");
+  const quizCard = page.getByTestId("challenge-card").filter({ has: page.getByRole("link", { name: "[E2E] Quiz" }) });
+  await expect(quizCard).toContainText("View result");
+  await expect(quizCard).toContainText("Best: 4 / 10");
 
   await page.goto("/profile");
   await expect(page.getByTestId("stat-total")).toHaveText("4");
@@ -43,6 +55,14 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await expect(me).toContainText("You");
   await expect(me.getByRole("cell").last()).toHaveText("4");
 
+  // Home hero: total points, rank within the designers group, completed count.
+  await page.goto("/");
+  await expect(page.getByTestId("hero-points")).toContainText("4");
+  await expect(page.getByTestId("hero-rank")).toContainText("#1");
+  await expect(page.getByTestId("hero-rank")).toContainText("Designers");
+  await expect(page.getByTestId("hero-completed")).toContainText("1 of");
+
+  await page.goto("/leaderboard?group=designers");
   await page.getByRole("link", { name: "Strategists" }).click();
   await expect(page).toHaveURL(/group=strategists/);
   await expect(page.getByText("Test Designer")).toHaveCount(0);

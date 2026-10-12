@@ -1,0 +1,108 @@
+import { expect, test } from "@playwright/test";
+import { cleanTestUserData } from "./fixtures";
+import { loginAs } from "./helpers";
+import { requireTestProject } from "./project";
+
+requireTestProject();
+
+test.describe.configure({ mode: "serial" });
+test.beforeAll(cleanTestUserData);
+
+test.describe("home page", () => {
+  test("hero greets by first name and the page has no hydration problems", async ({ page }) => {
+    const problems: string[] = [];
+    page.on("console", (msg) => {
+      if (["error", "warning"].includes(msg.type()) && /hydrat|did not match|server rendered HTML/i.test(msg.text())) problems.push(msg.text().slice(0, 200));
+    });
+    page.on("pageerror", (err) => problems.push(`pageerror: ${err.message}`));
+    await loginAs(page, "designer");
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Welcome, Test" })).toBeVisible();
+    await expect(page.getByTestId("hero-points")).toBeVisible();
+    await expect(page.getByTestId("hero-rank")).toBeVisible();
+    await expect(page.getByTestId("hero-completed")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(problems).toEqual([]);
+  });
+
+  test("aurora sits behind the hero, is decorative and not interactive; the page works without WebGL2", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const aurora = page.getByTestId("aurora");
+    await expect(aurora).toBeAttached();
+    await expect(aurora).toHaveAttribute("aria-hidden", "true");
+    await expect(aurora).toHaveCSS("pointer-events", "none");
+    // The hero's content paints above it (z-index) and stays clickable.
+    await expect(page.getByTestId("hero")).toBeVisible();
+    await expect(page.getByTestId("hero-rank").getByRole("link", { name: /hidden from the leaderboard/ })).toBeVisible();
+    await page.getByTestId("hero-rank").getByRole("link", { name: /hidden from the leaderboard/ }).click();
+    await expect(page).toHaveURL(/\/profile$/);
+  });
+
+  test("without WebGL2 there is no aurora drawn and nothing breaks", async ({ page }) => {
+    await page.addInitScript(() => {
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      // @ts-expect-error test double: pretend WebGL2 doesn't exist
+      HTMLCanvasElement.prototype.getContext = function (type: string, ...rest: unknown[]) {
+        return type === "webgl2" ? null : getContext.call(this, type, ...rest);
+      };
+    });
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    await loginAs(page, "designer");
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Welcome, Test" })).toBeVisible();
+    await expect(page.getByTestId("required-section")).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("the header is sticky: transparent at the top, translucent with blur once content scrolls under it", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 360 }); // short, so the page can scroll
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const header = page.locator("header.site-header");
+    await expect(header).toHaveCSS("position", "sticky");
+    await expect(header).not.toHaveAttribute("data-scrolled", "");
+    await expect(header).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(header).toHaveCSS("backdrop-filter", "none");
+
+    await page.evaluate(() => window.scrollTo(0, 400));
+    await expect(header).toHaveAttribute("data-scrolled", "");
+    await expect(header).toHaveCSS("backdrop-filter", /blur/);
+    await expect(header).not.toHaveCSS("border-bottom-color", "rgba(0, 0, 0, 0)");
+    expect((await header.boundingBox())!.y).toBe(0); // still stuck to the top
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(header).not.toHaveAttribute("data-scrolled", "");
+  });
+
+  test("header layout: logo left, navigation centred, theme toggle and sign-out right", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const box = async (loc: ReturnType<typeof page.locator>) => (await loc.boundingBox())!;
+    const logo = await box(page.locator("header.site-header").getByRole("link", { name: "UXDA Learn" }));
+    const nav = await box(page.getByRole("navigation", { name: "Main" }));
+    const out = await box(page.getByRole("button", { name: "Sign out" }));
+    const width = page.viewportSize()!.width;
+    expect(logo.x + logo.width).toBeLessThan(nav.x);
+    expect(nav.x + nav.width).toBeLessThan(out.x);
+    expect(Math.abs(nav.x + nav.width / 2 - width / 2)).toBeLessThan(2); // centred
+  });
+
+  test("required challenges and categories are cards: Start CTA, meta row, one link per card", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/categories/e2e-tests");
+    const cards = page.getByTestId("challenge-card");
+    await expect(cards.first()).toBeVisible();
+    expect(await cards.count()).toBeGreaterThanOrEqual(3);
+    const quiz = cards.filter({ has: page.getByRole("link", { name: "[E2E] Quiz" }) });
+    await expect(quiz).toContainText("Start");
+    await expect(quiz).toContainText("10 pts");
+    await expect(quiz.getByRole("link")).toHaveCount(1); // the whole card is one link, named by the title
+    await expect(quiz).toHaveCSS("border-top-left-radius", /^(24|32)px$/);
+    // No artwork configured for the fixtures: no image, text uses the full card.
+    await expect(quiz.locator("img")).toHaveCount(0);
+    await quiz.getByRole("link").click();
+    await expect(page).toHaveURL(/\/challenges\/e2e-quiz$/);
+  });
+});
