@@ -31,8 +31,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
+  /* Urbanist has no monospace companion: code uses the system monospace. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -89,25 +90,26 @@
 }
 
 .dark {
-  --background: #17181c;
-  --foreground: #e6e6ea;
-  --card: #1e1f24;
-  --card-foreground: #e6e6ea;
-  --popover: #222328;
-  --popover-foreground: #e6e6ea;
+  /* Neutral greys stepping up from the #101010 page: card < popover < muted < secondary < input. */
+  --background: #101010;
+  --foreground: #e8e8e8;
+  --card: #1a1a1a;
+  --card-foreground: #e8e8e8;
+  --popover: #212121;
+  --popover-foreground: #e8e8e8;
   --primary: #b5a2ff;
   --primary-foreground: #241a3d;
-  --secondary: #2a2b31;
-  --secondary-foreground: #e6e6ea;
-  --muted: #26272d;
-  --muted-foreground: #a1a1aa;
-  --accent: #2e2a3d;
-  --accent-foreground: #e6e6ea;
+  --secondary: #2b2b2b;
+  --secondary-foreground: #e8e8e8;
+  --muted: #242424;
+  --muted-foreground: #a3a3a3;
+  --accent: #2c2740;
+  --accent-foreground: #e8e8e8;
   --destructive: #f27474;
-  --destructive-foreground: #17181c;
+  --destructive-foreground: #101010;
   --warning: #f0b44c;
-  --border: #2e2f36;
-  --input: #3a3b42;
+  --border: #303030;
+  --input: #3d3d3d;
   --ring: #b5a2ff;
 }
 

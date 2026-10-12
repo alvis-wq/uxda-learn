@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { FlaskConical } from "lucide-react";
 import { STAGE_BACKGROUND } from "@/components/glass-x/constants";
 import { GlassX } from "@/components/glass-x/glass-x";
+import { UxdaLogo } from "@/components/uxda-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { safeNext } from "@/lib/auth/paths";
 import { isTestLoginEnabled } from "@/lib/auth/test-login";
@@ -24,9 +25,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="stage-card-in grid w-full max-w-sm gap-6">
         <Card>
           <CardHeader className="text-center">
-            <div className="bg-brand mx-auto mb-2 size-10 rounded-lg" aria-hidden />
             <CardTitle className="text-xl">
-              <h1>UXDA Learn</h1>
+              {/* Same lockup as the header: logo + "Learn". The logo's label names the heading. */}
+              <h1 className="flex items-center justify-center gap-2.5 font-semibold">
+                <UxdaLogo className="h-7 w-auto" />
+                <span aria-hidden>Learn</span>
+              </h1>
             </CardTitle>
             <CardDescription>Sign in with your UXDA Google account.</CardDescription>
           </CardHeader>

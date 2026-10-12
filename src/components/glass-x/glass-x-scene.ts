@@ -6,7 +6,7 @@
  * stricter cleanup. Never import it statically from app code: it pulls in three, so load it with
  * `import("./glass-x-scene")` (see glass-x-view.tsx).
  *
- *   const x = await mountGlassX(element, { background: '#17181C' });
+ *   const x = await mountGlassX(element, { background: '#101010' });
  *   x.restart();        // replay the 4 s reveal
  *   x.dispose();        // free GPU memory and release the WebGL context
  *

@@ -4,7 +4,7 @@
  * once the reveal ends) and the canvas is screen-blended onto this colour, so black becomes exactly
  * this colour while the glass and bloom stay as designed. Put the X on a surface with this background.
  */
-export const STAGE_BACKGROUND = "#17181C";
+export const STAGE_BACKGROUND = "#101010";
 
 /** The settled end state, rendered on STAGE_BACKGROUND. Shown for reduced motion and when WebGL2 or the model isn't available. */
 export const FALLBACK_IMAGE = "/brand/glass-x.png";

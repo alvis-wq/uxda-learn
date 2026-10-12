@@ -125,3 +125,7 @@
 - `.glb` is exempt from the auth proxy matcher — signed-out visitors need the model on /login, and the proxy was answering with the login HTML.
 - Default E2E runs with `reducedMotion: "reduce"` — skips the intro and animations everywhere; `glass-x.spec.ts` opts back in.
 - ESLint ignores `design-assets/` — reference-only handoff files, not app code.
+- Urbanist as a variable font (no weight list) — one file covers 400/500/600 and the bold markdown uses; latin-ext added for names with diacritics.
+- Dark surfaces are neutral greys stepping up from #101010 (card → popover → muted → secondary) instead of the old cool tint — layering stays readable on a near-black page without a colour cast; accent keeps its violet tint.
+- "Learn" is hidden below `sm` and aria-hidden at all sizes — the logo's label already says "UXDA Learn", and the admin header only fits 375px with the logo alone.
+- Admin track filter keeps `rounded-3xl` on mobile, pill from `sm` — a fully rounded container looks wrong when its pills wrap to two rows.
