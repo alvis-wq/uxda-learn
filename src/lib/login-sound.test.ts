@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LOGIN_SEQ_END_MS } from "./login-sequence";
 import {
   LOGIN_SOUND_DURATION_S,
   LOGIN_SOUND_FADE_MS,
@@ -28,7 +29,7 @@ describe("login sound preference", () => {
   it("uses the agreed file, key and fade", () => {
     expect(LOGIN_SOUND_SRC).toBe("/brand/login-intro.mp3");
     expect(LOGIN_SOUND_KEY).toBe("uxda:login-sound");
-    expect(LOGIN_SOUND_DURATION_S).toBe(6);
+    expect(LOGIN_SOUND_DURATION_S).toBe(4);
     expect(LOGIN_SOUND_FADE_MS).toBe(300);
   });
 });
@@ -42,10 +43,20 @@ describe("soundStartOffset (turned on mid-sequence)", () => {
   it("never starts before 0 (a clock that ran slightly backwards)", () => {
     expect(soundStartOffset(-40)).toBe(0);
   });
-  it("starts nothing once the clip is over, or about to be", () => {
-    expect(soundStartOffset(6000)).toBeNull();
-    expect(soundStartOffset(5800)).toBeNull();
-    expect(soundStartOffset(5700)).toBeCloseTo(5.7);
+  it("starts nothing once the clip is over, or about to be (4 s clip)", () => {
+    expect(soundStartOffset(4000)).toBeNull();
+    expect(soundStartOffset(3800)).toBeNull();
+    expect(soundStartOffset(3700)).toBeCloseTo(3.7);
+  });
+  it("uses the loaded file's real length when the browser knows it", () => {
+    expect(soundStartOffset(5000, 6)).toBeCloseTo(5);
+    expect(soundStartOffset(3000, 3)).toBeNull();
+    expect(soundStartOffset(3000, Number.NaN)).toBeCloseTo(3); // metadata not loaded yet: the constant applies
+    expect(soundStartOffset(3000, Number.POSITIVE_INFINITY)).toBeCloseTo(3);
+  });
+  it("the whole sequence fits inside the clip, so turning the sound on at any moment of it starts something", () => {
+    expect(LOGIN_SEQ_END_MS / 1000).toBeLessThan(LOGIN_SOUND_DURATION_S - 0.25);
+    expect(soundStartOffset(LOGIN_SEQ_END_MS - 1)).not.toBeNull();
   });
 });
 

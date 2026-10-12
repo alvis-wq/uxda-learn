@@ -102,10 +102,10 @@ export function LoginSequence({ children }: { children: ReactNode }) {
     if (reducedMotion) {
       play(0);
     } else if (startedAt.current !== null) {
-      const offset = soundStartOffset(performance.now() - startedAt.current);
+      const offset = soundStartOffset(performance.now() - startedAt.current, sound.audio.current?.duration);
       if (offset !== null) play(offset);
     }
-  }, [sound.on, reducedMotion, play, fadeOut]);
+  }, [sound.on, sound.audio, reducedMotion, play, fadeOut]);
 
   const onReady = useCallback(
     (scene: GlassXHandle) => {

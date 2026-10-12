@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { LOGIN_SOUND_DURATION_S } from "../src/lib/login-sound";
 import { expect, test, type Page } from "@playwright/test";
 import { loginAs } from "./helpers";
 import { requireTestProject } from "./project";
@@ -238,7 +239,7 @@ test.describe("login intro sound (motion)", () => {
     await expect.poll(async () => (await audioLog(page)).plays.length).toBe(1);
     const [position] = (await audioLog(page)).plays;
     expect(position).toBeGreaterThan(0); // from where the sequence has got to, not from 0
-    expect(position).toBeLessThan(6);
+    expect(position).toBeLessThan(LOGIN_SOUND_DURATION_S);
     expect(await page.evaluate(() => localStorage.getItem("uxda:login-sound"))).toBe("on");
     await expect(page.locator("audio")).toHaveAttribute("preload", "auto");
   });

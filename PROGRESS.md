@@ -652,7 +652,7 @@ Checks: `npm run check` ✅ · `npm run build` ✅.
 
 ## Login intro sound (`feat/login-sound`)
 
-- `public/brand/login-intro.mp3` (6 s, trimmed with a fade-out) belongs to the X sequence. **Off by default**; a speaker toggle (`aria-label="Sound on/off"`,
+- `public/brand/login-intro.mp3` (4 s, trimmed with a fade-out; was 6 s) belongs to the X sequence. **Off by default**; a speaker toggle (`aria-label="Sound on/off"`,
   `aria-pressed`) in the top-right corner of the login stage turns it on/off, remembered in localStorage (`uxda:login-sound`: "on" / "off"; guarded, falls back to
   the page view if storage is unavailable).
 - On: it starts when the X sequence starts (`onReady`, position 0). Turned on mid-sequence it starts at the sequence's position (`soundStartOffset(elapsed)`),
@@ -668,3 +668,7 @@ skipping, remembered on reload, off stops it and is remembered, on after the seq
 on/off) and the fade ramp measured per frame on a light page (1 -> 0.09 over ~0.3 s, paused at 329 ms, volume restored). A caveat of this machine: software GL makes Playwright's own
 clicks/keys take seconds on the page while the X renders, so a few checks drive the page in-page instead.
 - Known: the existing spec "login: the X plays, the glass card fades in…" is timing-sensitive under this machine's software GL; it fails the same way on `main` without these changes (checked by stashing), so it is not affected by the sound work.
+- Clip shortened from 6 s to 4 s: `LOGIN_SOUND_DURATION_S` is 4 and `soundStartOffset` now prefers the loaded file's real `audio.duration`, so a future clip change needs no code edit.
+  Nothing else assumed 6 s (the sequence ends at 2.9 s, so the clip now outlives it by ~1.1 s instead of ~3.1 s; mid-sequence turn-on still always has room, tested; the skip fade only
+  applies during the sequence and is unaffected). The E2E position bound now uses the constant.
+
