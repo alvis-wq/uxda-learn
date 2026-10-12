@@ -595,3 +595,13 @@ card shows an image until files are added to `public/challenges/`.
 
 Checks: `npm run check` ✅ (327 tests) · `npm run build` ✅. E2E updated (aurora geometry/stacking, theme default + toggle) but NOT run (no test project).
 
+### Chips and "Coming soon" without the scrim (same PR)
+
+- The scrim is gone from the "Coming soon" label and its chips. Chips are solid `bg-card` pills (border and pill shape kept), so their text
+  never sits on the aurora; the label is `text-foreground` instead of muted. The other bare-text blocks keep the scrim.
+- Re-measured from rendered pixels with a 15px scroll step (10,500 text runs, dark/light x 1280/375px): everything passes (>= 5.69:1,
+  light >= 6.0:1) **except** the label in dark at 375px for three scroll offsets (1365-1395px), where it is at the very bottom edge of
+  the viewport mid-scroll (2.01:1). Nothing was added for that: padding can only fix where text rests, not where it passes through.
+- Page bottom padding `pb-10` -> `pb-28`: scrolled to the end, the label sits ~170-210px above the viewport bottom, above the bright part of the
+  glow; measured at the end of the page: all on-screen text >= 6.9:1 dark / >= 6.32:1 light, both widths.
+

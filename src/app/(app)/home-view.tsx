@@ -26,7 +26,7 @@ export function HomeView({
   return (
     <main className="w-full">
       <PageAurora />
-      <div className="mx-auto w-full max-w-5xl px-4 pt-10 pb-10 sm:pt-16">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-10 pb-28 sm:pt-16">
         <section aria-labelledby="hero-heading" className="mb-14 grid gap-10" data-testid="hero">
           <div className="scrim -mx-3 -my-1 px-3 py-1 w-fit">
             <p className="text-meta text-foreground/80 mb-2">
@@ -157,12 +157,12 @@ export function HomeView({
 
       {comingSoon.length > 0 && (
         <section className="mt-10" aria-labelledby="soon-heading">
-          <h2 id="soon-heading" className="scrim -mx-3 -my-1 px-3 py-1 text-muted-foreground text-meta mb-3 w-fit font-medium">
+          <h2 id="soon-heading" className="text-foreground text-meta mb-3 font-medium">
             Coming soon
           </h2>
           <ul className="text-muted-foreground text-meta flex flex-wrap gap-2">
             {comingSoon.map((c) => (
-              <li key={c.slug} className="scrim rounded-full border px-3 py-1">
+              <li key={c.slug} className="bg-card rounded-full border px-3 py-1">
                 {c.title}
               </li>
             ))}

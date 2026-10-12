@@ -172,4 +172,5 @@
 - A scrim behind bare text (page colour at 85%, invisible at rest), not a dimmer aurora — dimming it enough for muted text (luminance <= 0.043) would leave a ~7%-opacity ghost; the scrim keeps the glow vivid wherever there is no text.
 - The aurora is portalled to `<body>` — `position: fixed` and a negative z-index don't survive an ancestor with a transform (the page-entry wrapper), so they can't live inside the page tree.
 - The app ignores the system colour scheme (`enableSystem={false}`): the only inputs are the saved toggle choice and the dark default.
+- Chips use the card surface (opaque) and the label the full foreground colour instead of a scrim — no shadow anywhere near them; the remaining risk is only text passing through the glow mid-scroll, which no padding can remove.
 
