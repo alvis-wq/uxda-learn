@@ -53,6 +53,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-brand: var(--brand);
+  --color-brand-text: var(--brand-text);
+  --color-tile: var(--tile);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -93,6 +95,9 @@
   --nav-text: #27272a;
   --nav-text-active: #18181b;
   /* Loading skeletons: a touch darker than the card surface, with a faint white sweep. */
+  /* Challenge card surface and the lavender used for text on it (the brand lavender fails AA on white). */
+  --tile: #ffffff;
+  --brand-text: #5b3fc9;
   --skeleton: #ebebed;
   --skeleton-shine: rgb(255 255 255 / 0.6);
 }
@@ -124,6 +129,8 @@
   --nav-text: #fafafa;
   --nav-text-active: #ffffff;
   /* A touch lighter than the card surface, with a barely-there light sweep. */
+  --tile: #0b0b0c;
+  --brand-text: #b5a2ff;
   --skeleton: #262626;
   --skeleton-shine: rgb(255 255 255 / 0.05);
 }
@@ -342,5 +349,31 @@
   }
   [data-slot="skeleton"] {
     background-image: none;
+  }
+}
+
+/*
+ * Site header: sticky and transparent at the top of the page; once content scrolls under it (StickyHeader sets
+ * data-scrolled) it turns translucent with a backdrop blur and a hairline bottom border. Light and dark follow
+ * the theme tokens.
+ */
+.site-header {
+  background-color: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color 250ms ease,
+    border-color 250ms ease,
+    backdrop-filter 250ms ease,
+    -webkit-backdrop-filter 250ms ease;
+}
+.site-header[data-scrolled] {
+  background-color: color-mix(in oklab, var(--background) 72%, transparent);
+  border-bottom-color: var(--border);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header {
+    transition: none;
   }
 }

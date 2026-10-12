@@ -29,7 +29,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-@media (min-width: 48rem) {
+/* Very narrow phones (the header keeps the nav in the true centre, so its side columns must still fit the logo and actions). */
+@media (max-width: 25rem) {
+  .rubber-nav {
+    --rn-pad: 8px;
+    --rn-min: 36px;
+  }
+}
+
+@media (max-width: 21.25rem) {
+  .rubber-nav {
+    --rn-pad: 6px;
+    --rn-min: 32px;
+  }
+}
+
+@media (min-width: 64rem) {
   .rubber-nav {
     --rn-pad: 14px;
     --rn-min: 44px;

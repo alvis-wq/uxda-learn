@@ -55,6 +55,8 @@ export type ChallengeRow = {
   questions: PublicQuestion[];
   submission_spec: Record<string, unknown>;
   rubric: unknown[];
+  /** Card artwork (a file in public/challenges/). Display only: not in PUBLIC_KEYS, so it never changes content_hash. */
+  image: string | null;
   content_hash: string;
 };
 
@@ -72,7 +74,7 @@ export const SETTING_FIELDS = ["status", "required_for", "due_at"] as const sati
 export type SettingField = (typeof SETTING_FIELDS)[number];
 
 /** The public fields content_hash covers (everything in ChallengeRow except the hash). */
-export type PublicChallengeContent = Omit<ChallengeRow, "content_hash">;
+export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image">;
 
 const PUBLIC_KEYS = [
   "slug", "category_slug", "title", "summary", "body_md", "type", "audiences", "difficulty", "points",
@@ -106,6 +108,7 @@ export type CategoryRow = {
   audiences: Audience[];
   sort_order: number;
   archived: boolean;
+  image: string | null;
 };
 
 export function toCategoryRow(c: Category): CategoryRow {
@@ -116,6 +119,7 @@ export function toCategoryRow(c: Category): CategoryRow {
     audiences: c.audiences,
     sort_order: c.sort_order,
     archived: false,
+    image: c.image ?? null,
   };
 }
 
@@ -158,7 +162,7 @@ export function toChallengeRows(
   }
 
   return {
-    challenge: { ...publicContent, content_hash },
+    challenge: { ...publicContent, image: c.image ?? null, content_hash },
     settings: { status: c.status, required_for: c.required_for ?? [], due_at: normalizeTimestamp(c.due_at) },
     key: { challenge_slug: c.slug, answer_key, grader_notes: c.grader_notes?.trim() || null },
   };

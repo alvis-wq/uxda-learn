@@ -79,6 +79,7 @@ export type Database = {
           archived: boolean
           audiences: Database["public"]["Enums"]["audience"][]
           description: string | null
+          image: string | null
           slug: string
           sort_order: number
           title: string
@@ -87,6 +88,7 @@ export type Database = {
           archived?: boolean
           audiences: Database["public"]["Enums"]["audience"][]
           description?: string | null
+          image?: string | null
           slug: string
           sort_order?: number
           title: string
@@ -95,6 +97,7 @@ export type Database = {
           archived?: boolean
           audiences?: Database["public"]["Enums"]["audience"][]
           description?: string | null
+          image?: string | null
           slug?: string
           sort_order?: number
           title?: string
@@ -184,6 +187,7 @@ export type Database = {
           difficulty: number
           due_at: string | null
           estimated_minutes: number | null
+          image: string | null
           points: number
           questions: Json
           required_for: Database["public"]["Enums"]["audience"][]
@@ -205,6 +209,7 @@ export type Database = {
           difficulty: number
           due_at?: string | null
           estimated_minutes?: number | null
+          image?: string | null
           points: number
           questions?: Json
           required_for?: Database["public"]["Enums"]["audience"][]
@@ -226,6 +231,7 @@ export type Database = {
           difficulty?: number
           due_at?: string | null
           estimated_minutes?: number | null
+          image?: string | null
           points?: number
           questions?: Json
           required_for?: Database["public"]["Enums"]["audience"][]

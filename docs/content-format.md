@@ -39,7 +39,12 @@ categories:
     audiences: [strategist]    # all | [track, ...]
     description: One sentence.
     sort_order: 10
+    image: wireframing.webp    # optional default card artwork for the category's challenges
 ```
+
+`image` is a file name (no folders; lowercase `.png`, `.jpg`, `.webp` or `.avif`) that must exist in
+`public/challenges/`. A challenge's own `image` wins; with neither, the card has no image. Images are
+display-only: they are not part of the content hash, so changing one never bumps a challenge's `version`.
 
 ## content/challenges/<slug>.md
 Markdown file with YAML frontmatter. The body is the brief shown to the user.
@@ -57,6 +62,7 @@ type: mixed                        # quiz | screenshot | figma | mixed | acknowl
 difficulty: 2                      # 1 easy, 2 medium, 3 hard (not used by acknowledge)
 points: 30                         # MUST equal sum of question points + rubric points
 estimated_minutes: 90
+image: three-tools.webp            # optional card artwork in public/challenges/ (overrides the category's)
 status: draft                      # initial value* — draft | published | archived
 questions:                         # optional
   - id: q1

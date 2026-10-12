@@ -3,8 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/auth/session";
 import { isChallengeVisible, parseChallenge, type Challenge } from "@/lib/challenges/model";
 import { requiredFirst, requiredState, sortByUrgency, type RequiredState } from "@/lib/challenges/required";
-import { isRequiredFor, isVisibleToTrack } from "@/lib/tracks";
-import { attemptState, type AttemptState, type AttemptSummary } from "@/lib/submissions/rules";
+import { resolveCardImage } from "@/lib/challenges/card";
+import { groupForTrack, isRequiredFor, isVisibleToTrack } from "@/lib/tracks";
+import {
+  attemptState,
+  rankOf,
+  summarizeScores,
+  type AttemptState,
+  type AttemptSummary,
+  type SubmissionStatus,
+} from "@/lib/submissions/rules";
 
 /**
  * Learner-facing reads. All go through the user's RLS-scoped client and then apply the
@@ -81,37 +89,100 @@ export type CategoryProgress = {
   requiredOutstanding: number;
 };
 
-export type RequiredItem = {
+/** Everything a challenge card shows, resolved for the signed-in learner. */
+export type CardChallenge = {
   slug: string;
   title: string;
-  category_slug: string;
+  summary: string | null;
+  categoryTitle: string;
   type: Challenge["type"];
+  difficulty: number;
+  points: number;
+  estimated_minutes: number | null;
   due_at: string | null;
+  required: boolean;
+  done: boolean;
   requiredState: RequiredState;
+  latestStatus: SubmissionStatus | null;
+  acknowledged: boolean;
+  bestScore: number | null;
+  /** Public URL of the card artwork (the challenge's own, else its category's), or null. */
+  imageUrl: string | null;
+};
+
+type CardSource = {
+  slug: string;
+  title: string;
+  summary: string | null;
+  type: Challenge["type"];
+  difficulty: number;
+  points: number;
+  estimated_minutes: number | null;
+  due_at: string | null;
+  image: string | null;
+};
+
+function cardOf(
+  ch: CardSource,
+  category: { title: string; image: string | null },
+  p: ChallengeProgress,
+): CardChallenge {
+  return {
+    slug: ch.slug,
+    title: ch.title,
+    summary: ch.summary,
+    categoryTitle: category.title,
+    type: ch.type,
+    difficulty: ch.difficulty,
+    points: ch.points,
+    estimated_minutes: ch.estimated_minutes,
+    due_at: ch.due_at,
+    required: p.required,
+    done: p.done,
+    requiredState: p.requiredState,
+    latestStatus: p.state.latest?.status ?? null,
+    acknowledged: p.acknowledgedAt !== null,
+    bestScore: p.state.bestScore,
+    imageUrl: resolveCardImage(ch.image, category.image),
+  };
+}
+
+export type HomeHero = {
+  totalScore: number;
+  /** Scored challenges completed, out of the scored ones visible to the learner. */
+  completed: number;
+  totalScored: number;
+  groupLabel: string | null;
+  /** Null when the learner isn't on the leaderboard (hidden from it). */
+  rank: { position: number; of: number } | null;
 };
 
 export type HomeData = {
+  hero: HomeHero;
   categories: CategoryProgress[];
-  required: { total: number; done: number; outstanding: RequiredItem[]; overdue: number };
+  required: { total: number; done: number; outstanding: CardChallenge[]; overdue: number };
 };
 
 export async function getHomeData(profile: Profile, now = new Date()): Promise<HomeData> {
   const supabase = await createClient();
-  const [cats, chs, subs, acks] = await Promise.all([
+  const group = groupForTrack(profile.track);
+  const [cats, chs, subs, acks, board] = await Promise.all([
     supabase
       .from("categories")
-      .select("slug,title,description,audiences,sort_order,archived")
+      .select("slug,title,description,audiences,sort_order,archived,image")
       .eq("archived", false)
       .order("sort_order"),
     supabase
       .from("challenges")
-      .select("slug,title,category_slug,type,status,audiences,required_for,due_at,points")
+      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,image")
       .eq("status", "published"),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
+    group ? supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] }) : Promise.resolve(null),
   ]);
   if (cats.error) throw new Error(`Couldn't load categories: ${cats.error.message}`);
   if (chs.error) throw new Error(`Couldn't load challenges: ${chs.error.message}`);
+  if (board?.error) throw new Error(`Couldn't load the leaderboard: ${board.error.message}`);
   const bySlug = groupBySlug(subs);
   const catBySlug = new Map(cats.data.map((c) => [c.slug, c]));
 
@@ -136,16 +207,22 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     });
 
   const required = visible.filter((ch) => ch.required);
-  const outstanding = sortByUrgency(required.filter((ch) => !ch.done)).map((ch) => ({
-    slug: ch.slug,
-    title: ch.title,
-    category_slug: ch.category_slug,
-    type: ch.type,
-    due_at: ch.due_at,
-    requiredState: ch.requiredState,
-  }));
+  const outstanding = sortByUrgency(required.filter((ch) => !ch.done)).map((ch) => {
+    const category = catBySlug.get(ch.category_slug);
+    return cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
+  });
+
+  const { totalScore, completed } = summarizeScores(subs);
+  const hero: HomeHero = {
+    totalScore,
+    completed,
+    totalScored: visible.filter((ch) => ch.type !== "acknowledge").length,
+    groupLabel: group?.label ?? null,
+    rank: board?.data ? rankOf(board.data, profile.id) : null,
+  };
 
   return {
+    hero,
     categories,
     required: {
       total: required.length,
@@ -160,7 +237,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   const supabase = await createClient();
   const { data: category } = await supabase
     .from("categories")
-    .select("slug,title,description,audiences,archived")
+    .select("slug,title,description,audiences,archived,image")
     .eq("slug", slug)
     .maybeSingle();
   if (!category || category.archived || !isVisibleToTrack(category.audiences, profile.track)) return null;
@@ -168,7 +245,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   const [chs, subs, acks] = await Promise.all([
     supabase
       .from("challenges")
-      .select("slug,title,summary,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at")
+      .select("slug,title,summary,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image")
       .eq("category_slug", slug)
       .eq("status", "published")
       .order("difficulty")
@@ -184,7 +261,10 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     challenges: requiredFirst(
       chs.data
         .filter((ch) => isChallengeVisible(ch, category, profile.track))
-        .map((ch) => ({ ...ch, ...progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, now) })),
+        .map((ch) => {
+          const progress = progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, now);
+          return { ...cardOf(ch, category, progress), required: progress.required };
+        }),
     ),
   };
 }

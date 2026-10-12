@@ -80,3 +80,20 @@ export async function fillScreenshotChallenge(page: Page, reflection: string) {
   await next.click();
   await expect(page.getByRole("heading", { name: "Review & submit", exact: true })).toBeFocused();
 }
+
+/**
+ * Pick the app theme for a page. The app defaults to dark and ignores the system setting, so tests choose a theme the
+ * way a visitor does: through the saved choice (localStorage "theme"). Persists across navigations on this page.
+ */
+export async function chooseTheme(page: Page, scheme: "light" | "dark") {
+  await page.addInitScript((s) => localStorage.setItem("theme", s), scheme);
+}
+
+/** Switch the theme of the page that is already open (same effect as the toggle). */
+export async function switchTheme(page: Page, scheme: "light" | "dark") {
+  await page.evaluate((s) => {
+    localStorage.setItem("theme", s);
+    document.documentElement.classList.toggle("dark", s === "dark");
+    document.documentElement.style.colorScheme = s;
+  }, scheme);
+}

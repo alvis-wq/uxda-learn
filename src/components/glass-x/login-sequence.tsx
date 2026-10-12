@@ -2,12 +2,7 @@
 
 import { animate } from "motion/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import {
-  LOGIN_SEQ,
-  LOGIN_SEQ_COOKIE,
-  LOGIN_X_DISTANCE,
-  type LoginSequenceInitial,
-} from "@/lib/login-sequence";
+import { LOGIN_SEQ, LOGIN_X_DISTANCE } from "@/lib/login-sequence";
 import { STAGE_BACKGROUND } from "./constants";
 import { GlassX } from "./glass-x";
 import type { GlassXHandle } from "./glass-x-scene";
@@ -29,20 +24,20 @@ export const useLoginCardInteractive = () => useContext(CardInteractive);
  * over a soft violet glow. `children` is the card content; it is in the DOM from the start (screen readers can
  * reach it) and only fades in visually.
  *
- * - Plays once per browser session (cookie read by the server page, so there is no flash either way).
+ * - Plays every time the login page loads (fresh visit, reload, after sign-out): there is no stored "already seen" state.
  * - Any click or key jumps to the end state. Reduced motion, a missing WebGL2, or an X that isn't ready within
  *   ~1 s skip straight to it, so signing in is never blocked.
  * - Without JavaScript the card is shown by <noscript> at once, and by a CSS animation after a few seconds if
  *   scripts fail to run (globals.css).
  */
-export function LoginSequence({ initial, children }: { initial: LoginSequenceInitial; children: ReactNode }) {
+export function LoginSequence({ children }: { children: ReactNode }) {
   const reducedMotion = usePrefersReducedMotion();
   const webgl2 = useSyncExternalStore(noSubscription, supportsWebGL2, () => true);
   const hydrated = useSyncExternalStore(noSubscription, () => true, () => false);
-  const [phase, setPhase] = useState<Phase>(initial === "done" ? "done" : "play");
+  const [phase, setPhase] = useState<Phase>("play");
 
-  const canPlay = initial === "play" && !reducedMotion && webgl2;
-  const current: Phase = initial === "play" && !canPlay ? "done" : phase;
+  const canPlay = !reducedMotion && webgl2;
+  const current: Phase = canPlay ? phase : "done";
   const sceneMounted = canPlay && phase !== "done";
 
   const timers = useRef<number[]>([]);
@@ -57,11 +52,6 @@ export function LoginSequence({ initial, children }: { initial: LoginSequenceIni
     stopAll();
     setPhase("done");
   }, [stopAll]);
-
-  // Started (or skipped): not again this browser session, even on reload.
-  useEffect(() => {
-    if (initial === "play") document.cookie = `${LOGIN_SEQ_COOKIE}=seen; path=/; SameSite=Lax`;
-  }, [initial]);
 
   // The X has to be ready in time, otherwise skip straight to the card.
   useEffect(() => {

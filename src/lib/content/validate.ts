@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { ContentError, LoadedContent } from "./load";
 import { audienceTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
 import { challengeParts, describePlaceholders, findPlaceholders } from "./placeholders";
@@ -11,7 +13,11 @@ function duplicates(values: string[]): string[] {
 }
 
 /** Cross-file and semantic rules on top of the Zod schemas. Returns all errors found. */
-export function validateContent(content: LoadedContent): ContentError[] {
+export function validateContent(
+  content: LoadedContent,
+  /** Where card images live (public/challenges); a referenced file must exist there. */
+  imageDir = path.join(process.cwd(), "public", "challenges"),
+): ContentError[] {
   const errors: ContentError[] = [...content.errors];
   const err = (file: string, message: string) => errors.push({ file, message });
 
@@ -19,6 +25,10 @@ export function validateContent(content: LoadedContent): ContentError[] {
     err("categories.yaml", `duplicate category slug "${slug}"`);
   }
   const categoriesBySlug = new Map(content.categories.map((c) => [c.slug, c]));
+  const missingImage = (image: string | undefined) => image !== undefined && !existsSync(path.join(imageDir, image));
+  for (const c of content.categories) {
+    if (missingImage(c.image)) err("categories.yaml", `category "${c.slug}": image "${c.image}" not found in public/challenges/`);
+  }
 
   for (const slug of duplicates(content.challenges.map((c) => c.data.slug))) {
     const files = content.challenges.filter((c) => c.data.slug === slug).map((c) => c.file);
@@ -51,6 +61,7 @@ export function validateContent(content: LoadedContent): ContentError[] {
       }
     }
 
+    if (missingImage(c.image)) err(file, `image: "${c.image}" not found in public/challenges/`);
     if (!body) err(file, "brief (markdown body) is empty");
 
     // A file can only publish a challenge when it's first created; never with placeholders in it.

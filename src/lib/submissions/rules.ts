@@ -85,6 +85,18 @@ export function rankRows<T extends { total_score: number }>(rows: T[]): (T & { r
   }));
 }
 
+/**
+ * A user's place in a leaderboard group: standard competition rank and how many are ranked. Null when they aren't
+ * on the board (hidden from the leaderboard, or not in the group).
+ */
+export function rankOf<T extends { user_id: string; total_score: number }>(
+  rows: T[],
+  userId: string,
+): { position: number; of: number } | null {
+  const me = rankRows(rows).find((r) => r.user_id === userId);
+  return me ? { position: me.rank, of: rows.length } : null;
+}
+
 /** How one attempt reads in the learner's history. */
 export type AttemptLabel = "best" | "earlier" | "not_counted" | "pending" | "resubmission";
 

@@ -2,7 +2,7 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
-import { loginAs, stepButtons, type Role } from "./helpers";
+import { loginAs, stepButtons, chooseTheme, type Role } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
@@ -41,7 +41,7 @@ async function visit(page: Page, url: string) {
 
 for (const scheme of ["light", "dark"] as const) {
   test(`no WCAG A/AA violations (${scheme} mode)`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: scheme });
+    await chooseTheme(page, scheme);
     const problems: string[] = [];
 
     await page.context().clearCookies();
@@ -96,7 +96,7 @@ test("keyboard: skip link moves focus to the main content", async ({ page }) => 
 
 for (const scheme of ["light", "dark"] as const) {
   test(`stepped challenge: every step passes axe and fits at 375px (${scheme} mode)`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: scheme });
+    await chooseTheme(page, scheme);
     await page.setViewportSize({ width: 375, height: 812 });
     await loginAs(page, "strategist");
     await visit(page, "/challenges/e2e-screenshot");

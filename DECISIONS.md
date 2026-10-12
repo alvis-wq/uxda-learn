@@ -159,4 +159,22 @@
 - Skeleton sweep is one `@property`-animated custom property on `:root` read by viewport-fixed gradients — per-element animations start whenever each skeleton mounts and drift apart, and a per-element ::after sweep can't cross several skeletons as one band; it only runs while a skeleton exists (`:root:has(...)`), so idle pages pay nothing.
 - The loader shows after every new sign-in, not once per browser session — a sign-in always sets `pending` and sign-out clears the cookie; "seen" only stops reloads and navigation within the same sign-in.
 - The loader has no glow at all, not a smaller one — it is a plain #101010 stage; only the login card keeps the (now half-size) glow it refracts.
+- Card images are display-only and outside `content_hash` — swapping artwork must not bump a challenge's version (versions mean "the content changed"); sync writes a changed image as its own update.
+- Image values are bare file names in `public/challenges/` (no folders), checked by Zod, a DB check constraint and a file-exists validation — no path traversal, and a typo fails `content:validate` instead of shipping a broken image.
+- Lavender text uses its own token: `#B5A2FF` on dark, a darker violet (`--brand-text`) on light — the brand lavender is 2.3:1 on white; the CTA pill keeps the brand fill with dark text.
+- The whole card is one link (the title, stretched), with the CTA aria-hidden — one tab stop per card and the accessible name stays the challenge title.
+- The aurora is behind the hero with the bright band below the stats and the hero sized to the aurora (not the reverse), so no text sits on the brightest part; verified by sampling rendered pixels, since axe can't see through a canvas.
+- Aurora mounts after hydration: the theme is only known on the client, and a theme-dependent first render would not match the server HTML.
+- Count-up: the server renders the final number (correct without JS), the animation is set before first paint, and it plays once per browser session (module state) — a brief SSR-final → 0 flip on a hard load is the cost of keeping the HTML correct.
+- Sticky-header state uses an IntersectionObserver sentinel, not a scroll listener, and the server always renders the "top" state — nothing to mismatch on hydration.
+- A lone last card spans the full row rather than leaving a half-empty row.
+- "Middle line of the aurora" = the middle of its glow (0.115 of the box above its bottom edge), not the box's centre — the box's upper half is empty with `direction="bottom"`, so the literal reading shows no aurora at all. One constant (`GLOW_MIDLINE`) changes it.
+- A scrim behind bare text (page colour at 85%, invisible at rest), not a dimmer aurora — dimming it enough for muted text (luminance <= 0.043) would leave a ~7%-opacity ghost; the scrim keeps the glow vivid wherever there is no text.
+- The aurora is portalled to `<body>` — `position: fixed` and a negative z-index don't survive an ancestor with a transform (the page-entry wrapper), so they can't live inside the page tree.
+- The app ignores the system colour scheme (`enableSystem={false}`): the only inputs are the saved toggle choice and the dark default.
+- Chips use the card surface (opaque) and the label the full foreground colour instead of a scrim — no shadow anywhere near them; the remaining risk is only text passing through the glow mid-scroll, which no padding can remove.
+- Contrast is held at the resting position only (scrolled to the end, text above the glow), with no scrim or shadow anywhere — the glow is a decoration that text may pass over while scrolling; the bottom padding equals the glow's measured reach (`box x (0.48 - 0.115) + 1rem`) so it stays correct at any viewport height, and a unit test pins it to the measured reach.
+- The aurora's size is one formula (`aurora/geometry.ts`) used by the component, the page padding and the tests — halving the glow is one change, and the padding follows it.
+- Header = three-column grid with equal `minmax(0,1fr)` outer columns at every width — the only way to put the nav at the true viewport centre; the cost is that the nav needs room on both sides, so labels moved from md to lg and phones under ~400px get a tighter nav.
+- The login sequence no longer remembers that it played (supersedes the session-cookie decision above): a stored "seen" flag meant a reload or a sign-out landed on a bare card; it plays on every load, and since nothing is stored the server always renders the same first HTML.
 

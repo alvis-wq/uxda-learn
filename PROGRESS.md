@@ -543,3 +543,110 @@ sign-in/loader E2E (needs the test Supabase project).
 - Post-login loader: the violet `.stage-glow` is gone; the X sits on plain #101010 (no gradient). The login page is unchanged apart from the glow below.
 - Login glow: `.stage-glow` is half the size (`min(110vmin, 860px)` → `min(55vmin, 430px)`), same colour and peak intensity, so the card-contrast model (glow centre) is unchanged and its tests stay green. Tests also pin the new size and keep the glow out of the loader.
 
+## Home dashboard, Aurora, challenge cards, sticky header (`feat/home-dashboard`)
+
+- **Card images (phase 1):** optional `image` on challenges (frontmatter) and categories (`categories.yaml`): a file name in
+  `public/challenges/`, validated by Zod (lowercase, no folders, png/jpg/webp/avif) and for existence. Stored in new nullable
+  `image` columns (migration `20261012090000_challenge_images.sql`, applied by you; types regenerated with no diff). Display
+  only: outside `content_hash`, synced as its own version-neutral write. Resolution: challenge image → category image → none.
+- **Home dashboard:** hero with first name, total points (count-up on the first view of a browser session; the server renders
+  the final value, the animation is applied before first paint; static with reduced motion; screen readers get the final value
+  only), rank in the learner's leaderboard group ("#3 of 12 · Designers"; "Not ranked" when hidden), completed count. Required
+  section: "X of Y required done", progress bar, outstanding required challenges as cards (overdue first, then due date), or a
+  calm "All required challenges done" state. Categories as before. The page is now `HomeView` (data-free) + a thin page.
+- **Aurora** (`src/components/aurora/`, React Bits credit): your config, `mouseInteraction` off, `lightMode` in light theme,
+  StrictMode-safe context cleanup, lazy (`next/dynamic`), nothing drawn without WebGL2. A full-bleed, `aria-hidden`,
+  `pointer-events-none` layer behind a ~544px hero (600px with the header it runs under), fading out over its last 14%.
+  Mounted only after hydration (next-themes knows the theme on the client's first render, the server doesn't).
+- **Cards:** `ChallengeCard` for category pages and the home required list. Light heading (Urbanist 300), lavender
+  subheading, muted body, violet pill CTA (Start / Continue / View result), compact meta row. Dark: near-black tile; light: white
+  tile with a darker violet (`--brand-text`) for the subheading since `#B5A2FF` fails AA on white. 12-column grid on desktop
+  (7/5, then 5/7; a lone last card is full width), one column on mobile. The image gets its own grid column and bleeds off the
+  bottom-right corner through the padding; narrow cards shrink it. One link per card (the title), the CTA is decoration.
+- **Header:** logo / centred rubber nav / theme + sign-out; sticky; transparent at the top, translucent + blur + hairline border
+  once content scrolls under it (IntersectionObserver sentinel, server renders the top state); `transition: none` with reduced motion.
+
+Checks: `npm run check` ✅ (324 tests) · `npm run build` ✅. Browser-verified on a temporary harness (removed): home, cards and
+header in light/dark, 375 / 800 / 1024 / 1280px (no horizontal overflow, no text under any image, no console warnings or
+hydration errors), count-up, reduced motion, sticky header states, axe (all rules except colour contrast, which axe can't evaluate
+over a canvas) clean on all three layouts. Contrast over the aurora was **measured from rendered pixels** (text hidden, background
+sampled behind every text run, 4 moments of the animation, 5 viewports): ≥ 6.45:1 dark, ≥ 5.64:1 light. E2E updated
+(`home.spec.ts` new; auth, required, dashboard selectors) but NOT run: no test Supabase project. No artwork exists yet, so no
+card shows an image until files are added to `public/challenges/`.
+
+### Aurora pinned to the viewport + dark by default (same PR)
+
+- **Aurora position:** `PageAurora` replaces the hero-band placement. It is `position: fixed`, `z-index: -10`, `pointer-events: none`,
+  `aria-hidden`, portalled into `<body>` (the page-entry animation transforms the page wrapper, which would otherwise turn
+  `fixed` into "fixed to that wrapper" and trap the z-index), and stays put while scrolling. Home page only.
+- **"Middle line":** with `direction="bottom"` the shader's glow is brightest at the *box's* bottom edge and fades upwards; the
+  box's own middle is empty, so putting the box centre on the viewport edge shows nothing. I read "middle line" as the middle of the
+  glow band: its brightness-weighted centre (measured from rendered frames: 0.10-0.13 of the box height above the box's bottom, at
+  600/900px boxes and 1280/1920px widths, stable over time) is on the viewport's bottom edge (`GLOW_MIDLINE = 0.115`), so only the upper
+  half of the glow shows. Box height `clamp(600px, 75vh, 900px)`.
+- **Contrast:** over the visible aurora no text colour passes un-scrimmed (peak luminance 0.25-0.52 in dark; muted text needs <= 0.043).
+  A `.scrim` (page colour at 85%, feathered) now sits behind the bare text on the home page (hero blocks, section headings,
+  "Coming soon" chips); cards and tiles are opaque. At rest it is invisible (page colour on page colour). 85% was derived from the
+  worst visible pixel and verified end to end: 1,708 rendered text runs over a scroll sweep at 120px steps, dark/light x 1280/375px:
+  min 6.37:1 dark, 5.87:1 light.
+- **Default theme:** `defaultTheme="dark"`, `enableSystem={false}`: no saved choice (and any system setting) gets dark; the toggle
+  still stores light/dark in localStorage. E2E that relied on `emulateMedia({colorScheme})` now choose a theme the way a visitor
+  does (`chooseTheme` / `switchTheme` helpers).
+
+Checks: `npm run check` ✅ (327 tests) · `npm run build` ✅. E2E updated (aurora geometry/stacking, theme default + toggle) but NOT run (no test project).
+
+### Chips and "Coming soon" without the scrim (same PR)
+
+- The scrim is gone from the "Coming soon" label and its chips. Chips are solid `bg-card` pills (border and pill shape kept), so their text
+  never sits on the aurora; the label is `text-foreground` instead of muted. The other bare-text blocks keep the scrim.
+- Re-measured from rendered pixels with a 15px scroll step (10,500 text runs, dark/light x 1280/375px): everything passes (>= 5.69:1,
+  light >= 6.0:1) **except** the label in dark at 375px for three scroll offsets (1365-1395px), where it is at the very bottom edge of
+  the viewport mid-scroll (2.01:1). Nothing was added for that: padding can only fix where text rests, not where it passes through.
+- Page bottom padding `pb-10` -> `pb-28`: scrolled to the end, the label sits ~170-210px above the viewport bottom, above the bright part of the
+  glow; measured at the end of the page: all on-screen text >= 6.9:1 dark / >= 6.32:1 light, both widths.
+
+### Scrim removed everywhere; half-height aurora; resting-position readability (same PR)
+
+- **Scrim removed (code, not hidden):** the `.scrim` rule and every use of it (hero blocks, section headings, chips, the empty state's
+  `className` prop that only existed for it) are deleted; a test now fails if the word reappears in any source or stylesheet. The sticky
+  header's translucent glass is a separate, requested feature and is unchanged.
+- **Aurora half as tall:** box `clamp(300px, 37.5vh, 450px)` (was `600/75vh/900`); same colours and settings, so the glow reaches half as high.
+  The glow midline still sits on the viewport's bottom edge (0.115 of the box below it). Constants and formulas live in `aurora/geometry.ts`.
+- **Reach, measured (rendered frames, 6 moments, dark/light x 375-1920px wide x 800-1400px tall):** the faintest visible wisp is 0.47-0.48 of the box
+  height above the box's bottom in dark (0.35-0.37 light) -> 107px (800px viewport) ... 162px (1400px). Proportional to the box, i.e. it did halve.
+- **Readability at rest:** the home page's bottom padding is `box x (reach - midline) + 1rem` (125px at 800px tall), so scrolled to the end all text,
+  chips and cards sit above the glow. Measured at that resting position (text hidden, background sampled behind every text run): dark >= 6.90:1,
+  light >= 6.05:1, lowest text 23px above the glow's last visible wisp, at 1280x800, 375x812, 1920x1080 and 1280x1400. While scrolling,
+  text passing over the glow is accepted (per the brief).
+- **Tests:** `theme-contrast.test.ts` now holds the resting position (tokens on the plain page and on the card-coloured chips, hero labels at 80%,
+  the aurora geometry, and padding >= the measured reach at four viewport heights); `layout.test.ts` guards against any scrim; E2E has a
+  scrolled-to-the-end check (box height, lowest text above the glow) - E2E NOT run (no test project).
+
+Checks: `npm run check` ✅ · `npm run build` ✅.
+
+### Full-width header (same PR)
+
+- The header is as wide as the viewport (page content keeps `max-w-5xl`): logo + "Learn" at the far left, theme toggle + sign-out at the far right,
+  side padding 16px (phones) -> 24 (sm) -> 40 (md) -> 80px (lg+). A `minmax(0,1fr) auto minmax(0,1fr)` grid on every width, so the rubber nav is
+  centred on the viewport itself, not between the logo and the actions. Sticky + transparent -> glass-on-scroll are untouched.
+- The nav's labels now appear from 1024px (were 768px): with equal outer columns, labels (~400px, ~530px with Admin) no longer fit beside the 158px
+  logo at tablet widths without overlapping it. Below that it is icon-only.
+- Measured in a browser (admin and non-admin) at 320, 360, 375, 414, 600, 768, 820, 1023, 1024, 1280, 1440, 1920, 2560px: nav centred to <1px, logo and actions clear of it,
+  no overflow, padding 16/16/40/80 as designed. Phones under ~400px get a slightly tighter nav (and under 340px a smaller logo and tighter side padding) so the
+  equal columns still fit; the one tight spot is an admin on a 320px screen (1px clear).
+
+Checks: `npm run check` ✅ · `npm run build` ✅. E2E (`home.spec.ts` header test: widths, padding, true centre, no overlap at 1024/768/375, icon-only below 1024) written, NOT run.
+
+### Login X sequence plays on every load (same PR)
+
+- The once-per-session rule is gone. The sequence plays on every load of `/login`: fresh visit, reload, after sign-out. The `uxda_login_seq`
+  cookie, `LOGIN_SEQ_COOKIE`, `loginSequenceInitial` / `LoginSequenceInitial`, the server page's cookie read and the `initial` prop are deleted
+  (a test fails if any of them reappears). The server always renders the "play" state (card hidden, with the existing CSS and `<noscript>` safety nets).
+- Unchanged: click/key skips to the card, reduced motion shows the card at once (also on reload), no WebGL2 or an X that isn't ready within ~1 s goes straight to
+  the card. The post-login loader and its `uxda_intro` cookie are untouched.
+- Browser-verified (16 checks in `next dev`): fresh visit, two reloads and a re-navigation all play; click and key skip, and the next load plays again; no login-sequence
+  cookie; reduced motion on first load and on reload; no WebGL2; a 3 s model and an aborted model both reach the card (~1.2 s and ~0.35 s). `e2e/glass-x.spec.ts` updated
+  (plays on every load, plays again after sign-out), the sign-out one NOT run (no test project).
+
+Checks: `npm run check` ✅ · `npm run build` ✅.
+
