@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { auroraBoxHeight, visibleGlowHeight } from "../src/components/aurora/geometry";
 import { cleanTestUserData } from "./fixtures";
 import { loginAs } from "./helpers";
 import { requireTestProject } from "./project";
@@ -57,6 +58,29 @@ test.describe("home page", () => {
     await expect(page).toHaveURL(/\/profile$/);
     // ...and it is a home-page thing only.
     await expect(page.getByTestId("aurora")).toHaveCount(0);
+  });
+
+  test("the aurora is half as tall as before, and scrolled to the end all text sits above the glow", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const box = await page.getByTestId("aurora").evaluate((el) => el.getBoundingClientRect().height);
+    expect(box).toBeCloseTo(auroraBoxHeight(800)); // 300px (it was 600px)
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const lowestText = await page.evaluate(() => {
+      const walker = document.createTreeWalker(document.querySelector("main")!, NodeFilter.SHOW_TEXT);
+      let bottom = 0;
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim() || node.parentElement?.closest(".sr-only")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const r of range.getClientRects()) bottom = Math.max(bottom, r.bottom);
+      }
+      return bottom;
+    });
+    // The glow lights the viewport from its bottom edge up to visibleGlowHeight(box); the text ends above that.
+    expect(lowestText).toBeLessThanOrEqual(800 - visibleGlowHeight(box));
   });
 
   test("without WebGL2 there is no aurora drawn and nothing breaks", async ({ page }) => {

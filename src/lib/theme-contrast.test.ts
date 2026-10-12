@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { AURORA_BOX, GLOW_MIDLINE, GLOW_REACH, MAX_VISIBLE_GLOW, auroraBoxHeight, visibleGlowHeight } from "@/components/aurora/geometry";
 import { STAGE_BACKGROUND } from "@/components/glass-x/constants";
 
 /**
@@ -156,6 +157,59 @@ describe("login glass card", () => {
 
   it("the Google button's text (#f5f5f5) meets 4.5:1 on it", () => {
     expect(contrast("#f5f5f5", card)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/**
+ * The home page's aurora is fixed behind the content, with no scrim or shadow in between. Text is held to AA in its
+ * resting position only: the page keeps bottom padding equal to the glow's reach, so scrolled to the end all text
+ * (and the opaque chips and cards) sits above the glow, on the plain page colour. While scrolling, text passing over
+ * the glow is accepted. Rendered-pixel measurements of the resting position (text hidden, background sampled behind
+ * every text run, 8 combinations of theme and 375-1920 x 800-1400 viewports) gave >= 6.05:1 with 23px to spare.
+ */
+describe.each([
+  ["light", ":root"],
+  ["dark", ".dark"],
+])("%s mode, home page at rest", (_mode, selector) => {
+  const t = { ...tokens(":root"), ...tokens(selector) };
+
+  it("hero labels (foreground at 80%) meet 4.5:1 on the plain page", () => {
+    expect(contrast(blend(t.foreground, t.background, 0.8), t.background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(["foreground", "muted-foreground", "destructive"])("%s meets 4.5:1 on the page and on a chip (the card colour)", (fg) => {
+    expect(contrast(t[fg], t.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(t[fg], t.card)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the chip's fill is the card surface (opaque), so its text never sits on the aurora", () => {
+    expect(contrast(t.card, t.background)).toBeGreaterThanOrEqual(1.0);
+    expect(t.card).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+});
+
+describe("aurora geometry", () => {
+  it("is half the size it was (the box was clamp(600px, 75vh, 900px)), so the glow rises half as high", () => {
+    expect(AURORA_BOX).toEqual({ min: 300, vh: 37.5, max: 450 });
+    expect(auroraBoxHeight(800)).toBe(300);
+    expect(auroraBoxHeight(1400)).toBe(450);
+    expect(auroraBoxHeight(1080)).toBeCloseTo(405);
+  });
+
+  it("keeps the glow's middle line on the viewport's bottom edge, so only the upper part shows", () => {
+    expect(GLOW_MIDLINE).toBe(0.115);
+    expect(visibleGlowHeight(300)).toBeCloseTo((GLOW_REACH - GLOW_MIDLINE) * 300);
+    expect(MAX_VISIBLE_GLOW).toBeLessThan(450 * GLOW_REACH);
+  });
+
+  it("the page's bottom padding is above the measured reach of the glow at every size", () => {
+    // Measured from rendered frames (dark, the larger of the two themes): viewport height -> px the faintest wisp
+    // reaches above the viewport's bottom edge. The padding is box * (REACH - MIDLINE) + 16px.
+    const measured: [number, number][] = [[800, 107], [812, 110], [1080, 144], [1400, 162]];
+    for (const [vh, reach] of measured) {
+      const padding = auroraBoxHeight(vh) * (GLOW_REACH - GLOW_MIDLINE) + 16;
+      expect(padding, `viewport ${vh}px`).toBeGreaterThanOrEqual(reach + 10);
+    }
   });
 });
 

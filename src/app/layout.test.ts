@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -17,10 +17,16 @@ describe("default theme", () => {
   });
 });
 
-describe("aurora scrim", () => {
-  it("backs bare text on the home page with the page colour at ≥ 85% (what AA needs over the visible aurora)", () => {
-    const mix = css.match(/\.scrim \{[^}]*color-mix\(in oklab, var\(--background\) (\d+)%, transparent\)/);
-    expect(mix, ".scrim rule with a color-mix of --background").not.toBeNull();
-    expect(Number(mix![1])).toBeGreaterThanOrEqual(85);
+describe("no scrim", () => {
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)],
+    );
+  const sources = walk(path.resolve(__dirname, "..")).filter((f) => /\.(tsx?|css)$/.test(f) && !/\.test\.tsx?$/.test(f));
+
+  it("has no scrim (feathered shadow / backdrop behind text) in any source or stylesheet", () => {
+    expect(sources.length).toBeGreaterThan(50);
+    const offenders = sources.filter((f) => /\bscrim\b/i.test(readFileSync(f, "utf8")));
+    expect(offenders).toEqual([]);
   });
 });

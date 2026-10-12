@@ -4,19 +4,13 @@ import { useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { useTheme } from "next-themes";
+import { AURORA_BOX, GLOW_MIDLINE } from "./geometry";
 
 // Lazy: the shader and its WebGL setup stay out of the page's first bundle, and never run on the server.
 const Aurora = dynamic(() => import("./Aurora"), { ssr: false });
 
 const COLOR_STOPS = ["#00fff8", "#7438fb", "#1d0093"];
 
-/**
- * Where the glow's middle line is inside the aurora's box, as a fraction of the box height measured up from its bottom
- * edge. With `direction="bottom"` the shader's glow is brightest at the box's bottom edge and fades upwards (the upper
- * half of the box is empty), so "the middle of the aurora" is the middle of that band: the line with equal light above
- * and below it, measured from rendered frames at 600-900px box heights and 1280-1920px widths: 0.10-0.13, stable over time.
- */
-const GLOW_MIDLINE = 0.115;
 const subscribe = () => () => {};
 
 /**
@@ -39,7 +33,7 @@ export function PageAurora() {
     <div
       aria-hidden
       data-testid="aurora"
-      style={{ "--aurora-h": "clamp(600px, 75vh, 900px)", "--midline": GLOW_MIDLINE } as React.CSSProperties}
+      style={{ "--aurora-h": `clamp(${AURORA_BOX.min}px, ${AURORA_BOX.vh}vh, ${AURORA_BOX.max}px)`, "--midline": GLOW_MIDLINE } as React.CSSProperties}
       // The box's bottom edge is GLOW_MIDLINE of its height below the viewport's bottom edge.
       className="pointer-events-none fixed inset-x-0 -z-10 h-(--aurora-h) bottom-[calc(var(--aurora-h)*var(--midline)*-1)] overflow-hidden"
     >

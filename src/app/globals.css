@@ -377,19 +377,3 @@
     transition: none;
   }
 }
-
-/*
- * Scrim for bare text on the home page, which can scroll over the fixed aurora (PageAurora). The page colour at 85%:
- * invisible against the plain page, a soft frosted patch where text crosses the glow. 85% is what the worst visible
- * aurora pixel needs for AA text in both themes (measured: dark 1280/375px, light, every text colour; worst case 5.2:1
- * for muted text / the destructive colour at 0.8-0.85). Cards and tiles are opaque and need none. The feathered
- * shadow only softens the edge: text sits inside the box, at full strength.
- */
-@layer components {
-.scrim {
-  --scrim: color-mix(in oklab, var(--background) 85%, transparent);
-  background-color: var(--scrim);
-  box-shadow: 0 0 14px 8px var(--scrim);
-  border-radius: 14px;
-}
-}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Flag } from "lucide-react";
+import { GLOW_CLEARANCE_CSS } from "@/components/aurora/geometry";
 import { PageAurora } from "@/components/aurora/page-aurora";
 import { ChallengeCardGrid } from "@/components/challenge-card";
 import { CountUp } from "@/components/count-up";
@@ -26,9 +27,13 @@ export function HomeView({
   return (
     <main className="w-full">
       <PageAurora />
-      <div className="mx-auto w-full max-w-5xl px-4 pt-10 pb-28 sm:pt-16">
+      {/* Bottom padding = how high the glow reaches (see aurora/geometry.ts): scrolled to the end, all text is above it. */}
+      <div
+        className="mx-auto w-full max-w-5xl px-4 pt-10 sm:pt-16"
+        style={{ paddingBottom: GLOW_CLEARANCE_CSS }}
+      >
         <section aria-labelledby="hero-heading" className="mb-14 grid gap-10" data-testid="hero">
-          <div className="scrim -mx-3 -my-1 px-3 py-1 w-fit">
+          <div>
             <p className="text-meta text-foreground/80 mb-2">
               {profile.track ? `${TRACK_LABEL[profile.track]} track` : ""}
             </p>
@@ -38,13 +43,13 @@ export function HomeView({
           </div>
 
           <div className="grid items-end gap-x-12 gap-y-6 sm:grid-cols-[auto_1fr]">
-            <div data-testid="hero-points" className="scrim -mx-3 -my-1 px-3 py-1 w-fit">
+            <div data-testid="hero-points">
               <p className="text-meta text-foreground/80">Total points</p>
               <p className="text-7xl leading-none font-light tracking-tight tabular-nums sm:text-9xl">
                 <CountUp value={hero.totalScore} />
               </p>
             </div>
-            <dl className="scrim -mx-3 -my-1 px-3 py-1 grid w-fit gap-5 sm:grid-cols-2 sm:pb-3">
+            <dl className="grid gap-5 sm:grid-cols-2 sm:pb-3">
               <div data-testid="hero-rank">
                 <dt className="text-meta text-foreground/80">Rank{hero.groupLabel ? ` · ${hero.groupLabel}` : ""}</dt>
                 <dd className="mt-1 text-2xl font-light">
@@ -77,11 +82,11 @@ export function HomeView({
         {required.total > 0 && (
           <section aria-labelledby="required-heading" className="mb-12 grid gap-5" data-testid="required-section">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 id="required-heading" className="scrim -mx-3 -my-1 px-3 py-1 flex items-center gap-2 text-xl font-light tracking-tight">
+              <h2 id="required-heading" className="flex items-center gap-2 text-xl font-light tracking-tight">
                 <Flag className="size-5" aria-hidden />
                 Required for you
               </h2>
-              <p className="scrim -mx-3 -my-1 px-3 py-1 text-muted-foreground" data-testid="required-summary">
+              <p className="text-muted-foreground" data-testid="required-summary">
                 {required.done} of {required.total} required done
                 {required.overdue > 0 && (
                   <span className="text-destructive font-medium"> · {required.overdue} overdue</span>
@@ -110,14 +115,13 @@ export function HomeView({
 
       {withChallenges.length === 0 ? (
         <EmptyState
-          className="scrim"
           icon={BookOpen}
           title="No challenges yet"
           description="New challenges for your track will show up here."
         />
       ) : (
         <section aria-labelledby="categories-heading">
-          <h2 id="categories-heading" className={required.total > 0 ? "scrim -mx-3 mb-4 w-fit px-3 text-lg font-semibold" : "sr-only"}>
+          <h2 id="categories-heading" className={required.total > 0 ? "mb-4 text-lg font-semibold" : "sr-only"}>
             Categories
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2">

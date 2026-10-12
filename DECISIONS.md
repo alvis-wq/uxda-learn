@@ -173,4 +173,6 @@
 - The aurora is portalled to `<body>` — `position: fixed` and a negative z-index don't survive an ancestor with a transform (the page-entry wrapper), so they can't live inside the page tree.
 - The app ignores the system colour scheme (`enableSystem={false}`): the only inputs are the saved toggle choice and the dark default.
 - Chips use the card surface (opaque) and the label the full foreground colour instead of a scrim — no shadow anywhere near them; the remaining risk is only text passing through the glow mid-scroll, which no padding can remove.
+- Contrast is held at the resting position only (scrolled to the end, text above the glow), with no scrim or shadow anywhere — the glow is a decoration that text may pass over while scrolling; the bottom padding equals the glow's measured reach (`box x (0.48 - 0.115) + 1rem`) so it stays correct at any viewport height, and a unit test pins it to the measured reach.
+- The aurora's size is one formula (`aurora/geometry.ts`) used by the component, the page padding and the tests — halving the glow is one change, and the padding follows it.
 

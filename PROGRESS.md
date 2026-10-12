@@ -605,3 +605,22 @@ Checks: `npm run check` ✅ (327 tests) · `npm run build` ✅. E2E updated (aur
 - Page bottom padding `pb-10` -> `pb-28`: scrolled to the end, the label sits ~170-210px above the viewport bottom, above the bright part of the
   glow; measured at the end of the page: all on-screen text >= 6.9:1 dark / >= 6.32:1 light, both widths.
 
+### Scrim removed everywhere; half-height aurora; resting-position readability (same PR)
+
+- **Scrim removed (code, not hidden):** the `.scrim` rule and every use of it (hero blocks, section headings, chips, the empty state's
+  `className` prop that only existed for it) are deleted; a test now fails if the word reappears in any source or stylesheet. The sticky
+  header's translucent glass is a separate, requested feature and is unchanged.
+- **Aurora half as tall:** box `clamp(300px, 37.5vh, 450px)` (was `600/75vh/900`); same colours and settings, so the glow reaches half as high.
+  The glow midline still sits on the viewport's bottom edge (0.115 of the box below it). Constants and formulas live in `aurora/geometry.ts`.
+- **Reach, measured (rendered frames, 6 moments, dark/light x 375-1920px wide x 800-1400px tall):** the faintest visible wisp is 0.47-0.48 of the box
+  height above the box's bottom in dark (0.35-0.37 light) -> 107px (800px viewport) ... 162px (1400px). Proportional to the box, i.e. it did halve.
+- **Readability at rest:** the home page's bottom padding is `box x (reach - midline) + 1rem` (125px at 800px tall), so scrolled to the end all text,
+  chips and cards sit above the glow. Measured at that resting position (text hidden, background sampled behind every text run): dark >= 6.90:1,
+  light >= 6.05:1, lowest text 23px above the glow's last visible wisp, at 1280x800, 375x812, 1920x1080 and 1280x1400. While scrolling,
+  text passing over the glow is accepted (per the brief).
+- **Tests:** `theme-contrast.test.ts` now holds the resting position (tokens on the plain page and on the card-coloured chips, hero labels at 80%,
+  the aurora geometry, and padding >= the measured reach at four viewport heights); `layout.test.ts` guards against any scrim; E2E has a
+  scrolled-to-the-end check (box height, lowest text above the glow) - E2E NOT run (no test project).
+
+Checks: `npm run check` ✅ · `npm run build` ✅.
+
