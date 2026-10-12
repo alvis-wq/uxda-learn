@@ -538,3 +538,8 @@ Checks: `npm run check` ✅ (290 tests) · `npm run build` ✅. Browser-verified
 static) and the loader gate cookie matrix on a temporary harness (removed). NOT verified: a real Google sign-in, and the updated
 sign-in/loader E2E (needs the test Supabase project).
 
+### Glow changes (same PR)
+
+- Post-login loader: the violet `.stage-glow` is gone; the X sits on plain #101010 (no gradient). The login page is unchanged apart from the glow below.
+- Login glow: `.stage-glow` is half the size (`min(110vmin, 860px)` → `min(55vmin, 430px)`), same colour and peak intensity, so the card-contrast model (glow centre) is unchanged and its tests stay green. Tests also pin the new size and keep the glow out of the loader.
+

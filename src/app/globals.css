@@ -230,7 +230,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(110vmin, 860px);
+  width: min(55vmin, 430px); /* half the original 110vmin / 860px: same colours and peak intensity, tighter spread */
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
@@ -240,8 +240,7 @@
   transition: opacity 600ms ease-in-out;
 }
 .login-stage[data-seq='out'] .stage-glow,
-.login-stage[data-seq='done'] .stage-glow,
-.stage-glow--on {
+.login-stage[data-seq='done'] .stage-glow {
   opacity: 1;
 }
 

@@ -145,6 +145,10 @@ test.describe("post-sign-in loader (motion)", () => {
 
     await expect(loader(page)).toBeVisible();
     expect(await introCookie()).toBe("seen");
+    // The X sits on plain #101010: no glow or gradient behind it.
+    await expect(loader(page)).toHaveCSS("background-color", STAGE);
+    await expect(loader(page)).toHaveCSS("background-image", "none");
+    await expect(loader(page).locator(".stage-glow")).toHaveCount(0);
     // Real loader: gone once the app's first page is ready (no fixed length), but not before its ~0.8 s minimum.
     const shownAt = Date.now();
     await expect(loader(page)).toBeHidden({ timeout: 15_000 });

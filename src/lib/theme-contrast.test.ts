@@ -154,6 +154,21 @@ describe("login glass card", () => {
   });
 });
 
+describe("stage glow", () => {
+  it("is half its original spread (110vmin / 860px → 55vmin / 430px), same colour and peak intensity", () => {
+    expect(css).toMatch(/\.stage-glow \{[^}]*width: min\(55vmin, 430px\);/);
+    expect(css).toMatch(/\.stage-glow \{[^}]*radial-gradient\(closest-side, rgb\(128 48 255 \/ 0\.24\), rgb\(89 39 232 \/ 0\.1\) 55%, transparent\)/);
+  });
+
+  it("is not part of the post-sign-in loader, which sits on the plain #101010 stage", () => {
+    const loader = readFileSync(path.resolve(__dirname, "../components/glass-x/sign-in-loader.tsx"), "utf8");
+    expect(loader).not.toMatch(/<div[^>]*stage-glow/);
+    expect(loader).toContain("STAGE_BACKGROUND");
+    expect(STAGE_BACKGROUND.toLowerCase()).toBe("#101010");
+    expect(css).not.toMatch(/\.sign-in-loader[^{]*\{[^}]*(gradient|box-shadow)/);
+  });
+});
+
 describe("softer palette", () => {
   const light = tokens(":root");
   const dark = tokens(".dark");

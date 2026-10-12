@@ -158,4 +158,5 @@
 - Review's step button is named "Review & submit", so E2E selects the real button with `{ name: "Submit", exact: true }`.
 - Skeleton sweep is one `@property`-animated custom property on `:root` read by viewport-fixed gradients — per-element animations start whenever each skeleton mounts and drift apart, and a per-element ::after sweep can't cross several skeletons as one band; it only runs while a skeleton exists (`:root:has(...)`), so idle pages pay nothing.
 - The loader shows after every new sign-in, not once per browser session — a sign-in always sets `pending` and sign-out clears the cookie; "seen" only stops reloads and navigation within the same sign-in.
+- The loader has no glow at all, not a smaller one — it is a plain #101010 stage; only the login card keeps the (now half-size) glow it refracts.
 
