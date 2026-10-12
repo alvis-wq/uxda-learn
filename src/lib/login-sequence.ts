@@ -8,7 +8,7 @@
  *   2900   done: the scene stops rendering and its GPU resources are released
  *
  * If the X isn't ready within `readyTimeoutMs` (or WebGL2 is missing, or motion is reduced) the sequence is
- * skipped straight to the end state, so signing in is never blocked. It plays once per browser session.
+ * skipped straight to the end state, so signing in is never blocked. It plays every time the login page loads.
  */
 export const LOGIN_SEQ = {
   readyTimeoutMs: 1000,
@@ -30,12 +30,3 @@ export const LOGIN_SEQ_END_MS = LOGIN_SEQ.xFadeAtMs + LOGIN_SEQ.xFadeMs;
  * the X is ~42% of the canvas wide; at the start zoom (1.6) ~66%, with its tips still inside the canvas' opaque 90%.
  */
 export const LOGIN_X_DISTANCE = 19.7;
-
-/** Session cookie (no Max-Age): "seen" once the sequence has started this browser session. */
-export const LOGIN_SEQ_COOKIE = "uxda_login_seq";
-
-export type LoginSequenceInitial = "play" | "done";
-
-export function loginSequenceInitial(cookie: string | undefined): LoginSequenceInitial {
-  return cookie === "seen" ? "done" : "play";
-}

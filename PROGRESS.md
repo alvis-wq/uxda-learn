@@ -637,3 +637,16 @@ Checks: `npm run check` ✅ · `npm run build` ✅.
 
 Checks: `npm run check` ✅ · `npm run build` ✅. E2E (`home.spec.ts` header test: widths, padding, true centre, no overlap at 1024/768/375, icon-only below 1024) written, NOT run.
 
+### Login X sequence plays on every load (same PR)
+
+- The once-per-session rule is gone. The sequence plays on every load of `/login`: fresh visit, reload, after sign-out. The `uxda_login_seq`
+  cookie, `LOGIN_SEQ_COOKIE`, `loginSequenceInitial` / `LoginSequenceInitial`, the server page's cookie read and the `initial` prop are deleted
+  (a test fails if any of them reappears). The server always renders the "play" state (card hidden, with the existing CSS and `<noscript>` safety nets).
+- Unchanged: click/key skips to the card, reduced motion shows the card at once (also on reload), no WebGL2 or an X that isn't ready within ~1 s goes straight to
+  the card. The post-login loader and its `uxda_intro` cookie are untouched.
+- Browser-verified (16 checks in `next dev`): fresh visit, two reloads and a re-navigation all play; click and key skip, and the next load plays again; no login-sequence
+  cookie; reduced motion on first load and on reload; no WebGL2; a 3 s model and an aborted model both reach the card (~1.2 s and ~0.35 s). `e2e/glass-x.spec.ts` updated
+  (plays on every load, plays again after sign-out), the sign-out one NOT run (no test project).
+
+Checks: `npm run check` ✅ · `npm run build` ✅.
+

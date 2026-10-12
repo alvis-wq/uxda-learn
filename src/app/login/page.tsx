@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { FlaskConical } from "lucide-react";
-import { cookies } from "next/headers";
 import { LoginSequence } from "@/components/glass-x/login-sequence";
 import { UxdaLogo } from "@/components/uxda-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { safeNext } from "@/lib/auth/paths";
 import { isTestLoginEnabled } from "@/lib/auth/test-login";
-import { LOGIN_SEQ_COOKIE, loginSequenceInitial } from "@/lib/login-sequence";
 import { GoogleSignInForm, TestLoginForm } from "./login-forms";
 
 export const metadata: Metadata = { title: "Sign in · UXDA Learn" };
@@ -16,12 +14,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = safeNext(typeof raw === "string" ? raw : undefined);
   const nextParam = next === "/" ? undefined : next;
 
-  // Plays once per browser session: the server knows from the cookie, so the first HTML is already right.
-  const initial = loginSequenceInitial((await cookies()).get(LOGIN_SEQ_COOKIE)?.value);
-
   return (
     // Always the dark stage, also in light mode (`dark` re-themes the cards to match).
-    <LoginSequence initial={initial}>
+    <LoginSequence>
         <Card className="glass-card">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">

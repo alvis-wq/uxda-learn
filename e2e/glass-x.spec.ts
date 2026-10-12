@@ -84,15 +84,40 @@ test.describe("login sequence (motion)", () => {
     await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 1000 });
   });
 
-  test("login: plays once per browser session; later visits go straight to the end state", async ({ page }) => {
+  test("login: plays every time the page loads: fresh visit, reload, after sign-out", async ({ page }) => {
     await page.context().clearCookies();
     await page.goto("/login");
     await expect(stage(page)).toHaveAttribute("data-seq", "play");
-    await page.goto("/login"); // same session: the cookie says it has played
-    await expect(stage(page)).toHaveAttribute("data-seq", "done");
-    await expect(cardWrap(page)).toHaveCSS("opacity", "1");
-    await page.waitForTimeout(500);
-    await expect(page.locator(X_CANVAS)).toHaveCount(0); // the scene never even starts
+    await expect(page.locator(X_CANVAS)).toHaveCount(1);
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 5000 });
+
+    // A reload plays it again (nothing remembers that it already played)...
+    await page.reload();
+    await expect(stage(page)).toHaveAttribute("data-seq", "play");
+    await expect(page.locator(X_CANVAS)).toHaveCount(1);
+    await expect(cardWrap(page)).toHaveCSS("opacity", "0");
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 5000 });
+
+    // ...and so does skipping it: a click ends it, the next load still plays.
+    await page.reload();
+    await expect(page.locator(X_CANVAS)).toHaveCount(1);
+    await page.mouse.click(300, 300);
+    await expect(stage(page)).toHaveAttribute("data-seq", "done", { timeout: 1000 });
+    await page.reload();
+    await expect(stage(page)).toHaveAttribute("data-seq", "play");
+
+    // No cookie or storage for it.
+    expect((await page.context().cookies()).some((c) => c.name === "uxda_login_seq")).toBe(false);
+  });
+
+  test("login: plays again after signing out", async ({ page }) => {
+    await page.context().clearCookies();
+    await signIn(page);
+    await expect(loader(page)).toBeHidden({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(stage(page)).toHaveAttribute("data-seq", "play");
+    await expect(page.locator(X_CANVAS)).toHaveCount(1);
   });
 
   test("login: skips to the card without WebGL2, and sign-in still works", async ({ page }) => {

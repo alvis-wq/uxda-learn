@@ -1,5 +1,5 @@
 /**
- * Post-sign-in loader: a full-screen glass X shown while the app's first page loads, once per browser session.
+ * Post-sign-in loader: a full-screen glass X shown while the app's first page loads, after every new sign-in (not on reloads or navigation).
  *
  * State lives in one session cookie (no Max-Age → gone when the browser closes):
  *   - absent    nothing queued (not signed in, or signed out)

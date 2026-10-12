@@ -176,4 +176,5 @@
 - Contrast is held at the resting position only (scrolled to the end, text above the glow), with no scrim or shadow anywhere — the glow is a decoration that text may pass over while scrolling; the bottom padding equals the glow's measured reach (`box x (0.48 - 0.115) + 1rem`) so it stays correct at any viewport height, and a unit test pins it to the measured reach.
 - The aurora's size is one formula (`aurora/geometry.ts`) used by the component, the page padding and the tests — halving the glow is one change, and the padding follows it.
 - Header = three-column grid with equal `minmax(0,1fr)` outer columns at every width — the only way to put the nav at the true viewport centre; the cost is that the nav needs room on both sides, so labels moved from md to lg and phones under ~400px get a tighter nav.
+- The login sequence no longer remembers that it played (supersedes the session-cookie decision above): a stored "seen" flag meant a reload or a sign-out landed on a bare card; it plays on every load, and since nothing is stored the server always renders the same first HTML.
 
