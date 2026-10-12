@@ -1,3 +1,4 @@
+import { SignInIntroGate } from "@/components/glass-x/sign-in-intro-gate";
 import { SiteHeader } from "@/components/site-header";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 
@@ -10,6 +11,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <div id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         {children}
       </div>
+      <SignInIntroGate />
     </>
   );
 }

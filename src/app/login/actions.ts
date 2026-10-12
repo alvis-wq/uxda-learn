@@ -6,6 +6,7 @@ import { z } from "zod";
 import { googleHostedDomainHint } from "@/lib/auth/domain";
 import { safeNext } from "@/lib/auth/paths";
 import { isTestLoginEnabled, testUser } from "@/lib/auth/test-login";
+import { queueSignInIntro } from "@/lib/intro-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -87,5 +88,6 @@ export async function testLogin(_prev: LoginState, formData: FormData): Promise<
   const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "email" });
   if (verifyError) return { error: `Test sign-in failed: ${verifyError.message}` };
 
+  await queueSignInIntro();
   redirect(safeNext(formData.get("next")?.toString()));
 }

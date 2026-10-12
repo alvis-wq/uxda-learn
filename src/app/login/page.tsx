@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { FlaskConical } from "lucide-react";
+import { STAGE_BACKGROUND } from "@/components/glass-x/constants";
+import { GlassX } from "@/components/glass-x/glass-x";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { safeNext } from "@/lib/auth/paths";
 import { isTestLoginEnabled } from "@/lib/auth/test-login";
@@ -13,8 +15,13 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const nextParam = next === "/" ? undefined : next;
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <div className="grid w-full max-w-sm gap-6">
+    // Always the dark stage, also in light mode (`dark` re-themes the cards to match).
+    <main
+      className="dark text-foreground isolate flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-4 py-10"
+      style={{ backgroundColor: STAGE_BACKGROUND }}
+    >
+      <GlassX className="w-[min(88vw,46vh,480px)]" />
+      <div className="stage-card-in grid w-full max-w-sm gap-6">
         <Card>
           <CardHeader className="text-center">
             <div className="bg-brand mx-auto mb-2 size-10 rounded-lg" aria-hidden />

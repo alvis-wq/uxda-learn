@@ -119,3 +119,60 @@
     @apply bg-background text-foreground text-base;
   }
 }
+
+/*
+ * Glass X stage (login page, sign-in intro). Timings mirror src/lib/intro.ts.
+ * - The login card fades in 1.5 s after load but is in the DOM and clickable the whole time.
+ * - The intro overlay fades itself out at INTRO_MAX_MS even if JS never runs, so it can't trap the app;
+ *   a skip starts the (different-named, so restarting) quick fade instead.
+ * Reduced motion: no fade, no intro.
+ */
+/*
+ * The glass X canvas is rendered on black and screen-blended onto the stage colour (see
+ * src/components/glass-x/constants.ts). The soft radial mask stops the wide bloom glow from showing
+ * a hard square edge where the canvas ends; the X itself stays inside the opaque 82%.
+ */
+.glass-x-canvas {
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(closest-side, #000 82%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 82%, transparent 100%);
+}
+@keyframes stage-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sign-in-intro-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes sign-in-intro-skip {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.stage-card-in {
+  animation: stage-card-in 600ms ease-out 1.5s both;
+}
+.sign-in-intro {
+  animation: sign-in-intro-out 300ms ease-in 1700ms both;
+}
+.sign-in-intro[data-leaving] {
+  animation: sign-in-intro-skip 200ms ease-in both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-card-in {
+    animation: none;
+  }
+  .sign-in-intro {
+    display: none;
+  }
+}

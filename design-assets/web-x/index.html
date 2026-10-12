@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glass X</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #8f8aa8; font: 13px/1.4 system-ui, sans-serif; }
+  #hero { position: absolute; inset: 0; margin: auto; width: min(92vmin, 1000px); height: min(92vmin, 1000px); }
+  button { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: none; color: inherit;
+           border: 1px solid #3a3552; border-radius: 999px; padding: 8px 18px; cursor: pointer; font: inherit; }
+  button:hover { color: #fff; border-color: #6a5cff; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="hero"></div>
+<button id="replay">Replay</button>
+<div id="msg" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;color:#cfc8ff;font:15px/1.5 system-ui,sans-serif"></div>
+<script type="module">
+  const msg = (html) => { const m = document.getElementById('msg'); m.innerHTML = html; m.style.display = 'flex'; };
+  if (location.protocol === 'file:') {
+    msg('This page must be opened through a local web server, not by double-clicking the file.<br><br>' +
+        'Double-click <b>start.command</b> in this folder (or run <code>python3 -m http.server 8000</code> here and open <code>http://localhost:8000</code>).');
+  } else try {
+    const { mountGlassX } = await import('./src/glass-x.js');
+    const q = new URLSearchParams(location.search);
+    const x = await mountGlassX(document.getElementById('hero'), {
+      background: q.get('bg') === 'transparent' ? null : '#000000',
+      autoplay: !q.has('t'),
+    });
+    if (q.has('t')) x.setTime(parseFloat(q.get('t')));
+    document.getElementById('replay').onclick = () => x.restart();
+    window.glassX = x;
+  } catch (err) {
+    console.error(err);
+    msg('Could not start the 3D scene.<br><small>' + (err && err.message ? err.message : err) + '</small><br><br>' +
+        'It needs a browser with WebGL2 enabled.');
+  }
+</script>
+</body>
+</html>
