@@ -132,58 +132,162 @@
 }
 
 /*
- * Glass X stage (login page, sign-in intro). Timings mirror src/lib/intro.ts.
- * - The login card fades in 1.5 s after load but is in the DOM and clickable the whole time.
- * - The intro overlay fades itself out at INTRO_MAX_MS even if JS never runs, so it can't trap the app;
- *   a skip starts the (different-named, so restarting) quick fade instead.
- * Reduced motion: no fade, no intro.
- */
-/*
  * The glass X canvas is rendered on black and screen-blended onto the stage colour (see
  * src/components/glass-x/constants.ts). The soft radial mask stops the wide bloom glow from showing
- * a hard square edge where the canvas ends; the X itself stays inside the opaque 82%.
+ * a hard square edge where the canvas ends; the X itself stays inside the opaque 82% (90% on the
+ * big login canvas, where the X starts 1.6x larger).
  */
 .glass-x-canvas {
   mix-blend-mode: screen;
   -webkit-mask-image: radial-gradient(closest-side, #000 82%, transparent 100%);
   mask-image: radial-gradient(closest-side, #000 82%, transparent 100%);
 }
-@keyframes stage-card-in {
+.glass-x-canvas.login-x {
+  -webkit-mask-image: radial-gradient(closest-side, #000 90%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 90%, transparent 100%);
+}
+
+/*
+ * Login sequence (src/lib/login-sequence.ts holds the timeline; LoginSequence drives `data-seq` on the stage):
+ *   play  card hidden (but in the DOM, so screen readers reach it; pointer events off)  ->  card  ->  out  ->  done
+ * The X fades + sharpens in (opacity and blur on the canvas host, which also carries the screen blend) and fades out.
+ * Safety nets: a CSS animation reveals the card a few seconds after load even if no script runs (<noscript> shows it
+ * at once), and reduced motion shows the card immediately with no transition.
+ */
+@keyframes login-x-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    filter: blur(16px);
   }
   to {
     opacity: 1;
+    filter: blur(0);
+  }
+}
+@keyframes login-x-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes login-card-failsafe {
+  to {
+    opacity: 1;
     transform: none;
+    pointer-events: auto;
   }
 }
-@keyframes sign-in-intro-out {
+/*
+ * The big square the login X lives in, centred on the stage (also when wider than the viewport on phones) with
+ * negative margins rather than a transform: a transformed ancestor would isolate the X's screen blend.
+ */
+.login-x-box {
+  --login-x-size: min(140vmin, 1100px);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--login-x-size);
+  height: var(--login-x-size);
+  margin-top: calc(var(--login-x-size) / -2);
+  margin-left: calc(var(--login-x-size) / -2);
+}
+.login-x-wait {
+  opacity: 0;
+}
+.login-x-in {
+  animation: login-x-in 700ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.login-x-out {
+  animation: login-x-out 600ms ease-in-out both;
+}
+
+.login-card-wrap {
+  transition:
+    opacity 500ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 500ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.login-stage[data-seq='play'] .login-card-wrap {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  pointer-events: none;
+  animation: login-card-failsafe 500ms cubic-bezier(0.23, 1, 0.32, 1) 4s forwards;
+}
+.login-stage[data-seq='done'] .login-card-wrap,
+.login-stage[data-seq='done'] .stage-glow {
+  transition: none;
+}
+
+/* The faint violet glow the glass card refracts once the X is gone. */
+.stage-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(110vmin, 860px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(128 48 255 / 0.24), rgb(89 39 232 / 0.1) 55%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease-in-out;
+}
+.login-stage[data-seq='out'] .stage-glow,
+.login-stage[data-seq='done'] .stage-glow,
+.stage-glow--on {
+  opacity: 1;
+}
+
+/* Glass card: translucent fill, blurred backdrop, 1px light border, a highlight along the top edge, soft shadow. */
+.glass-card {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.05));
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 24px 60px -24px rgb(0 0 0 / 0.7),
+    0 2px 8px rgb(0 0 0 / 0.25);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-card {
+    background: rgb(36 36 40 / 0.94);
+  }
+}
+
+/*
+ * Post-sign-in loader (SignInLoader): fades out when the page is ready. The animation is only a backstop for a page
+ * whose scripts never run (no maximum otherwise; keep in step with LOADER_BACKSTOP_MS in src/lib/intro.ts).
+ */
+@keyframes sign-in-loader-backstop {
   to {
     opacity: 0;
     visibility: hidden;
   }
 }
-@keyframes sign-in-intro-skip {
-  to {
-    opacity: 0;
-    visibility: hidden;
-  }
+.sign-in-loader {
+  transition: opacity 400ms ease-in-out;
+  animation: sign-in-loader-backstop 400ms ease-in 30s forwards;
 }
-.stage-card-in {
-  animation: stage-card-in 600ms ease-out 1.5s both;
+.sign-in-loader[data-leaving] {
+  opacity: 0;
+  pointer-events: none;
 }
-.sign-in-intro {
-  animation: sign-in-intro-out 300ms ease-in 1700ms both;
-}
-.sign-in-intro[data-leaving] {
-  animation: sign-in-intro-skip 200ms ease-in both;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .stage-card-in {
+  .login-stage .login-card-wrap {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition: none;
     animation: none;
   }
-  .sign-in-intro {
-    display: none;
+  .login-stage .stage-glow {
+    opacity: 1;
+    transition: none;
+  }
+  .sign-in-loader {
+    transition-duration: 150ms;
   }
 }

@@ -64,6 +64,8 @@ export interface GlassXOptions {
   fov: number;
   distance: number;
   speed: number;
+  zoom: number;
+  maxPixelRatio: number;
 }
 
 export const DEFAULTS: GlassXOptions = {
@@ -98,6 +100,8 @@ export const DEFAULTS: GlassXOptions = {
   fov: 34, // wider lens = stronger perspective while the X turns (like the reference)
   distance: 13.2, // keeps the front-on X the same size as fov 24 / distance 19
   speed: 1, // playback rate of the reveal (everything is driven by one clock, so 2 = the same look in half the time)
+  maxPixelRatio: 2, // devicePixelRatio cap (a bigger canvas can lower it to save GPU)
+  zoom: 1, // magnification: the camera sits at distance / zoom, so the X stays crisp (no CSS scale); see setZoom()
 };
 
 /** Soft-clamps the brightest channel so single hot pixels cannot turn into sparkles / pin-point halos. */
@@ -267,6 +271,8 @@ export interface GlassXHandle {
   pause(): void;
   restart(): void;
   setTime(t: number): void;
+  /** Magnify the X (1 = as set by `distance`) by moving the camera, so it stays sharp. */
+  setZoom(zoom: number): void;
   dispose(): void;
 }
 
@@ -277,7 +283,7 @@ export async function mountGlassX(container: HTMLElement, userOptions: Partial<G
 
   // ---- renderer / scene / camera ----------------------------------------------------------------
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: transparent, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, o.maxPixelRatio));
   renderer.toneMapping = THREE.AgXToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -382,14 +388,18 @@ export async function mountGlassX(container: HTMLElement, userOptions: Partial<G
     composer.addPass(new OutputPass());
   }
 
+  let zoom = o.zoom;
+  const placeCamera = () => {
+    // keep the whole X in frame for wide and for tall containers
+    camera.position.z = (camera.aspect >= 1 ? o.distance : o.distance / camera.aspect) / zoom;
+  };
+
   const resize = () => {
     const w = container.clientWidth || 1,
       h = container.clientHeight || 1;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // keep the whole X in frame for wide and for tall containers
-    const d = camera.aspect >= 1 ? o.distance : o.distance / camera.aspect;
-    camera.position.z = d;
+    placeCamera();
     camera.updateProjectionMatrix();
     if (composer && despecklePass) {
       composer.setPixelRatio(renderer.getPixelRatio());
@@ -467,6 +477,10 @@ export async function mountGlassX(container: HTMLElement, userOptions: Partial<G
       time = 0;
       playing = true;
       applyLook(0);
+    },
+    setZoom(next) {
+      zoom = Math.max(0.05, next);
+      placeCamera();
     },
     setTime(t) {
       time = Math.min(Math.max(t, 0), o.duration);

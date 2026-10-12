@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { FlaskConical } from "lucide-react";
-import { STAGE_BACKGROUND } from "@/components/glass-x/constants";
-import { GlassX } from "@/components/glass-x/glass-x";
+import { cookies } from "next/headers";
+import { LoginSequence } from "@/components/glass-x/login-sequence";
 import { UxdaLogo } from "@/components/uxda-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { safeNext } from "@/lib/auth/paths";
 import { isTestLoginEnabled } from "@/lib/auth/test-login";
+import { LOGIN_SEQ_COOKIE, loginSequenceInitial } from "@/lib/login-sequence";
 import { GoogleSignInForm, TestLoginForm } from "./login-forms";
 
 export const metadata: Metadata = { title: "Sign in · UXDA Learn" };
@@ -15,15 +16,13 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = safeNext(typeof raw === "string" ? raw : undefined);
   const nextParam = next === "/" ? undefined : next;
 
+  // Plays once per browser session: the server knows from the cookie, so the first HTML is already right.
+  const initial = loginSequenceInitial((await cookies()).get(LOGIN_SEQ_COOKIE)?.value);
+
   return (
     // Always the dark stage, also in light mode (`dark` re-themes the cards to match).
-    <main
-      className="dark text-foreground isolate flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-4 py-10"
-      style={{ backgroundColor: STAGE_BACKGROUND }}
-    >
-      <GlassX className="w-[min(88vw,46vh,480px)]" />
-      <div className="stage-card-in grid w-full max-w-sm gap-6">
-        <Card>
+    <LoginSequence initial={initial}>
+        <Card className="glass-card">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">
               {/* Same lockup as the header: logo + "Learn". The logo's label names the heading. */}
@@ -40,7 +39,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </Card>
 
         {isTestLoginEnabled() && (
-          <Card className="border-dashed">
+          <Card className="glass-card border-dashed">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
                 <FlaskConical className="size-4" aria-hidden />
@@ -53,7 +52,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             </CardContent>
           </Card>
         )}
-      </div>
-    </main>
+    </LoginSequence>
   );
 }
