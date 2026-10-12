@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Flag } from "lucide-react";
-import { HeroAurora } from "@/components/aurora/hero-aurora";
+import { PageAurora } from "@/components/aurora/page-aurora";
 import { ChallengeCardGrid } from "@/components/challenge-card";
 import { CountUp } from "@/components/count-up";
 import { EmptyState } from "@/components/empty-state";
@@ -25,69 +25,63 @@ export function HomeView({
 
   return (
     <main className="w-full">
-      {/* The hero area (~600px with the header) carries the aurora: behind the content, not interactive, and it also
-          runs under the transparent header, hence the 3.5rem (header height) offset. */}
-      <div className="relative">
-        <HeroAurora className="-top-14 h-[calc(100%+3.5rem)]" />
-        <div className="relative z-10 mx-auto w-full max-w-5xl px-4 pt-10 pb-52 sm:min-h-[544px] sm:pt-16 sm:pb-28">
-          <section aria-labelledby="hero-heading" className="grid gap-10" data-testid="hero">
-            <div>
-              <p className="text-meta text-foreground/80 mb-2">
-                {profile.track ? `${TRACK_LABEL[profile.track]} track` : ""}
+      <PageAurora />
+      <div className="mx-auto w-full max-w-5xl px-4 pt-10 pb-10 sm:pt-16">
+        <section aria-labelledby="hero-heading" className="mb-14 grid gap-10" data-testid="hero">
+          <div className="scrim -mx-3 -my-1 px-3 py-1 w-fit">
+            <p className="text-meta text-foreground/80 mb-2">
+              {profile.track ? `${TRACK_LABEL[profile.track]} track` : ""}
+            </p>
+            <h1 id="hero-heading" className="text-3xl font-light tracking-tight sm:text-5xl">
+              Welcome{firstName ? `, ${firstName}` : ""}
+            </h1>
+          </div>
+
+          <div className="grid items-end gap-x-12 gap-y-6 sm:grid-cols-[auto_1fr]">
+            <div data-testid="hero-points" className="scrim -mx-3 -my-1 px-3 py-1 w-fit">
+              <p className="text-meta text-foreground/80">Total points</p>
+              <p className="text-7xl leading-none font-light tracking-tight tabular-nums sm:text-9xl">
+                <CountUp value={hero.totalScore} />
               </p>
-              <h1 id="hero-heading" className="text-3xl font-light tracking-tight sm:text-5xl">
-                Welcome{firstName ? `, ${firstName}` : ""}
-              </h1>
             </div>
-
-            <div className="grid items-end gap-x-12 gap-y-6 sm:grid-cols-[auto_1fr]">
-              <div data-testid="hero-points">
-                <p className="text-meta text-foreground/80">Total points</p>
-                <p className="text-7xl leading-none font-light tracking-tight tabular-nums sm:text-9xl">
-                  <CountUp value={hero.totalScore} />
-                </p>
+            <dl className="scrim -mx-3 -my-1 px-3 py-1 grid w-fit gap-5 sm:grid-cols-2 sm:pb-3">
+              <div data-testid="hero-rank">
+                <dt className="text-meta text-foreground/80">Rank{hero.groupLabel ? ` · ${hero.groupLabel}` : ""}</dt>
+                <dd className="mt-1 text-2xl font-light">
+                  {hero.rank ? (
+                    <>
+                      #{hero.rank.position}
+                      <span className="text-foreground/80 text-base"> of {hero.rank.of}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-foreground/80 text-base">Not ranked · </span>
+                      <Link href="/profile" className="text-base underline underline-offset-4">
+                        hidden from the leaderboard
+                      </Link>
+                    </>
+                  )}
+                </dd>
               </div>
-              <dl className="grid gap-5 sm:grid-cols-2 sm:pb-3">
-                <div data-testid="hero-rank">
-                  <dt className="text-meta text-foreground/80">Rank{hero.groupLabel ? ` · ${hero.groupLabel}` : ""}</dt>
-                  <dd className="mt-1 text-2xl font-light">
-                    {hero.rank ? (
-                      <>
-                        #{hero.rank.position}
-                        <span className="text-foreground/80 text-base"> of {hero.rank.of}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-foreground/80 text-base">Not ranked · </span>
-                        <Link href="/profile" className="text-base underline underline-offset-4">
-                          hidden from the leaderboard
-                        </Link>
-                      </>
-                    )}
-                  </dd>
-                </div>
-                <div data-testid="hero-completed">
-                  <dt className="text-meta text-foreground/80">Completed</dt>
-                  <dd className="mt-1 text-2xl font-light">
-                    {hero.completed}
-                    <span className="text-foreground/80 text-base"> of {hero.totalScored} challenges</span>
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </section>
-        </div>
-      </div>
+              <div data-testid="hero-completed">
+                <dt className="text-meta text-foreground/80">Completed</dt>
+                <dd className="mt-1 text-2xl font-light">
+                  {hero.completed}
+                  <span className="text-foreground/80 text-base"> of {hero.totalScored} challenges</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
 
-      <div className="mx-auto w-full max-w-5xl px-4 pb-10">
         {required.total > 0 && (
           <section aria-labelledby="required-heading" className="mb-12 grid gap-5" data-testid="required-section">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h2 id="required-heading" className="flex items-center gap-2 text-xl font-light tracking-tight">
+              <h2 id="required-heading" className="scrim -mx-3 -my-1 px-3 py-1 flex items-center gap-2 text-xl font-light tracking-tight">
                 <Flag className="size-5" aria-hidden />
                 Required for you
               </h2>
-              <p className="text-muted-foreground" data-testid="required-summary">
+              <p className="scrim -mx-3 -my-1 px-3 py-1 text-muted-foreground" data-testid="required-summary">
                 {required.done} of {required.total} required done
                 {required.overdue > 0 && (
                   <span className="text-destructive font-medium"> · {required.overdue} overdue</span>
@@ -116,13 +110,14 @@ export function HomeView({
 
       {withChallenges.length === 0 ? (
         <EmptyState
+          className="scrim"
           icon={BookOpen}
           title="No challenges yet"
           description="New challenges for your track will show up here."
         />
       ) : (
         <section aria-labelledby="categories-heading">
-          <h2 id="categories-heading" className={required.total > 0 ? "mb-4 text-lg font-semibold" : "sr-only"}>
+          <h2 id="categories-heading" className={required.total > 0 ? "scrim -mx-3 mb-4 w-fit px-3 text-lg font-semibold" : "sr-only"}>
             Categories
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2">
@@ -162,12 +157,12 @@ export function HomeView({
 
       {comingSoon.length > 0 && (
         <section className="mt-10" aria-labelledby="soon-heading">
-          <h2 id="soon-heading" className="text-muted-foreground text-meta mb-3 font-medium">
+          <h2 id="soon-heading" className="scrim -mx-3 -my-1 px-3 py-1 text-muted-foreground text-meta mb-3 w-fit font-medium">
             Coming soon
           </h2>
           <ul className="text-muted-foreground text-meta flex flex-wrap gap-2">
             {comingSoon.map((c) => (
-              <li key={c.slug} className="rounded-full border px-3 py-1">
+              <li key={c.slug} className="scrim rounded-full border px-3 py-1">
                 {c.title}
               </li>
             ))}

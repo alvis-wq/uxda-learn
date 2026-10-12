@@ -25,18 +25,38 @@ test.describe("home page", () => {
     expect(problems).toEqual([]);
   });
 
-  test("aurora sits behind the hero, is decorative and not interactive; the page works without WebGL2", async ({ page }) => {
+  test("aurora is fixed to the bottom of the viewport, behind everything, decorative and not interactive", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 500 }); // short, so the page scrolls
     await loginAs(page, "designer");
     await page.goto("/");
     const aurora = page.getByTestId("aurora");
     await expect(aurora).toBeAttached();
     await expect(aurora).toHaveAttribute("aria-hidden", "true");
     await expect(aurora).toHaveCSS("pointer-events", "none");
-    // The hero's content paints above it (z-index) and stays clickable.
-    await expect(page.getByTestId("hero")).toBeVisible();
+    await expect(aurora).toHaveCSS("position", "fixed");
+    await expect(aurora).toHaveCSS("z-index", "-10");
+    // Portalled into <body>, so no transformed ancestor (the page-entry animation) can trap the fixed positioning.
+    expect(await aurora.evaluate((el) => el.parentElement === document.body)).toBe(true);
+
+    // Its glow's middle line (0.115 of the box height up from the box's bottom edge) sits on the viewport's bottom edge.
+    const geometry = () => aurora.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { belowBottom: r.bottom - innerHeight, height: r.height, top: r.top };
+    });
+    const before = await geometry();
+    expect(before.belowBottom / before.height).toBeCloseTo(0.115, 2);
+
+    // It stays put while scrolling.
+    await page.evaluate(() => window.scrollTo(0, 600));
+    expect(await geometry()).toEqual(before);
+
+    // Content paints above it and stays clickable.
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect(page.getByTestId("hero-rank").getByRole("link", { name: /hidden from the leaderboard/ })).toBeVisible();
     await page.getByTestId("hero-rank").getByRole("link", { name: /hidden from the leaderboard/ }).click();
     await expect(page).toHaveURL(/\/profile$/);
+    // ...and it is a home-page thing only.
+    await expect(page.getByTestId("aurora")).toHaveCount(0);
   });
 
   test("without WebGL2 there is no aurora drawn and nothing breaks", async ({ page }) => {
@@ -104,5 +124,27 @@ test.describe("home page", () => {
     await expect(quiz.locator("img")).toHaveCount(0);
     await quiz.getByRole("link").click();
     await expect(page).toHaveURL(/\/challenges\/e2e-quiz$/);
+  });
+});
+
+test.describe("theme", () => {
+  test.use({ colorScheme: "light" }); // a light system setting must not matter
+
+  test("dark by default for a visitor with no saved choice; the toggle works and is remembered", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBeNull();
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(16, 16, 16)"); // #101010
+
+    await page.getByRole("button", { name: "Toggle dark mode" }).click();
+    await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
+    await page.reload();
+    await expect(page.locator("html")).not.toHaveClass(/\bdark\b/); // remembered
+
+    await page.getByRole("button", { name: "Toggle dark mode" }).click();
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
   });
 });

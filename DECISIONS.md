@@ -168,4 +168,8 @@
 - Count-up: the server renders the final number (correct without JS), the animation is set before first paint, and it plays once per browser session (module state) — a brief SSR-final → 0 flip on a hard load is the cost of keeping the HTML correct.
 - Sticky-header state uses an IntersectionObserver sentinel, not a scroll listener, and the server always renders the "top" state — nothing to mismatch on hydration.
 - A lone last card spans the full row rather than leaving a half-empty row.
+- "Middle line of the aurora" = the middle of its glow (0.115 of the box above its bottom edge), not the box's centre — the box's upper half is empty with `direction="bottom"`, so the literal reading shows no aurora at all. One constant (`GLOW_MIDLINE`) changes it.
+- A scrim behind bare text (page colour at 85%, invisible at rest), not a dimmer aurora — dimming it enough for muted text (luminance <= 0.043) would leave a ~7%-opacity ghost; the scrim keeps the glow vivid wherever there is no text.
+- The aurora is portalled to `<body>` — `position: fixed` and a negative z-index don't survive an ancestor with a transform (the page-entry wrapper), so they can't live inside the page tree.
+- The app ignores the system colour scheme (`enableSystem={false}`): the only inputs are the saved toggle choice and the dark default.
 

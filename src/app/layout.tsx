@@ -24,7 +24,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${urbanist.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        {/* Dark by default, whatever the system setting says; the toggle stores the visitor's own choice (localStorage "theme"). */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           {children}
           <Toaster richColors closeButton />
         </ThemeProvider>

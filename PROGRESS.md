@@ -574,3 +574,24 @@ sampled behind every text run, 4 moments of the animation, 5 viewports): ≥ 6.4
 (`home.spec.ts` new; auth, required, dashboard selectors) but NOT run: no test Supabase project. No artwork exists yet, so no
 card shows an image until files are added to `public/challenges/`.
 
+### Aurora pinned to the viewport + dark by default (same PR)
+
+- **Aurora position:** `PageAurora` replaces the hero-band placement. It is `position: fixed`, `z-index: -10`, `pointer-events: none`,
+  `aria-hidden`, portalled into `<body>` (the page-entry animation transforms the page wrapper, which would otherwise turn
+  `fixed` into "fixed to that wrapper" and trap the z-index), and stays put while scrolling. Home page only.
+- **"Middle line":** with `direction="bottom"` the shader's glow is brightest at the *box's* bottom edge and fades upwards; the
+  box's own middle is empty, so putting the box centre on the viewport edge shows nothing. I read "middle line" as the middle of the
+  glow band: its brightness-weighted centre (measured from rendered frames: 0.10-0.13 of the box height above the box's bottom, at
+  600/900px boxes and 1280/1920px widths, stable over time) is on the viewport's bottom edge (`GLOW_MIDLINE = 0.115`), so only the upper
+  half of the glow shows. Box height `clamp(600px, 75vh, 900px)`.
+- **Contrast:** over the visible aurora no text colour passes un-scrimmed (peak luminance 0.25-0.52 in dark; muted text needs <= 0.043).
+  A `.scrim` (page colour at 85%, feathered) now sits behind the bare text on the home page (hero blocks, section headings,
+  "Coming soon" chips); cards and tiles are opaque. At rest it is invisible (page colour on page colour). 85% was derived from the
+  worst visible pixel and verified end to end: 1,708 rendered text runs over a scroll sweep at 120px steps, dark/light x 1280/375px:
+  min 6.37:1 dark, 5.87:1 light.
+- **Default theme:** `defaultTheme="dark"`, `enableSystem={false}`: no saved choice (and any system setting) gets dark; the toggle
+  still stores light/dark in localStorage. E2E that relied on `emulateMedia({colorScheme})` now choose a theme the way a visitor
+  does (`chooseTheme` / `switchTheme` helpers).
+
+Checks: `npm run check` ✅ (327 tests) · `npm run build` ✅. E2E updated (aurora geometry/stacking, theme default + toggle) but NOT run (no test project).
+

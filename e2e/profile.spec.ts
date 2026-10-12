@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
-import { adminDb, loginAs, profileId, TEST_EMAILS } from "./helpers";
+import { adminDb, loginAs, profileId, switchTheme, TEST_EMAILS } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
@@ -65,7 +65,7 @@ test.describe("profile: your challenges", () => {
 
     // Warning colour and muted rows pass contrast checks in both themes.
     for (const scheme of ["light", "dark"] as const) {
-      await page.emulateMedia({ colorScheme: scheme });
+      await switchTheme(page, scheme);
       const results = await new AxeBuilder({ page }).include('[data-testid="challenge-history"]').withTags(["wcag2aa"]).analyze();
       expect(results.violations.map((v) => `${scheme}: ${v.id}`)).toEqual([]);
     }
