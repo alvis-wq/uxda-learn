@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Home, LogOut, Shield, Trophy, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UxdaLogo } from "@/components/uxda-logo";
-import { NavLink } from "@/components/nav-link";
+import { RubberNav } from "@/components/rubber-nav/RubberNav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { Profile } from "@/lib/auth/session";
 
@@ -24,12 +24,14 @@ export function SiteHeader({ profile }: { profile: Profile }) {
               Learn
             </span>
           </Link>
-          <nav aria-label="Main" className="flex items-center gap-1">
-            <NavLink href="/" icon={<Home aria-hidden />} label="Home" exact />
-            <NavLink href="/leaderboard" icon={<Trophy aria-hidden />} label="Leaderboard" />
-            <NavLink href="/profile" icon={<UserRound aria-hidden />} label="Profile" />
-            {profile.is_admin && <NavLink href="/admin" icon={<Shield aria-hidden />} label="Admin" />}
-          </nav>
+          <RubberNav
+            items={[
+              { href: "/", label: "Home", icon: <Home aria-hidden />, exact: true },
+              { href: "/leaderboard", label: "Leaderboard", icon: <Trophy aria-hidden /> },
+              { href: "/profile", label: "Profile", icon: <UserRound aria-hidden /> },
+              ...(profile.is_admin ? [{ href: "/admin", label: "Admin", icon: <Shield aria-hidden /> }] : []),
+            ]}
+          />
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />

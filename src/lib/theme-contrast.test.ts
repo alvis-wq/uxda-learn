@@ -71,6 +71,36 @@ describe.each([
   });
 });
 
+/** Colour of `fg` drawn at `alpha` opacity over `bg` (the nav labels are dimmed while idle / hovered). */
+function blend(fg: string, bg: string, alpha: number): string {
+  const ch = (i: number) => Math.round(parseInt(fg.slice(i, i + 2), 16) * alpha + parseInt(bg.slice(i, i + 2), 16) * (1 - alpha));
+  return `#${[1, 3, 5].map((i) => ch(i).toString(16).padStart(2, "0")).join("")}`;
+}
+
+// RubberNav: idle labels are 0.7 opaque, hovered ones 0.9 (RubberNav.css); the active label sits on the thumb.
+describe.each([
+  ["light", ":root"],
+  ["dark", ".dark"],
+])("%s mode header navigation", (_mode, selector) => {
+  const t = { ...tokens(":root"), ...tokens(selector) };
+
+  it.each([0.7, 0.9, 1])("labels at %s opacity meet 4.5:1 on the track", (alpha) => {
+    expect(contrast(blend(t["nav-text"], t["nav-track"], alpha), t["nav-track"])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the active label meets 4.5:1 on the thumb", () => {
+    expect(contrast(t["nav-text-active"], t["nav-thumb"])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the thumb stands out from the track", () => {
+    expect(contrast(t["nav-thumb"], t["nav-track"])).toBeGreaterThanOrEqual(1.1);
+  });
+
+  it("the track is visible against the page", () => {
+    expect(contrast(t["nav-track"], t.background)).toBeGreaterThanOrEqual(1.05);
+  });
+});
+
 describe("softer palette", () => {
   const light = tokens(":root");
   const dark = tokens(".dark");
@@ -79,8 +109,19 @@ describe("softer palette", () => {
     expect(light.background.toLowerCase()).not.toBe("#ffffff");
   });
 
+  // The one deliberate exception: the active header-nav label is specified as pure white on its thumb.
+  const PURE_WHITE_ALLOWED = ["nav-text-active"];
+
   it("uses no pure black or white in dark mode", () => {
-    for (const v of Object.values(dark)) expect(["#000000", "#ffffff"]).not.toContain(v.toLowerCase());
+    for (const [name, v] of Object.entries(dark)) {
+      if (PURE_WHITE_ALLOWED.includes(name)) continue;
+      expect(["#000000", "#ffffff"], `--${name}`).not.toContain(v.toLowerCase());
+    }
+  });
+
+  it("keeps that exception to the nav label alone", () => {
+    expect(PURE_WHITE_ALLOWED).toEqual(["nav-text-active"]);
+    expect(dark["nav-text-active"].toLowerCase()).toBe("#ffffff");
   });
 
   it("raises dark surfaces slightly above the background", () => {

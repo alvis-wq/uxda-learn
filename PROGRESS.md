@@ -431,3 +431,38 @@ Branch `feat/specular-button`.
 Checks: `npm run check` ✅ · `npm run build` ✅. Browser-verified (`next dev` and a production build): usable at once,
 axe A/AA clean, no overflow at 375px (button 293×54), focus ring, no-WebGL2 border, hover highlight, no console output.
 `glass-x.spec.ts` scoped its canvas checks to the X's canvas; its 5 login tests were run ✅. Full E2E not run (no test project).
+
+## Rubber navigation + page entry animation
+Branch `feat/rubber-nav`. `motion@12.43.0` (exact).
+- **RubberNav** (`src/components/rubber-nav/`), adapted from React Bits RubberSegment: a `<nav>` of real Next
+  `<Link>`s, active item from the pathname (`aria-current="page"`), normal Tab order, no arrow-key selection, no
+  dragging. Stretch/squash thumb and clip-path label swap kept (size md, radius 24, inset 3, equal slots, stretch 100,
+  squash 3, speed 1). Items: Home, Leaderboard, Profile, Admin (admins only); below `md` icons only, names kept via
+  `aria-label`. Reduced motion: the thumb jumps. When no item matches the route (e.g. a challenge) the thumb fades out.
+  Colours are theme variables `--nav-*` (dark: track #161616, thumb #282828, text #fafafa, active #ffffff; light values
+  added). The admin sub-navigation still uses `NavLink`.
+- **Page entry** (`src/components/page-entry/`, used as `(app)/template.tsx` and `(admin)/admin/template.tsx`): fade +
+  rise 8px + blur 4px→0, 300 ms, ease [0.23, 1, 0.32, 1]; blocks stagger 35 ms, max 6 staggered, the rest together.
+  Only on route change (not hard loads, refreshes or same-route clicks); loading skeletons (`aria-busy`) are skipped
+  and the real content animates when it arrives; only on-screen blocks animate; inline styles are removed afterwards.
+  Reduced motion: a plain 150 ms fade.
+- Bug found while testing: the thumb stayed unclipped when a page loaded on any item but the first (a `useTransform`
+  value isn't refreshed after `jump()`); the thumb is now painted directly from the motion values' change events.
+
+Checks: `npm run check` ✅ (243 unit tests; new nav contrast tests + entry timing tests) · `npm run build` ✅.
+Browser-verified in `next dev` and a production build with a temporary harness (removed): 24 nav checks (alignment,
+stretch ~2 slots wide, squash overshoot, Tab order, arrows inert, aria-current, no-match fade, 375/360px, reduced motion,
+no-JS fallback, axe light + dark) and 17 entry checks (stagger timing, header untouched, skeleton skipped, no CLS,
+no re-run on refresh, pointer-events, inline styles cleaned, reduced motion) all pass. New `e2e/nav.spec.ts` is written
+but NOT run (no test Supabase project here); it typechecks and lints.
+
+### Fix: hydration mismatch from the page entry animation
+Hard load of a page that streams in behind `loading.tsx` logged "A tree hydrated but some attributes of the server
+rendered HTML didn't match": my content-arrival observer saw the streamed page as "new" and hid/animated it while
+React was hydrating it. The SSR HTML never contained hidden styles (checked), but the DOM did by hydration time.
+Now `nextEntryState()` guarantees nothing is touched until a client-side route change has happened (first mount,
+same-path re-runs and streamed arrivals on a hard load are all skipped). Reproduced before, clean after (first load,
+streaming first load, navigations; JS disabled shows content). New tests: unit (`entry.test.ts` state rules,
+`page-entry.ssr.test.ts` — the template's SSR output has no inline styles / opacity:0 / blur / translate) and two
+`e2e/nav.spec.ts` tests (SSR HTML of /, /leaderboard, /profile; console free of hydration warnings on first load and
+after navigating) — the E2E ones are not run here (no test project).

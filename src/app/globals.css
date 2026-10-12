@@ -87,6 +87,11 @@
   --border: #e4e4e7;
   --input: #d4d4d8;
   --ring: #b5a2ff;
+  /* Header navigation (RubberNav): track, thumb, label and active label. */
+  --nav-track: #ececee;
+  --nav-thumb: #ffffff;
+  --nav-text: #27272a;
+  --nav-text-active: #18181b;
 }
 
 .dark {
@@ -111,6 +116,10 @@
   --border: #303030;
   --input: #3d3d3d;
   --ring: #b5a2ff;
+  --nav-track: #161616;
+  --nav-thumb: #282828;
+  --nav-text: #fafafa;
+  --nav-text-active: #ffffff;
 }
 
 @layer base {

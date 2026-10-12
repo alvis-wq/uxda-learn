@@ -132,3 +132,11 @@
 - SpecularButton's cleanup only calls `loseContext()` once the canvas is detached — under React StrictMode (`next dev`, so also Playwright) the effect re-runs on the same canvas and the published cleanup kills the context for good, leaving a white box; production was unaffected.
 - SpecularButton keeps its render-time `settingsRef.current = settings` behind a targeted `eslint-disable react-hooks/refs` — it's the published logic, and rewriting it would drift from React Bits for no gain.
 - Fallback border only when `supportsWebGL2()` is false — with WebGL the shader draws the edge, and an always-on border would double it.
+- RubberNav paints the thumb's clip-path/opacity straight from the motion values' change events instead of `useTransform` — a derived style isn't refreshed after `jump()`, which left the thumb unclipped on any direct load except the first item.
+- Nav thumb is derived from the pathname, not optimistic on click — the "active" item can never disagree with the page (redirects, 403s), at the cost of the thumb moving when navigation commits (loading.tsx makes that near-instant).
+- Page entry never animates the initial hard load — that content is already on screen, and hiding then re-showing it would flash; it animates route changes only.
+- Page entry watches for new content under the template and skips `aria-busy` roots — pages stream in behind loading.tsx skeletons, so a bare template would animate the skeleton and then pop the real page in.
+- Page entry animates the page root's children (lists flattened to rows) and only those on screen — "blocks" is what a reader sees appear; below-the-fold blocks need no animation and animating dozens of blurred rows is wasted work.
+- Admin template lives in `(admin)/admin/` (inside the admin layout) — the admin sub-navigation is navigation and must not animate.
+- Dark `--nav-text-active` is pure #ffffff as specified, so the "no pure white in dark mode" test has one explicit, asserted exception for that token rather than being loosened.
+- Page entry mutates the DOM only after a client-side route change (`nextEntryState`): anything touched before hydration finishes — including content streamed in behind loading.tsx on a hard load — is a hydration mismatch, and the server must always render the visible final state.
