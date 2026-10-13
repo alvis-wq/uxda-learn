@@ -1,6 +1,13 @@
 import type { SVGProps } from "react";
 
 /**
+ * Where the letters (U X D A, not the (R) mark) stand, as a fraction of the logo's height.
+ * The viewBox is 36 tall, but the flat-bottomed letters (X, D, A) end at y = 35.6738: the U's curve overshoots to 36, as round
+ * shapes do. A text baseline that is meant to be "the logo's baseline" belongs on the flat line, not on the SVG's bottom edge.
+ */
+export const LOGO_LETTER_BASE = 35.6738 / 36;
+
+/**
  * The UXDA logo (public/brand/uxda-logo.svg), inline so it follows `currentColor` and works in light and
  * dark mode. Size it with height (e.g. `h-5`); the width follows the 189:36 aspect ratio.
  * Labelled "UXDA Learn" for assistive tech by default; pass `title={null}` when the surrounding text already names it.

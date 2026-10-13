@@ -745,3 +745,12 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Checks: `npm run check` ✅ (430 tests) · `npm run build` ✅. Temporary page rendering the real `HomeView` and the card grid, 320-1280 px, dark and light: axe (wcag2a/aa/21aa) clean, no horizontal overflow from 320 up.
   E2E updated (required/dashboard/home specs; hint, overall count, card rows) but not run: no test project.
 - To look at: no challenge artwork exists yet in `public/challenges/`, so I could not see how an image sits above the new footer band (it is tucked behind it, as before it bled off the card's bottom edge).
+
+## Header logo: "Learn" on the logo's baseline (`fix/logo-baseline`)
+
+- New `UxdaLockup` (header and login card) puts the word on the line the logo letters stand on, from font metrics and no pixel nudge: the row is `align-items: baseline` (an SVG's baseline is its bottom edge), the word has
+  `line-height: 0` (zero-height box: the row is exactly as tall as the logo, so the lockup stays centred where the logo alone was), and the logo is moved down by `(1 - 35.6738/36)` = 0.906% of its own height
+  (`translateY(%)`), because the flat-bottomed letters X, D, A end at 35.6738 of the 36-tall viewBox (the U overshoots to 36). The (R) mark is ignored. Works at any logo or text size.
+- Measured by scanning screenshots at 8x for the lowest ink row of the logo's flat letters against the lowest row of the "L": before, "Learn" stood 3.9 CSS px above the logo's bottom in the header and 6.75 px above it on the login card
+  (centre alignment); after, 0 device px of difference at DPR 1, 2, 3 and 8 for header desktop (dark and light), login card desktop and mobile (the header hides "Learn" below 640px). A sweep of 7 logo/text size pairs
+  (12-64px logo, 12-48px text) is 0 px at 8x in every case, and an in-page probe on the word's baseline equals the letters' line to 0.00002px. `e2e/logo-baseline.spec.ts` asserts the same (not run: no test project).
