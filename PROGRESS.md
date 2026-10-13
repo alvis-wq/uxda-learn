@@ -746,6 +746,21 @@ sign-out and a second browser, In progress on the card, privacy, version change,
   E2E updated (required/dashboard/home specs; hint, overall count, card rows) but not run: no test project.
 - To look at: no challenge artwork exists yet in `public/challenges/`, so I could not see how an image sits above the new footer band (it is tucked behind it, as before it bled off the card's bottom edge).
 
+## Home: categories as a filter (`feat/home-filter`)
+
+- **Pills filter the list in place.** An "All" pill comes first (overall done/total, a dot while any required challenge is left), then one per category; the pills keep their done/total and lavender dot. Choosing one
+  calls `history.pushState` (`?category=slug`, no param = All), which Next syncs into `useSearchParams`, so the list filters on the client at once: no navigation, no fetch (measured 60-130 ms to the new list, 0 document requests, same
+  `window`). Reload, back/forward and a shared link show the same filter; an unknown slug means All. The pills are still real `<a href="?category=…">` (new tab, copy link work; modified clicks are left to the browser).
+  The selected pill is filled like the active nav item (the nav's thumb on its track tokens: white on grey in light, #282828 on #161616 in dark) and has `aria-current="true"`; on a phone the row scrolls to keep it in view
+  (the row only, never the page). A polite `role="status"` line says "Showing …: N challenges". Colour transition and the list's 200 ms fade-in are off under reduced motion.
+- **One "Challenges" section** replaces "Required for you" and the optional hint (`optionalHint` removed). Order (`sortHomeChallenges`, server-side, filter-independent): 1) in progress, most recently saved first (a required one stays here
+  with its Required badge), 2) required not done: overdue, then due date, undated last (a required one awaiting review after those to do), 3) other not started in category order then easiest first, 4) completed last.
+  Empty filter: "Nothing here yet." (not reachable today, since categories without a visible challenge get no pill, but it is there).
+- Data: `HomeData.challenges` (every visible card, sorted) replaces `required.outstanding/optionalRemaining`; `CardChallenge` gained `categorySlug` and `savedAt`. The category pages are unchanged. Nothing on the home page links to
+  them any more (the pills were the links); the challenge page's back link and any old link still work.
+- Checks: `npm run check` ✅ (439 tests) · `npm run build` ✅. A temporary page rendering the real `HomeView` in a browser: filtering, URL, back/forward, reload, bogus param, Enter on a focused pill, 1280/375, dark/light, axe
+  (wcag2a/aa/21aa) clean, no overflow, pills 36px, the fade is `none` under reduced motion. E2E rewritten for the new layout (home, required specs), not run: no test project.
+
 ## Header logo: "Learn" on the logo's baseline (`fix/logo-baseline`)
 
 - New `UxdaLockup` (header and login card) puts the word on the line the logo letters stand on, from font metrics and no pixel nudge: the row is `align-items: baseline` (an SVG's baseline is its bottom edge), the word has

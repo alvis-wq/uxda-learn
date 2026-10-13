@@ -2,9 +2,10 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/auth/session";
 import { isChallengeVisible, parseChallenge, type Challenge } from "@/lib/challenges/model";
-import { requiredFirst, requiredState, sortByUrgency, type RequiredState } from "@/lib/challenges/required";
+import { requiredFirst, requiredState, type RequiredState } from "@/lib/challenges/required";
 import { resolveCardImage } from "@/lib/challenges/card";
 import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
+import { sortHomeChallenges } from "@/lib/challenges/home-order";
 import type { DraftRow } from "@/lib/submissions/draft";
 import { groupForTrack, isRequiredFor, isVisibleToTrack } from "@/lib/tracks";
 import {
@@ -47,13 +48,13 @@ async function myAcknowledgements(userId: string): Promise<Map<string, string>> 
 }
 
 /** The learner's saved drafts by challenge slug, with the step each was saved on (RLS: their own rows only). */
-type Drafts = ReadonlyMap<string, { step: number }>;
+type Drafts = ReadonlyMap<string, { step: number; savedAt: string }>;
 
 async function myDrafts(userId: string): Promise<Drafts> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("submission_drafts").select("challenge_slug,current_step").eq("user_id", userId);
+  const { data, error } = await supabase.from("submission_drafts").select("challenge_slug,current_step,updated_at").eq("user_id", userId);
   if (error) throw new Error(`Couldn't load your drafts: ${error.message}`);
-  return new Map(data.map((d) => [d.challenge_slug, { step: d.current_step }]));
+  return new Map(data.map((d) => [d.challenge_slug, { step: d.current_step, savedAt: d.updated_at }]));
 }
 
 function groupBySlug(subs: SubmissionLite[]) {
@@ -73,6 +74,8 @@ export type ChallengeProgress = {
   inProgress: boolean;
   /** How far along that draft is; null without a draft, or for a challenge without a Stepper. */
   draftProgress: DraftProgress | null;
+  /** When that draft was last saved (ISO); null without one. */
+  savedAt: string | null;
 };
 
 function progressFor(
@@ -103,6 +106,7 @@ function progressFor(
     requiredState: requiredState({ done, latestStatus: state.latest?.status, dueAt: ch.due_at, now }),
     inProgress,
     draftProgress: inProgress ? draftProgress(ch, draft.step) : null,
+    savedAt: inProgress ? draft.savedAt : null,
   };
 }
 
@@ -138,12 +142,16 @@ export type CardChallenge = {
   inProgress: boolean;
   /** "Step 2 of 5" for that work; null when there is none or the challenge has no Stepper. */
   draftProgress: DraftProgress | null;
+  /** When that work was last saved (ISO); null without any. */
+  savedAt: string | null;
+  categorySlug: string;
   /** Public URL of the card artwork (the challenge's own, else its category's), or null. */
   imageUrl: string | null;
 };
 
 type CardSource = {
   slug: string;
+  category_slug: string;
   title: string;
   summary: string | null;
   type: Challenge["type"];
@@ -177,8 +185,16 @@ function cardOf(
     bestScore: p.state.bestScore,
     inProgress: p.inProgress,
     draftProgress: p.draftProgress,
+    savedAt: p.savedAt,
+    categorySlug: ch.category_slug,
     imageUrl: resolveCardImage(ch.image, category.image),
   };
+}
+
+/** A card without the sort-only field it was given. */
+function cardWithout({ categoryOrder, ...card }: CardChallenge & { categoryOrder: number }): CardChallenge {
+  void categoryOrder;
+  return card;
 }
 
 export type HomeHero = {
@@ -193,14 +209,10 @@ export type HomeData = {
   /** Every challenge the learner can see (acknowledge ones included, as in the category counts), and how many are done. */
   overall: { done: number; total: number };
   categories: CategoryProgress[];
-  required: {
-    total: number;
-    done: number;
-    outstanding: CardChallenge[];
-    overdue: number;
-    /** Challenges that are neither required nor completed: waiting in the categories. */
-    optionalRemaining: number;
-  };
+  /** Required challenges among them: how many, how many done, how many are overdue. */
+  required: { total: number; done: number; overdue: number };
+  /** Every challenge the learner can see, in the home page's order (see sortHomeChallenges); the page filters it. */
+  challenges: CardChallenge[];
 };
 
 export async function getHomeData(profile: Profile, now = new Date()): Promise<HomeData> {
@@ -248,10 +260,14 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     });
 
   const required = visible.filter((ch) => ch.required);
-  const outstanding = sortByUrgency(required.filter((ch) => !ch.done)).map((ch) => {
-    const category = catBySlug.get(ch.category_slug);
-    return cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
-  });
+  const categoryOrder = new Map(cats.data.map((c, i) => [c.slug, i]));
+  const challenges = sortHomeChallenges(
+    visible.map((ch) => {
+      const category = catBySlug.get(ch.category_slug);
+      const card = cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
+      return { ...card, categoryOrder: categoryOrder.get(ch.category_slug) ?? 0 };
+    }),
+  ).map((item) => cardWithout(item));
 
   const { totalScore } = summarizeScores(subs);
   const hero: HomeHero = {
@@ -267,10 +283,9 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     required: {
       total: required.length,
       done: required.filter((ch) => ch.done).length,
-      outstanding,
-      overdue: outstanding.filter((ch) => ch.requiredState === "overdue").length,
-      optionalRemaining: visible.filter((ch) => !ch.required && !ch.done).length,
+      overdue: required.filter((ch) => ch.requiredState === "overdue").length,
     },
+    challenges,
   };
 }
 
@@ -286,7 +301,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   const [chs, subs, acks, drafts] = await Promise.all([
     supabase
       .from("challenges")
-      .select("slug,title,summary,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image,questions,submission_spec")
+      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image,questions,submission_spec")
       .eq("category_slug", slug)
       .eq("status", "published")
       .order("difficulty")
@@ -366,7 +381,7 @@ export async function getChallengePage(
   return {
     challenge: parseChallenge(row),
     categoryTitle: category?.title ?? row.category_slug,
-    progress: progressFor(row, profile, attempts, acks, new Map(draft ? [[slug, { step: draft.current_step }]] : []), now),
+    progress: progressFor(row, profile, attempts, acks, new Map(draft ? [[slug, { step: draft.current_step, savedAt: draft.updated_at }]] : []), now),
     attempts,
     preview: !learnerVisible,
     draft,
