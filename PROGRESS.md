@@ -704,3 +704,12 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - A challenge with a draft and earlier attempts shows once, in this group, with "Best so far: X / Y" (the best published attempt, from its own `max_score`); it is filtered out of the history list, so the
   "Submitted" list below (that subheading appears only when both groups exist) never repeats it. The stats are unchanged. With drafts but no other attempts the "No attempts yet" empty state is not shown.
 - Tests: `in-progress.test.ts` (rule parity, best score, visibility, ordering), `timeAgo`; 3 more specs in `e2e/drafts.spec.ts` (not run here, no test project). Checked on a temporary page at 1280 dark / 375 light: no overflow, long titles wrap, the link's accessible name is unique.
+
+## Content reset before launch (`chore/content-reset`)
+
+- `content/challenges/` is now exactly the 14 challenges you listed (13 new files, `verify-before-you-trust` rewritten); the 8 old seed files are gone, so `content:sync` archives them
+  (never deletes: they have submissions). `npm run content:validate` passes as is: 11 categories, 14 challenges (13 draft, 1 published), no format fixes needed, no wording touched.
+  `docs/seed-challenges.md` is marked superseded.
+- `scripts/reset-user-data.ts` (`npm run reset:users -- [emails] [--apply]`): deletes submissions (+ evaluations by cascade), acknowledgements, drafts and Storage screenshots of the given accounts (accounts stay), and
+  always removes the leftover test accounts (`test-strategist@`, `test-designer@`, `test-admin@` on the first allowed domain) completely. Dry run by default, listing counts per account; `--apply` deletes, then re-reads
+  and fails loudly if anything is left. Exact addresses only (no wildcards). Argument parsing is unit-tested (`reset-args.test.ts`); the script itself has NOT been run (not against the live database, as asked, and there is no test project).

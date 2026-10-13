@@ -19,6 +19,7 @@
     "content:sync": "tsx scripts/content-sync.ts",
     "seed:admins": "tsx scripts/seed-admins.ts",
     "seed:domains": "tsx scripts/seed-domains.ts",
+    "reset:users": "tsx scripts/reset-user-data.ts",
     "eval:pull": "tsx scripts/eval-pull.ts",
     "eval:push": "tsx scripts/eval-push.ts"
   },

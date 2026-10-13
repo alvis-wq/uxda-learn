@@ -1,3 +1,5 @@
+> **Superseded (2026-10-13):** the launch content in `content/challenges/` replaced these seed challenges (the old files were removed and `content:sync` archives them). Kept for the background only.
+
 # Seed challenges — category: wireframing (strategist)
 
 Convert each into `content/challenges/<slug>.md` per docs/content-format.md.
