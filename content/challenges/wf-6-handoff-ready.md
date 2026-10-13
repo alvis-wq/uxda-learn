@@ -20,8 +20,8 @@ submission:
     label: Link to the Commentary Section in Figma
   reflection:
     required: true
-    min_words: 40
-    prompt: Paste one annotation the AI wrote and your better version. Why is yours better?
+    min_words: 5
+    prompt: Paste one AI annotation and your better version. Why is yours better?
 rubric:
   - id: section
     criterion: The flow is organised into a Commentary Section with a review status
@@ -67,4 +67,4 @@ Your flow is done. Now make it ready for a developer or the client.
 ### What to send
 - A **screenshot** of the finished section.
 - The **link** to it in Figma.
-- **The AI's annotation and your version,** and why yours is better.
+- **A short note:** the AI's annotation, your version, and why yours is better.

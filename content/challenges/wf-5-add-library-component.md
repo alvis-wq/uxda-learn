@@ -19,13 +19,13 @@ submission:
     required: true
     label: Link to the new component in the library file
   reflection:
-    required: true
-    min_words: 40
+    required: false
+    min_words: 5
     prompt: How close was the result to your reference? What did you have to correct?
 rubric:
   - id: component
     criterion: A new wireframe component made from a screenshot with /add-component
-    points: 10
+    points: 16
     levels:
       full: The component matches the reference's structure, in the greyscale wireframe style, staged for review
       partial: Created, but it's far from the reference or not in wireframe style
@@ -37,17 +37,12 @@ rubric:
       full: A cropped screenshot of one component, from a real app or design
       partial: A whole screen, or hard to tell which part is meant
       none: No reference screenshot
-  - id: critique
-    criterion: Compares the result with the reference and names what they corrected
-    points: 6
-    levels:
-      full: Specific differences and what they fixed (or why they left it)
-      partial: General comment only
-      none: Missing
 grader_notes: |
   Uses the uxda-wireframes /add-component command: the reference goes into the library file's
   "component requests" section, and the new component is staged for maintainer (Alvis) review —
   it's not live in the library until approved. That's expected; don't mark it down.
+  A written note is optional and not needed for full marks: score only the component, the
+  reference and the link. Don't mark anyone down for leaving it out.
   If the link can't be opened: score from screenshots, confidence low, flag figma_inaccessible.
 ---
 ## Add a component to the library
@@ -66,6 +61,6 @@ Our wireframe library doesn't have everything. You can add new components yourse
 The new component waits for review before it goes live in the library. That's normal.
 
 ### What to send
-- Your **reference screenshot** and a screenshot of the **new component**.
+- Your **reference screenshot**.
+- A **screenshot of the new component**.
 - The **link** to the new component.
-- **3–4 sentences:** how close it got, and what you corrected.

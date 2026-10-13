@@ -16,8 +16,8 @@ submission:
     label: Link to your new screen in Figma (anyone at UXDA must be able to open it)
   reflection:
     required: true
-    min_words: 25
-    prompt: Compare it with your Make Kit draft. What's better, what's worse?
+    min_words: 5
+    prompt: What's better, and what's worse, than your Make Kit draft?
 rubric:
   - id: screen
     criterion: A savings-goal screen built with /new-screen from the UXDA library
@@ -52,4 +52,4 @@ Same brief as before: the **savings goal** screen. This time you build it in Fig
 
 ### What to send
 - The **link** to the screen in Figma.
-- **2–3 sentences:** how it compares with your Make Kit draft.
+- **A short note:** how it compares with your Make Kit draft.
