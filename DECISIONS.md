@@ -208,3 +208,5 @@
 - Pills stay `<a href>` rather than buttons: a filter that is a URL should behave like one (open in a new tab, copy the link); plain clicks are intercepted, modified clicks are not.
 - The selected pill borrows the header nav's thumb/track tokens (instead of a new colour): the pills read as the same kind of control, and the tokens already pass contrast in both themes.
 - Without a "Required for you" section a required challenge is no longer singled out by position alone: it is second in the order (after in-progress work), and its Required badge and the dots on the pills carry the rest.
+- "Learn" is baseline-aligned to the logo (`align-items: baseline` + a zero line-height word) instead of centred plus a pixel or em nudge: the browser derives the baseline from the font itself, so it holds when the logo height, the font size or even the font changes; a nudge tuned for Urbanist's descender would not.
+- The logo shifts down 0.906% of its own height (a percentage `translateY`) so the flat feet of X, D, A, not the SVG's bottom edge (where the U's overshoot reaches), sit on the baseline; the shift scales with the logo, which a pixel value would not.

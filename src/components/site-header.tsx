@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Home, LogOut, Shield, Trophy, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UxdaLogo } from "@/components/uxda-logo";
+import { UxdaLockup } from "@/components/uxda-lockup";
 import { RubberNav } from "@/components/rubber-nav/RubberNav";
 import { StickyHeader } from "@/components/sticky-header";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -22,12 +22,9 @@ export function SiteHeader({ profile }: { profile: Profile }) {
         viewport, not between the logo and the actions. Side padding: 16px on phones up to 80px on desktop.
       */}
       <div className="grid h-14 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 max-[340px]:gap-1 max-[340px]:px-3 sm:px-6 md:px-10 lg:px-20">
-        <Link href="/" className="flex items-center gap-2 justify-self-start rounded-full font-semibold outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]">
+        <Link href="/" className="flex items-center justify-self-start rounded-full font-semibold outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]">
           {/* The logo carries the "UXDA Learn" label; the visible word is hidden from assistive tech so it isn't read twice. */}
-          <UxdaLogo className="h-4 w-auto max-[340px]:h-3 sm:h-5" />
-          <span aria-hidden className="hidden sm:inline">
-            Learn
-          </span>
+          <UxdaLockup className="gap-2 py-1" logoClassName="h-4 w-auto max-[340px]:h-3 sm:h-5" learnClassName="hidden sm:inline" />
         </Link>
         <div className="flex justify-center">
           <RubberNav

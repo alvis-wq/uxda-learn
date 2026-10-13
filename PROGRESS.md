@@ -760,3 +760,12 @@ sign-out and a second browser, In progress on the card, privacy, version change,
   them any more (the pills were the links); the challenge page's back link and any old link still work.
 - Checks: `npm run check` ✅ (439 tests) · `npm run build` ✅. A temporary page rendering the real `HomeView` in a browser: filtering, URL, back/forward, reload, bogus param, Enter on a focused pill, 1280/375, dark/light, axe
   (wcag2a/aa/21aa) clean, no overflow, pills 36px, the fade is `none` under reduced motion. E2E rewritten for the new layout (home, required specs), not run: no test project.
+
+## Header logo: "Learn" on the logo's baseline (`fix/logo-baseline`)
+
+- New `UxdaLockup` (header and login card) puts the word on the line the logo letters stand on, from font metrics and no pixel nudge: the row is `align-items: baseline` (an SVG's baseline is its bottom edge), the word has
+  `line-height: 0` (zero-height box: the row is exactly as tall as the logo, so the lockup stays centred where the logo alone was), and the logo is moved down by `(1 - 35.6738/36)` = 0.906% of its own height
+  (`translateY(%)`), because the flat-bottomed letters X, D, A end at 35.6738 of the 36-tall viewBox (the U overshoots to 36). The (R) mark is ignored. Works at any logo or text size.
+- Measured by scanning screenshots at 8x for the lowest ink row of the logo's flat letters against the lowest row of the "L": before, "Learn" stood 3.9 CSS px above the logo's bottom in the header and 6.75 px above it on the login card
+  (centre alignment); after, 0 device px of difference at DPR 1, 2, 3 and 8 for header desktop (dark and light), login card desktop and mobile (the header hides "Learn" below 640px). A sweep of 7 logo/text size pairs
+  (12-64px logo, 12-48px text) is 0 px at 8x in every case, and an in-page probe on the word's baseline equals the letters' line to 0.00002px. `e2e/logo-baseline.spec.ts` asserts the same (not run: no test project).
