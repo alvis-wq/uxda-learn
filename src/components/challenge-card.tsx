@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
+import { DraftProgressBar } from "@/components/draft-progress";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { cardCta, cardSpans, type CardSpan } from "@/lib/challenges/card";
@@ -84,6 +85,7 @@ export function ChallengeCard({
               {cta}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </span>
+            {ch.draftProgress && <DraftProgressBar progress={ch.draftProgress} />}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <ChallengeMeta challenge={ch} />
               <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} />

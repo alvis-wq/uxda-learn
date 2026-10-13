@@ -78,6 +78,8 @@ test.describe("server-side drafts", () => {
     const card = page.getByTestId("challenge-card").filter({ hasText: "[E2E] Quiz" });
     await expect(card).toContainText("In progress");
     await expect(card).toContainText("Continue");
+    await expect(card.getByTestId("draft-progress")).toContainText("Step 2 of 3"); // q1, q2, Review: the Stepper's own count
+    await expect(card.getByTestId("draft-progress").locator("[data-filled]")).toHaveCount(2);
     await expect(page.getByTestId("challenge-card").filter({ hasText: "[E2E] Screenshot" })).not.toContainText("In progress");
     await page.goto("/challenges/e2e-quiz");
     await expect(page.getByRole("heading", { name: "[E2E] Quiz" }).locator("..")).toContainText("In progress");
@@ -90,6 +92,7 @@ test.describe("server-side drafts", () => {
     await expect(group.getByRole("heading", { name: "In progress" })).toBeVisible();
     const row = group.getByTestId("in-progress-row").filter({ hasText: "[E2E] Quiz" });
     await expect(row).toContainText("[E2E] Test challenges");
+    await expect(row.getByTestId("draft-progress")).toContainText("Step 2 of 3");
     await expect(row).toContainText(/saved .* ago|saved just now/);
     await expect(row.getByTestId("in-progress-best")).toHaveCount(0); // no earlier attempt
     await row.getByRole("link", { name: "Continue [E2E] Quiz" }).click();

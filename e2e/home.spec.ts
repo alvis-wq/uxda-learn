@@ -198,4 +198,39 @@ test.describe("theme", () => {
     await expect(page.locator("html")).toHaveClass(/\bdark\b/);
     expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
   });
+
+  test("categories are a row of pills right below the hero, above the required challenges", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const pills = page.getByTestId("category-pills");
+    const hero = (await page.getByTestId("hero").boundingBox())!;
+    const row = (await pills.boundingBox())!;
+    expect(row.y).toBeGreaterThanOrEqual(hero.y + hero.height);
+    const required = page.getByTestId("required-section");
+    if (await required.count()) expect(row.y + row.height).toBeLessThanOrEqual((await required.boundingBox())!.y);
+
+    // One real link per category with a visible challenge, 36px tall (the header nav's height), with count and name.
+    const pill = pills.getByRole("link", { name: /\[E2E\] Test challenges/ });
+    await expect(pill).toContainText("completed");
+    await expect(pill.locator("[aria-hidden]").first()).toContainText(/\d+\/\d+/);
+    expect((await pill.boundingBox())!.height).toBe(36);
+    await pill.focus();
+    await expect(pill).toHaveCSS("box-shadow", /0px 0px 0px 3px/); // visible keyboard focus
+    await expect(page.getByText("Coming soon")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeAttached(); // screen-reader heading for the row
+
+    await pill.click();
+    await expect(page).toHaveURL(/\/categories\/e2e-tests$/);
+  });
+
+  test("the pill row scrolls sideways on a phone without making the page scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginAs(page, "designer");
+    await page.goto("/");
+    await expect(page.getByTestId("category-pills")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const list = page.getByTestId("category-pills").locator("ul");
+    await expect(list).toHaveCSS("overflow-x", "auto");
+    await expect(list).toHaveCSS("flex-wrap", "nowrap");
+  });
 });

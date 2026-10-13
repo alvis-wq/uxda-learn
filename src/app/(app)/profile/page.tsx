@@ -28,13 +28,13 @@ export default async function ProfilePage() {
   // Saved, unsubmitted work (RLS: only the learner's own drafts).
   const { data: drafts, error: draftsError } = await supabase
     .from("submission_drafts")
-    .select("challenge_slug,updated_at")
+    .select("challenge_slug,updated_at,current_step")
     .eq("user_id", profile.id);
   if (draftsError) throw new Error(`Couldn't load your drafts: ${draftsError.message}`);
 
   const slugs = [...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug)])];
   const { data: challenges } = slugs.length
-    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences").in("slug", slugs)
+    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec").in("slug", slugs)
     : { data: [] };
   const titleOf = (slug: string) => challenges?.find((c) => c.slug === slug)?.title ?? slug;
 
