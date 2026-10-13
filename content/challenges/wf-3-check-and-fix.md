@@ -20,8 +20,8 @@ submission:
     label: Link to the screen after your fixes
   reflection:
     required: true
-    min_words: 25
-    prompt: Which 2 things did you fix? Did /check flag anything you think is NOT a real problem?
+    min_words: 5
+    prompt: What did you fix? Was anything /check flagged not a real problem?
 rubric:
   - id: fixes
     criterion: Two /check findings fixed on the screen
@@ -55,4 +55,4 @@ Every screen should be checked before anyone else sees it. Our plugin has **/che
 ### What to send
 - A **screenshot** of the /check result.
 - The **link** to the screen after your fixes.
-- **2–3 sentences:** what you fixed, and if anything it flagged isn't really a problem.
+- **A short note:** what you fixed, and if anything it flagged isn't really a problem.

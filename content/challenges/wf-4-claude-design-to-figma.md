@@ -20,8 +20,8 @@ submission:
     label: Link to the flow in Figma (anyone at UXDA must be able to open it)
   reflection:
     required: true
-    min_words: 40
-    prompt: What did Claude Design get wrong or miss, and what did you change?
+    min_words: 5
+    prompt: What did Claude Design get wrong, and what did you fix?
 rubric:
   - id: flow
     criterion: A 3-screen savings-goal flow made in Claude Design
@@ -68,4 +68,4 @@ screens for the savings goal:
 ### What to send
 - **Screenshots** of the flow in Claude Design.
 - The **link** to the flow in Figma.
-- **3–4 sentences:** what Claude Design got wrong or missed, and what you changed.
+- **A short note:** what Claude Design got wrong or missed, and what you changed.

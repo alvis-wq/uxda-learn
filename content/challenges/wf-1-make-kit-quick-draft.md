@@ -16,8 +16,8 @@ submission:
     label: Link to the Figma frame with your Make draft (anyone at UXDA must be able to open it)
   reflection:
     required: true
-    min_words: 25
-    prompt: What did the Make Kit do well, and what would you change before showing it to anyone?
+    min_words: 5
+    prompt: What worked, and what would you change?
 rubric:
   - id: draft
     criterion: A screen made with the UXDA Make Kit is in a Figma file
@@ -52,4 +52,4 @@ example "Summer trip — €1,200"), how much they've saved, and can add money.
 
 ### What to send
 - The **link** to the frame in Figma. Check that anyone at UXDA can open it.
-- **2–3 sentences:** what worked, and what you'd change.
+- **A short note:** what worked, and what you'd change.
