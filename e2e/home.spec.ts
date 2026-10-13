@@ -97,7 +97,7 @@ test.describe("home page", () => {
     await loginAs(page, "designer");
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Welcome, Test" })).toBeVisible();
-    await expect(page.getByTestId("required-section")).toBeVisible();
+    await expect(page.getByTestId("challenges-section")).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -208,28 +208,72 @@ test.describe("theme", () => {
     expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
   });
 
-  test("categories are a row of pills right below the hero, above the required challenges", async ({ page }) => {
+  test("Categories and Challenges come right after Overall progress; the pills are 36px tall with count and name", async ({ page }) => {
     await loginAs(page, "designer");
     await page.goto("/");
-    const pills = page.getByTestId("category-pills");
-    const hero = (await page.getByTestId("hero").boundingBox())!;
-    const row = (await pills.boundingBox())!;
-    expect(row.y).toBeGreaterThanOrEqual(hero.y + hero.height);
-    const required = page.getByTestId("required-section");
-    if (await required.count()) expect(row.y + row.height).toBeLessThanOrEqual((await required.boundingBox())!.y);
+    const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
+    const [hero, overall, pills, list] = [await box("hero"), await box("overall-progress"), await box("category-pills"), await box("challenges-section")];
+    expect(overall.y).toBeGreaterThanOrEqual(hero.y + hero.height);
+    expect(pills.y).toBeGreaterThanOrEqual(overall.y + overall.height);
+    expect(list.y).toBeGreaterThanOrEqual(pills.y + pills.height);
+    await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Challenges", exact: true })).toBeVisible();
+    await expect(page.getByText("Required for you")).toHaveCount(0);
+    await expect(page.getByTestId("optional-hint")).toHaveCount(0);
+    await expect(page.getByText("Coming soon")).toHaveCount(0);
 
-    // One real link per category with a visible challenge, 36px tall (the header nav's height), with count and name.
-    const pill = pills.getByRole("link", { name: /\[E2E\] Test challenges/ });
+    // "All" comes first, with the overall count; then one pill per category with a visible challenge.
+    const all = page.getByTestId("category-pill").first();
+    await expect(all).toHaveAttribute("data-slug", "all");
+    await expect(all).toHaveAttribute("data-active", "");
+    await expect(all).toContainText("All");
+    await expect(all.locator("[aria-hidden]").first()).toContainText(/\d+\/\d+/);
+    const pill = page.getByTestId("category-pill").filter({ hasText: "[E2E] Test challenges" });
     await expect(pill).toContainText("completed");
-    await expect(pill.locator("[aria-hidden]").first()).toContainText(/\d+\/\d+/);
     expect((await pill.boundingBox())!.height).toBe(36);
     await pill.focus();
     await expect(pill).toHaveCSS("box-shadow", /0px 0px 0px 3px/); // visible keyboard focus
-    await expect(page.getByText("Coming soon")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeAttached(); // screen-reader heading for the row
+  });
 
+  test("a pill filters the list in place: URL, no page load, back/forward, reload, shared link", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const titles = () => page.getByTestId("challenge-card").locator("h3").allInnerTexts();
+    const all = await titles();
+    expect(all.length).toBeGreaterThanOrEqual(2);
+    // The order: required and overdue first, the rest not started after it.
+    expect(all[0]).toContain("[E2E] Read the rules");
+
+    const loads: string[] = [];
+    page.on("request", (request) => request.resourceType() === "document" && loads.push(request.url()));
+    await page.evaluate(() => ((window as unknown as { __same: boolean }).__same = true));
+    const pill = page.getByTestId("category-pill").filter({ hasText: "[E2E] Test challenges" });
     await pill.click();
-    await expect(page).toHaveURL(/\/categories\/e2e-tests$/);
+    await expect(page).toHaveURL(/\/\?category=e2e-tests$/);
+    await expect(pill).toHaveAttribute("data-active", "");
+    await expect(pill).toHaveAttribute("aria-current", "true");
+    await expect(page.getByTestId("category-pill").first()).not.toHaveAttribute("data-active", "");
+    expect(await titles()).toEqual(all); // every fixture challenge is in this category: same list, same order
+    await expect(page.getByTestId("filter-status")).toContainText("[E2E] Test challenges");
+    expect(await page.evaluate(() => (window as unknown as { __same?: boolean }).__same)).toBe(true); // same document
+    expect(loads).toEqual([]);
+
+    await page.getByTestId("category-pill").first().click(); // All: the param goes away
+    await expect(page).toHaveURL(/\/$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\?category=e2e-tests$/);
+    await expect(pill).toHaveAttribute("data-active", "");
+    await page.goForward();
+    await expect(page).toHaveURL(/\/$/);
+
+    // A shared link and a reload keep the filter; an unknown category means All.
+    await page.goto("/?category=e2e-tests");
+    await expect(pill).toHaveAttribute("data-active", "");
+    await page.reload();
+    await expect(pill).toHaveAttribute("data-active", "");
+    await page.goto("/?category=nope");
+    await expect(page.getByTestId("category-pill").first()).toHaveAttribute("data-active", "");
+    expect(await titles()).toEqual(all);
   });
 
   test("the pill row scrolls sideways on a phone without making the page scroll", async ({ page }) => {
@@ -241,5 +285,12 @@ test.describe("theme", () => {
     const list = page.getByTestId("category-pills").locator("ul");
     await expect(list).toHaveCSS("overflow-x", "auto");
     await expect(list).toHaveCSS("flex-wrap", "nowrap");
+  });
+
+  test("with reduced motion the list does not animate when the filter changes", async ({ page }) => {
+    await loginAs(page, "designer"); // the suite runs with reduced motion on
+    await page.goto("/");
+    await page.getByTestId("category-pill").filter({ hasText: "[E2E] Test challenges" }).click();
+    await expect(page.getByTestId("challenge-list")).toHaveCSS("animation-name", "none");
   });
 });
