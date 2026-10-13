@@ -2,20 +2,18 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { GLOW_CLEARANCE_CSS } from "@/components/aurora/geometry";
 import { PageAurora } from "@/components/aurora/page-aurora";
-import { CategoryPills } from "@/components/category-pills";
-import { ChallengeCardGrid } from "@/components/challenge-card";
 import { CountUp } from "@/components/count-up";
 import { EmptyState } from "@/components/empty-state";
+import { HomeChallenges } from "@/components/home-challenges";
 import { SectionLabel, SECTION_LABEL_CLASS } from "@/components/section-label";
 import { Progress } from "@/components/ui/progress";
-import { optionalHint } from "@/lib/challenges/optional-hint";
 import type { HomeData } from "@/lib/data/learner";
 import { TRACK_LABEL, type Track } from "@/lib/tracks";
 
-/** The signed-in home page: hero, overall progress, categories, required challenges. Data-free so it can be rendered on its own. */
+/** The signed-in home page: hero, overall progress, then the category filter and the challenge list. Data-free so it can be rendered on its own. */
 export function HomeView({
   profile,
-  data: { hero, overall, categories, required },
+  data: { hero, overall, categories, required, challenges },
   now,
 }: {
   profile: { full_name: string | null; track: Track | null };
@@ -25,7 +23,6 @@ export function HomeView({
   const firstName = profile.full_name?.split(" ")[0];
   // A category with no challenge visible to the learner gets no pill.
   const withChallenges = categories.filter((c) => c.total > 0);
-  const hint = optionalHint(required.outstanding.length, required.optionalRemaining);
 
   return (
     <main className="w-full">
@@ -99,10 +96,13 @@ export function HomeView({
               )}
             </section>
 
-            <section aria-labelledby="categories-heading" className="grid gap-3">
-              <SectionLabel id="categories-heading">Categories</SectionLabel>
-              <CategoryPills categories={withChallenges} />
-            </section>
+            <HomeChallenges
+              categories={withChallenges}
+              overall={overall}
+              requiredLeft={required.total - required.done}
+              challenges={challenges}
+              now={now}
+            />
           </>
         ) : (
           <EmptyState
@@ -112,19 +112,6 @@ export function HomeView({
           />
         )}
 
-        {required.total > 0 && (
-          <section aria-labelledby="required-heading" className="mt-12 grid gap-4" data-testid="required-section">
-            <SectionLabel id="required-heading">Required for you</SectionLabel>
-            {required.outstanding.length > 0 && (
-              <ChallengeCardGrid items={required.outstanding} headingLevel={3} now={now} detail="category" />
-            )}
-            {hint && (
-              <p className="text-muted-foreground" data-testid="optional-hint">
-                {hint}
-              </p>
-            )}
-          </section>
-        )}
       </div>
     </main>
   );
