@@ -1,87 +1,106 @@
-import type { PublicQuestion } from "@/lib/content/schema";
+import type { PublicQuestion, SubmissionSpec } from "@/lib/content/schema";
+import { isOwnImagePath } from "@/lib/submissions/input";
 
 /**
- * A learner's in-progress answers, kept in sessionStorage so a refresh doesn't lose them. Screenshots are not part of
- * it: their previews are browser-only object URLs, so after a refresh they are added again. Cleared on submit.
- * Keyed by user, challenge and content version, so a changed challenge or another account never picks up old answers.
+ * A learner's in-progress form, saved server-side (table submission_drafts) so they can carry on later, from any
+ * device. Screenshots are kept as Storage paths: the files are already uploaded to the learner's own folder.
  */
 export type Draft = {
   answers: Record<string, string | string[]>;
   figmaUrl: string;
   reflection: string;
+  imagePaths: string[];
   /** 1-based step the learner was on. */
   step: number;
 };
 
+/** The columns of submission_drafts that make up a draft. */
+export type DraftRow = {
+  challenge_version: number;
+  answers: unknown;
+  figma_url: string | null;
+  reflection: string | null;
+  image_paths: string[];
+  current_step: number;
+  updated_at: string;
+};
+
+type Restorable = { slug: string; version: number; questions: readonly PublicQuestion[]; submission_spec: SubmissionSpec };
+
+export type RestoredDraft = {
+  draft: Draft;
+  /** The challenge changed since the draft was saved and some of its answers no longer fit, so they were dropped. */
+  reset: boolean;
+};
+
 const MAX_TEXT = 20_000;
 
-export function draftKey(userId: string, slug: string, version: number): string {
-  return `uxda:draft:${userId}:${slug}:v${version}`;
+/** A form with nothing in it, on the first step: not worth keeping a row for. */
+export function isBlankDraft(d: Draft): boolean {
+  return (
+    d.step === 1 &&
+    d.figmaUrl === "" &&
+    d.reflection === "" &&
+    d.imagePaths.length === 0 &&
+    Object.values(d.answers).every((v) => (Array.isArray(v) ? v.length === 0 : v === ""))
+  );
 }
 
-export function serializeDraft(draft: Draft): string {
-  return JSON.stringify(draft);
-}
-
-/** Parses a stored draft, keeping only what is still valid for these questions. Never throws. */
-export function parseDraft(raw: string | null, questions: readonly PublicQuestion[], stepCount: number): Draft | null {
-  if (!raw) return null;
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof data !== "object" || data === null) return null;
-  const input = data as Record<string, unknown>;
+/**
+ * Turns a stored draft into one that fits the challenge as it is now. Never throws and never trusts the row:
+ *  - answers are kept only for questions that still exist, and (for choices) only the options that still exist;
+ *  - a Figma link, reflection or screenshots survive only if the challenge still asks for them;
+ *  - screenshot paths must be the learner's own for this challenge, and within the allowed number;
+ *  - the step is clamped to the steps there are now.
+ * `reset` says an *older version's* answers were dropped, so the page can tell the learner (a draft saved against the
+ * current version never reports it).
+ */
+export function restoreDraft(row: DraftRow, challenge: Restorable, userId: string, stepCount: number): RestoredDraft {
+  const stored =
+    typeof row.answers === "object" && row.answers !== null && !Array.isArray(row.answers)
+      ? (row.answers as Record<string, unknown>)
+      : {};
+  let dropped = 0;
 
   const answers: Draft["answers"] = {};
-  const stored = typeof input.answers === "object" && input.answers !== null ? (input.answers as Record<string, unknown>) : {};
-  for (const q of questions) {
+  for (const q of challenge.questions) {
     const value = stored[q.id];
+    if (value === undefined) continue;
     if (q.kind === "text") {
       if (typeof value === "string") answers[q.id] = value.slice(0, MAX_TEXT);
+      else dropped++;
     } else {
       const known = new Set(q.options.map((o) => o.id));
-      if (q.kind === "single" && typeof value === "string" && known.has(value)) answers[q.id] = value;
-      if (q.kind === "multi" && Array.isArray(value)) {
-        const ids = [...new Set(value.filter((v): v is string => typeof v === "string" && known.has(v)))];
-        if (ids.length > 0) answers[q.id] = ids;
+      if (q.kind === "single") {
+        if (typeof value === "string" && known.has(value)) answers[q.id] = value;
+        else dropped++;
+      } else {
+        const list = Array.isArray(value) ? value : [];
+        const kept = [...new Set(list.filter((v): v is string => typeof v === "string" && known.has(v)))];
+        if (kept.length > 0) answers[q.id] = kept;
+        if (kept.length < list.length || !Array.isArray(value)) dropped++;
       }
     }
   }
+  const questionIds = new Set(challenge.questions.map((q) => q.id));
+  dropped += Object.keys(stored).filter((id) => !questionIds.has(id)).length;
 
-  const text = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
-  const step = typeof input.step === "number" && Number.isInteger(input.step) ? input.step : 1;
+  const spec = challenge.submission_spec;
+  const figmaStored = row.figma_url ?? "";
+  const reflectionStored = row.reflection ?? "";
+  const figmaUrl = spec.figma_url ? figmaStored.slice(0, 2000) : "";
+  const reflection = spec.reflection ? reflectionStored.slice(0, MAX_TEXT) : "";
+  if (figmaStored && !figmaUrl) dropped++;
+  if (reflectionStored && !reflection) dropped++;
+
+  const max = spec.screenshots?.max ?? 0;
+  const ownPaths = [...new Set(row.image_paths)].filter((p) => isOwnImagePath(p, userId, challenge.slug));
+  const imagePaths = ownPaths.slice(0, max);
+  if (imagePaths.length < row.image_paths.length) dropped++;
+
+  const step = Number.isInteger(row.current_step) ? row.current_step : 1;
   return {
-    answers,
-    figmaUrl: text(input.figmaUrl, 2000),
-    reflection: text(input.reflection, MAX_TEXT),
-    step: Math.min(Math.max(step, 1), Math.max(stepCount, 1)),
+    draft: { answers, figmaUrl, reflection, imagePaths, step: Math.min(Math.max(step, 1), Math.max(stepCount, 1)) },
+    reset: row.challenge_version !== challenge.version && dropped > 0,
   };
-}
-
-// sessionStorage can be missing or throw (private windows, blocked site data), so every access is guarded.
-export function loadDraftRaw(key: string): string | null {
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-export function saveDraft(key: string, draft: Draft): void {
-  try {
-    window.sessionStorage.setItem(key, serializeDraft(draft));
-  } catch {
-    // Storage unavailable or full: the draft just isn't kept.
-  }
-}
-
-export function clearDraft(key: string): void {
-  try {
-    window.sessionStorage.removeItem(key);
-  } catch {
-    // Nothing to clear.
-  }
 }

@@ -3,34 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
-import { challengeNeedsReview, isChallengeVisible, parseChallenge } from "@/lib/challenges/model";
+import { challengeNeedsReview, parseChallenge } from "@/lib/challenges/model";
+import { loadOpenChallenge } from "@/lib/challenges/open";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gradeAnswers, type AnswerKey } from "@/lib/submissions/grading";
 import { submissionInputSchema } from "@/lib/submissions/input";
 import { attemptState } from "@/lib/submissions/rules";
-import type { Track } from "@/lib/tracks";
 
 export type SubmitResult =
   | { ok: true; submissionId: string; status: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 const slugSchema = z.string().regex(/^[a-z0-9-]{1,100}$/);
-
-/** The challenge row if this track may act on it now (published, visible), else null. */
-async function loadOpenChallenge(
-  admin: ReturnType<typeof createAdminClient>,
-  slug: string,
-  track: Track | null,
-) {
-  const { data: row } = await admin.from("challenges").select("*").eq("slug", slug).maybeSingle();
-  if (!row) return null;
-  const { data: category } = await admin
-    .from("categories")
-    .select("archived,audiences")
-    .eq("slug", row.category_slug)
-    .maybeSingle();
-  return isChallengeVisible(row, category, track) ? row : null;
-}
 
 /**
  * Create a submission for the signed-in user. Everything that matters — visibility,
@@ -118,6 +102,10 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
       error: insertError.code === "23505" ? "This attempt was already submitted. Refresh the page." : "Couldn't save your submission. Please try again.",
     };
   }
+
+  // The submission replaces the draft. Best effort: a draft left behind is harmless (the next save overwrites it, and
+  // a challenge with no attempts left never shows "In progress").
+  await admin.from("submission_drafts").delete().eq("user_id", user.id).eq("challenge_slug", challenge.slug);
 
   revalidatePath("/", "layout");
   return { ok: true, submissionId: inserted.id, status: inserted.status };

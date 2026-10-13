@@ -6,6 +6,7 @@ type: quiz
 difficulty: 1
 points: 10
 status: published
+tip: Take your time — there is **no timer**.
 questions:
   - id: q1
     kind: single

@@ -38,6 +38,7 @@ export type SettingContext = {
     title: string;
     summary: string | null;
     body_md: string;
+    tip?: string | null;
     audiences: Audience[];
     questions: unknown;
     submission_spec: unknown;
@@ -55,6 +56,7 @@ export function challengePlaceholders(ctx: SettingContext) {
       title: c.title,
       summary: c.summary,
       body: c.body_md,
+      tip: c.tip,
       questions: c.questions,
       submission: c.submission_spec,
       rubric: c.rubric,

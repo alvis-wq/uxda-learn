@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { categorySchema, loadAndValidate } from "./index";
+import { categorySchema, challengeFrontmatterSchema, loadAndValidate } from "./index";
 import { planSync, countChanges } from "./sync-plan";
 import { validateContent } from "./validate";
 import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows } from "./transform";
@@ -304,6 +304,29 @@ describe("planSync", () => {
   });
 });
 
+describe("challenge tip", () => {
+  const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+  const frontmatter = (tip?: unknown) => ({ ...content.challenges[0].data, tip });
+
+  it("is optional, trimmed markdown of at most 1000 characters", () => {
+    expect(challengeFrontmatterSchema.safeParse(frontmatter()).success).toBe(true);
+    const ok = challengeFrontmatterSchema.safeParse(frontmatter("  Mind the **rubric**.  "));
+    expect(ok.success && ok.data.tip).toBe("Mind the **rubric**.");
+    expect(challengeFrontmatterSchema.safeParse(frontmatter("x".repeat(1000))).success).toBe(true);
+    expect(challengeFrontmatterSchema.safeParse(frontmatter("x".repeat(1001))).success).toBe(false);
+    expect(challengeFrontmatterSchema.safeParse(frontmatter("   ")).success).toBe(false);
+    expect(challengeFrontmatterSchema.safeParse(frontmatter(5)).success).toBe(false);
+  });
+
+  it("can't be left with a TODO placeholder in a challenge that says status: published", () => {
+    const withTip = loadAndValidate(path.join(FIXTURES, "valid")).content;
+    withTip.challenges[0].data.status = "published";
+    withTip.challenges[0].data.tip = "Open TODO_LINK first";
+    const messages = validateContent(withTip).map((e) => e.message);
+    expect(messages.some((m) => m.includes("TODO_LINK") && m.includes("tip"))).toBe(true);
+  });
+});
+
 describe("card images", () => {
   const base = { slug: "c", title: "C", audiences: "all" };
 
@@ -344,9 +367,9 @@ describe("card images", () => {
 
   describe("sync", () => {
     const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
-    const rowsFor = (image?: string) => ({
+    const rowsFor = (image?: string, tip?: string) => ({
       categories: content.categories.map(toCategoryRow),
-      challenges: content.challenges.map((c, i) => toChallengeRows(i === 0 ? { ...c, data: { ...c.data, image } } : c, content.categories)),
+      challenges: content.challenges.map((c, i) => toChallengeRows(i === 0 ? { ...c, data: { ...c.data, image, tip } } : c, content.categories)),
     });
     const dbFrom = (disk: ReturnType<typeof rowsFor>) => ({
       categories: disk.categories.map((c) => ({ ...c })),
@@ -371,15 +394,40 @@ describe("card images", () => {
       const plan = planSync(rowsFor("new.webp"), dbFrom(rowsFor("old.webp")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeImageUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp" }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null }]);
       expect(countChanges(plan)).toBe(1);
     });
 
     it("adding and removing an image are both detected", () => {
-      expect(planSync(rowsFor("a.webp"), dbFrom(rowsFor())).challengeImageUpdates).toHaveLength(1);
-      expect(planSync(rowsFor(), dbFrom(rowsFor("a.webp"))).challengeImageUpdates).toEqual([
-        { slug: content.challenges[0].data.slug, image: null },
+      expect(planSync(rowsFor("a.webp"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
+      expect(planSync(rowsFor(), dbFrom(rowsFor("a.webp"))).challengeDisplayUpdates).toEqual([
+        { slug: content.challenges[0].data.slug, image: null, tip: null },
       ]);
+    });
+
+    it("keeps the tip out of content_hash", () => {
+      const a = rowsFor().challenges[0].challenge;
+      const b = rowsFor(undefined, "Mind the **rubric**.").challenges[0].challenge;
+      expect(b.tip).toBe("Mind the **rubric**.");
+      expect(a.tip).toBeNull();
+      expect(b.content_hash).toBe(a.content_hash);
+    });
+
+    it("a changed tip alone is a version-neutral display write; adding and removing are both detected", () => {
+      const slug = content.challenges[0].data.slug;
+      const plan = planSync(rowsFor(undefined, "new"), dbFrom(rowsFor(undefined, "old")));
+      expect(plan.challengeWrites).toEqual([]);
+      expect(plan.challengeHashRefreshes).toEqual([]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new" }]);
+      expect(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
+      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null }]);
+      expect(countChanges(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor(undefined, "t"))))).toBe(0);
+    });
+
+    it("an older database without the tip column (undefined) reads as no tip", () => {
+      const db = dbFrom(rowsFor());
+      for (const c of db.challenges) delete (c as { tip?: unknown }).tip;
+      expect(countChanges(planSync(rowsFor(), db))).toBe(0);
     });
 
     it("an unchanged image changes nothing", () => {
@@ -393,7 +441,7 @@ describe("card images", () => {
       const plan = planSync(rowsFor("new.webp"), db);
       expect(plan.challengeWrites).toHaveLength(1);
       expect(plan.challengeWrites[0].row.image).toBe("new.webp");
-      expect(plan.challengeImageUpdates).toEqual([]);
+      expect(plan.challengeDisplayUpdates).toEqual([]);
     });
 
     it("a category image change updates the category", () => {

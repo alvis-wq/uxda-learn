@@ -8,8 +8,11 @@ export function cardCta(input: {
   /** Acknowledged (acknowledge challenges) — they have no submissions. */
   acknowledged?: boolean;
   latestStatus: SubmissionStatus | null | undefined;
+  /** A saved draft the learner can still continue. */
+  inProgress?: boolean;
 }): CardCta {
   if (input.type === "acknowledge") return input.acknowledged ? "View result" : "Start";
+  if (input.inProgress) return "Continue";
   switch (input.latestStatus) {
     case "submitted":
     case "ai_reviewed":

@@ -13,6 +13,7 @@ import {
 export type DbCategory = CategoryRow;
 export type DbChallenge = PublicChallengeContent & {
   image?: string | null; // undefined until the image migration has been applied
+  tip?: string | null; // undefined until the drafts migration has been applied
   content_hash: string;
   version: number;
   status: string;
@@ -34,8 +35,8 @@ export type SyncPlan = {
   )[];
   /** Same content, but the stored hash is stale (e.g. after a format change). Never bumps the version. */
   challengeHashRefreshes: { slug: string; content_hash: string }[];
-  /** Only the card image changed: written without bumping the version (it isn't part of the content hash). */
-  challengeImageUpdates: { slug: string; image: string | null }[];
+  /** Only the card image and/or tip changed: written without bumping the version (display only, not in the content hash). */
+  challengeDisplayUpdates: { slug: string; image: string | null; tip: string | null }[];
   challengeArchives: string[];
   /** File and DB disagree on an admin-owned setting. Informational only: the DB wins, nothing is written. */
   settingsDrift: { slug: string; field: SettingField; file: string; db: string }[];
@@ -48,7 +49,7 @@ export function countChanges(plan: SyncPlan): number {
     plan.categoryArchives.length +
     plan.challengeWrites.length +
     plan.challengeHashRefreshes.length +
-    plan.challengeImageUpdates.length +
+    plan.challengeDisplayUpdates.length +
     plan.challengeArchives.length
   );
 }
@@ -98,7 +99,7 @@ function drift(slug: string, file: ChallengeSettings, db: DbChallenge): SyncPlan
  * - Changed public content or keys → content write with version + 1. Settings are left alone.
  * - Stored hash differs but the DB row's public fields hash the same as disk (e.g. after a
  *   format change) → hash refresh, no version bump.
- * - Only the card image differs → image update, no version bump (display only).
+ * - Only the card image or tip differs → display update, no version bump (display only).
  * - Settings that differ between file and DB → reported as drift, never written (DB wins).
  * - In DB but not on disk → archived (never deleted).
  */
@@ -114,7 +115,7 @@ export function planSync(
     categoryArchives: [],
     challengeWrites: [],
     challengeHashRefreshes: [],
-    challengeImageUpdates: [],
+    challengeDisplayUpdates: [],
     challengeArchives: [],
     settingsDrift: [],
   };
@@ -146,10 +147,12 @@ export function planSync(
     } else if (existing.content_hash !== challenge.content_hash) {
       plan.challengeHashRefreshes.push({ slug: challenge.slug, content_hash: challenge.content_hash });
     }
-    // A content write already carries the image; otherwise a changed image is its own version-neutral write.
+    // A content write already carries image and tip; otherwise a change to either is its own version-neutral write.
     const contentWritten = plan.challengeWrites.at(-1)?.row.slug === challenge.slug;
-    if (!contentWritten && (existing.image ?? null) !== (challenge.image ?? null)) {
-      plan.challengeImageUpdates.push({ slug: challenge.slug, image: challenge.image ?? null });
+    const displayChanged =
+      (existing.image ?? null) !== (challenge.image ?? null) || (existing.tip ?? null) !== (challenge.tip ?? null);
+    if (!contentWritten && displayChanged) {
+      plan.challengeDisplayUpdates.push({ slug: challenge.slug, image: challenge.image ?? null, tip: challenge.tip ?? null });
     }
   }
   const diskChallengeSlugs = new Set(disk.challenges.map((c) => c.challenge.slug));

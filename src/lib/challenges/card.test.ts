@@ -14,6 +14,11 @@ describe("cardCta", () => {
       expect(cardCta({ type: "figma", latestStatus })).toBe("View result");
     }
   });
+  it("Continue when there is a saved draft, whatever came before", () => {
+    expect(cardCta({ type: "mixed", latestStatus: null, inProgress: true })).toBe("Continue");
+    expect(cardCta({ type: "quiz", latestStatus: "published", inProgress: true })).toBe("Continue");
+    expect(cardCta({ type: "quiz", latestStatus: null, inProgress: false })).toBe("Start");
+  });
   it("acknowledge challenges: Start, then View result once acknowledged", () => {
     expect(cardCta({ type: "acknowledge", acknowledged: false, latestStatus: null })).toBe("Start");
     expect(cardCta({ type: "acknowledge", acknowledged: true, latestStatus: null })).toBe("View result");

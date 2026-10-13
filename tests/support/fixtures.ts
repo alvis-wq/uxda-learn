@@ -27,7 +27,7 @@ export async function profileIdFor(db: Db, email: string): Promise<string | null
   return data?.id ?? null;
 }
 
-/** Remove everything the test users created: evaluations, submissions, acknowledgements, uploads. */
+/** Remove everything the test users created: evaluations, submissions, drafts, acknowledgements, uploads. */
 export async function cleanTestUserData(db: Db) {
   for (const email of Object.values(TEST_EMAILS)) {
     const id = await profileIdFor(db, email);
@@ -39,6 +39,8 @@ export async function cleanTestUserData(db: Db) {
       const { error } = await db.from("submissions").delete().in("id", ids);
       if (error) throw new Error(`clean submissions: ${error.message}`);
     }
+    const { error: draftErr } = await db.from("submission_drafts").delete().eq("user_id", id);
+    if (draftErr) throw new Error(`clean drafts: ${draftErr.message}`);
     const { error: ackErr } = await db.from("acknowledgements").delete().eq("user_id", id);
     if (ackErr) throw new Error(`clean acknowledgements: ${ackErr.message}`);
     const bucket = db.storage.from("submissions");
@@ -80,6 +82,7 @@ export async function removeFixtures(db: Db) {
   const catSlugs = content.categories.map((c) => c.slug);
   await db.from("challenge_keys").delete().in("challenge_slug", slugs);
   await db.from("acknowledgements").delete().in("challenge_slug", slugs);
+  await db.from("submission_drafts").delete().in("challenge_slug", slugs);
   const { error } = await db.from("challenges").delete().in("slug", slugs);
   if (error) {
     // Something else references a fixture: never force-delete — archive instead.

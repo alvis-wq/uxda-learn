@@ -21,6 +21,12 @@ describe("findPlaceholders", () => {
     expect(describePlaceholders(hits)).toBe("TODO_FIGMA_URL (brief, grader notes); TODO (questions)");
   });
 
+  it("checks the tip too", () => {
+    expect(findPlaceholders(challengeParts({ title: "x", body: "y", tip: "See TODO_LINK first" }))).toEqual([
+      { token: "TODO_LINK", where: "tip" },
+    ]);
+  });
+
   it("ignores ordinary prose and lower-case todo", () => {
     expect(
       findPlaceholders({ brief: "Make a todo list. TODOS and MYTODO aren't markers; Todo isn't either." }),

@@ -31,6 +31,7 @@ test.describe("learner experience", () => {
     // Focus moves to the new step's heading, and a refresh keeps the draft (answers and the step you were on).
     await expect(page.getByRole("heading", { name: "Pick the even numbers." })).toBeFocused();
     await expect(next).toBeDisabled();
+    await expect(page.getByTestId("save-indicator")).toHaveAttribute("data-status", "saved"); // saved on the step change
     await page.reload();
     await expect(page.getByRole("heading", { name: "Pick the even numbers." })).toBeVisible();
     await back.click();

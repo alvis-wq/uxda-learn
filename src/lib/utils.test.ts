@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cn, formatDate } from "./utils";
+import { cn, formatDate, timeAgo } from "./utils";
 
 describe("cn", () => {
   it("merges conflicting tailwind classes, last wins", () => {
@@ -28,5 +28,18 @@ describe("formatDate", () => {
   });
   it("shows the year otherwise", () => {
     expect(formatDate("2027-01-03T12:00:00Z", now)).toBe("3 Jan 2027");
+  });
+});
+
+describe("timeAgo", () => {
+  const now = new Date("2026-10-13T12:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms).toISOString();
+  it("reads naturally at each scale", () => {
+    expect(timeAgo(ago(20_000), now)).toBe("just now");
+    expect(timeAgo(ago(60_000), now)).toBe("1 minute ago");
+    expect(timeAgo(ago(5 * 60_000), now)).toBe("5 minutes ago");
+    expect(timeAgo(ago(3 * 3600_000), now)).toBe("3 hours ago");
+    expect(timeAgo(ago(26 * 3600_000), now)).toBe("1 day ago");
+    expect(timeAgo(ago(4 * 86_400_000), now)).toBe("4 days ago");
   });
 });

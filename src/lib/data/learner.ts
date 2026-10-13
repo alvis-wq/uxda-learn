@@ -4,6 +4,7 @@ import type { Profile } from "@/lib/auth/session";
 import { isChallengeVisible, parseChallenge, type Challenge } from "@/lib/challenges/model";
 import { requiredFirst, requiredState, sortByUrgency, type RequiredState } from "@/lib/challenges/required";
 import { resolveCardImage } from "@/lib/challenges/card";
+import type { DraftRow } from "@/lib/submissions/draft";
 import { groupForTrack, isRequiredFor, isVisibleToTrack } from "@/lib/tracks";
 import {
   attemptState,
@@ -44,6 +45,14 @@ async function myAcknowledgements(userId: string): Promise<Map<string, string>> 
   return new Map(data.map((a) => [a.challenge_slug, a.acknowledged_at]));
 }
 
+/** Slugs of the challenges the learner has a saved draft for (RLS: their own rows only). */
+async function myDraftSlugs(userId: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("submission_drafts").select("challenge_slug").eq("user_id", userId);
+  if (error) throw new Error(`Couldn't load your drafts: ${error.message}`);
+  return new Set(data.map((d) => d.challenge_slug));
+}
+
 function groupBySlug(subs: SubmissionLite[]) {
   const map = new Map<string, SubmissionLite[]>();
   for (const s of subs) map.set(s.challenge_slug, [...(map.get(s.challenge_slug) ?? []), s]);
@@ -57,6 +66,8 @@ export type ChallengeProgress = {
   done: boolean;
   required: boolean;
   requiredState: RequiredState;
+  /** A saved draft the learner could still continue (they have attempts left and aren't awaiting review). */
+  inProgress: boolean;
 };
 
 function progressFor(
@@ -64,6 +75,7 @@ function progressFor(
   profile: Profile,
   subs: AttemptSummary[],
   acks: Map<string, string>,
+  drafts: ReadonlySet<string>,
   now: Date,
 ): ChallengeProgress {
   const state = attemptState(subs);
@@ -75,6 +87,7 @@ function progressFor(
     done,
     required: isRequiredFor(ch.required_for, profile.track),
     requiredState: requiredState({ done, latestStatus: state.latest?.status, dueAt: ch.due_at, now }),
+    inProgress: ch.type !== "acknowledge" && state.canSubmit && drafts.has(ch.slug),
   };
 }
 
@@ -106,6 +119,8 @@ export type CardChallenge = {
   latestStatus: SubmissionStatus | null;
   acknowledged: boolean;
   bestScore: number | null;
+  /** The learner has saved, unsubmitted work on it. */
+  inProgress: boolean;
   /** Public URL of the card artwork (the challenge's own, else its category's), or null. */
   imageUrl: string | null;
 };
@@ -143,6 +158,7 @@ function cardOf(
     latestStatus: p.state.latest?.status ?? null,
     acknowledged: p.acknowledgedAt !== null,
     bestScore: p.state.bestScore,
+    inProgress: p.inProgress,
     imageUrl: resolveCardImage(ch.image, category.image),
   };
 }
@@ -166,7 +182,7 @@ export type HomeData = {
 export async function getHomeData(profile: Profile, now = new Date()): Promise<HomeData> {
   const supabase = await createClient();
   const group = groupForTrack(profile.track);
-  const [cats, chs, subs, acks, board] = await Promise.all([
+  const [cats, chs, subs, acks, drafts, board] = await Promise.all([
     supabase
       .from("categories")
       .select("slug,title,description,audiences,sort_order,archived,image")
@@ -178,6 +194,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
       .eq("status", "published"),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
+    myDraftSlugs(profile.id),
     group ? supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] }) : Promise.resolve(null),
   ]);
   if (cats.error) throw new Error(`Couldn't load categories: ${cats.error.message}`);
@@ -188,7 +205,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
 
   const visible = chs.data
     .filter((ch) => isChallengeVisible(ch, catBySlug.get(ch.category_slug), profile.track))
-    .map((ch) => ({ ...ch, ...progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, now) }));
+    .map((ch) => ({ ...ch, ...progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, drafts, now) }));
 
   const categories = cats.data
     .filter((c) => isVisibleToTrack(c.audiences, profile.track))
@@ -242,7 +259,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     .maybeSingle();
   if (!category || category.archived || !isVisibleToTrack(category.audiences, profile.track)) return null;
 
-  const [chs, subs, acks] = await Promise.all([
+  const [chs, subs, acks, drafts] = await Promise.all([
     supabase
       .from("challenges")
       .select("slug,title,summary,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image")
@@ -252,6 +269,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
       .order("title"),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
+    myDraftSlugs(profile.id),
   ]);
   if (chs.error) throw new Error(`Couldn't load challenges: ${chs.error.message}`);
   const bySlug = groupBySlug(subs);
@@ -262,7 +280,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
       chs.data
         .filter((ch) => isChallengeVisible(ch, category, profile.track))
         .map((ch) => {
-          const progress = progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, now);
+          const progress = progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, drafts, now);
           return { ...cardOf(ch, category, progress), required: progress.required };
         }),
     ),
@@ -283,6 +301,8 @@ export type ChallengePageData = {
     submitted_at: string;
   }[];
   preview: boolean; // admin viewing something learners can't see
+  /** The learner's saved draft for this challenge, if any. */
+  draft: DraftRow | null;
 };
 
 export async function getChallengePage(
@@ -302,7 +322,7 @@ export async function getChallengePage(
   const learnerVisible = isChallengeVisible(row, category, profile.track);
   if (!learnerVisible && !profile.is_admin) return null;
 
-  const [{ data: attempts, error }, acks] = await Promise.all([
+  const [{ data: attempts, error }, acks, { data: draft }] = await Promise.all([
     supabase
       .from("submissions")
       .select("id,attempt,status,final_score,max_score,feedback,submitted_at")
@@ -310,14 +330,21 @@ export async function getChallengePage(
       .eq("challenge_slug", slug)
       .order("attempt"),
     myAcknowledgements(profile.id),
+    supabase
+      .from("submission_drafts")
+      .select("challenge_version,answers,figma_url,reflection,image_paths,current_step,updated_at")
+      .eq("user_id", profile.id)
+      .eq("challenge_slug", slug)
+      .maybeSingle(),
   ]);
   if (error) throw new Error(`Couldn't load your submissions: ${error.message}`);
 
   return {
     challenge: parseChallenge(row),
     categoryTitle: category?.title ?? row.category_slug,
-    progress: progressFor(row, profile, attempts, acks, now),
+    progress: progressFor(row, profile, attempts, acks, new Set(draft ? [slug] : []), now),
     attempts,
     preview: !learnerVisible,
+    draft,
   };
 }
