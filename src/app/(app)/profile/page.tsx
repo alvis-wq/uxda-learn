@@ -6,9 +6,11 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { inProgressChallenges } from "@/lib/submissions/in-progress";
 import { groupAttemptHistory, summarizeScores } from "@/lib/submissions/rules";
 import { TRACK_LABEL } from "@/lib/tracks";
 import { ChallengeHistoryList } from "./challenge-history";
+import { InProgressList } from "./in-progress-list";
 import { VisibilityToggle } from "./visibility-toggle";
 
 export const metadata: Metadata = { title: "Profile · UXDA Learn" };
@@ -23,14 +25,36 @@ export default async function ProfilePage() {
     .order("submitted_at", { ascending: false });
   if (error) throw new Error(`Couldn't load your submissions: ${error.message}`);
 
-  const slugs = [...new Set(subs.map((s) => s.challenge_slug))];
+  // Saved, unsubmitted work (RLS: only the learner's own drafts).
+  const { data: drafts, error: draftsError } = await supabase
+    .from("submission_drafts")
+    .select("challenge_slug,updated_at")
+    .eq("user_id", profile.id);
+  if (draftsError) throw new Error(`Couldn't load your drafts: ${draftsError.message}`);
+
+  const slugs = [...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug)])];
   const { data: challenges } = slugs.length
-    ? await supabase.from("challenges").select("slug,title").in("slug", slugs)
+    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences").in("slug", slugs)
     : { data: [] };
   const titleOf = (slug: string) => challenges?.find((c) => c.slug === slug)?.title ?? slug;
 
+  const categorySlugs = [...new Set((challenges ?? []).map((c) => c.category_slug))];
+  const { data: categories } = categorySlugs.length
+    ? await supabase.from("categories").select("slug,title,archived,audiences").in("slug", categorySlugs)
+    : { data: [] };
+  const inProgress = inProgressChallenges({
+    drafts,
+    attempts: subs,
+    challenges: challenges ?? [],
+    categories: categories ?? [],
+    track: profile.track,
+  });
+
   const { totalScore, completed, pending } = summarizeScores(subs);
-  const history = groupAttemptHistory(subs);
+  // A challenge with a draft shows once, in the In progress group (with its best score so far), not again below.
+  const inProgressSlugs = new Set(inProgress.map((c) => c.slug));
+  const history = groupAttemptHistory(subs).filter((g) => !inProgressSlugs.has(g.slug));
+  const now = new Date();
 
   const stats = [
     { label: "Total score", value: totalScore, testId: "stat-total" },
@@ -68,7 +92,18 @@ export default async function ProfilePage() {
         <h2 id="challenges-heading" className="text-lg font-semibold">
           Your challenges
         </h2>
-        {history.length === 0 ? (
+        {inProgress.length > 0 && (
+          <div className="grid gap-3" data-testid="in-progress-group">
+            <h3 className="text-muted-foreground text-meta font-medium">In progress</h3>
+            <InProgressList items={inProgress} now={now} />
+          </div>
+        )}
+        {inProgress.length > 0 && history.length > 0 && (
+          <h3 className="text-muted-foreground text-meta mt-2 font-medium">Submitted</h3>
+        )}
+        {history.length > 0 ? (
+          <ChallengeHistoryList groups={history} titleOf={titleOf} />
+        ) : inProgress.length === 0 ? (
           <EmptyState
             icon={MessageSquareText}
             title="No attempts yet"
@@ -78,9 +113,7 @@ export default async function ProfilePage() {
               Find a challenge
             </Link>
           </EmptyState>
-        ) : (
-          <ChallengeHistoryList groups={history} titleOf={titleOf} />
-        )}
+        ) : null}
       </section>
     </main>
   );

@@ -3,16 +3,7 @@
 import { useState } from "react";
 import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-function savedAgo(iso: string, now: number): string {
-  const minutes = Math.round((now - new Date(iso).getTime()) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
-}
+import { timeAgo } from "@/lib/utils";
 
 /**
  * Shown when the form opened with saved work: "Continue where you left off", with a Start over (confirmed in two
@@ -40,7 +31,7 @@ export function DraftNotice({
         <History className="mt-0.5 size-4 shrink-0" aria-hidden />
         <p>
           <span className="text-foreground font-medium">Continue where you left off</span>
-          <span> · saved {savedAgo(savedAt, now)}</span>
+          <span> · saved {timeAgo(savedAt, now)}</span>
           {reset && (
             <span className="text-warning block" data-testid="draft-reset-note">
               Some answers were reset because this challenge was updated since you last worked on it.

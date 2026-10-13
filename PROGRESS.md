@@ -695,3 +695,12 @@ Checks: `npm run check` ✅ · `npm run build` ✅. Unit: `restoreDraft`, `isBla
 submit-deletes-draft against a fake DB, tip schema/hash/sync/placeholders, card CTA. Browser-verified on a temporary harness (deleted): restored step + tip + reset note, an edit triggers the autosave and an
 unauthenticated save shows the error line instead of crashing, Start over's confirm toggles, 1280 dark and 375 light, no horizontal overflow. `e2e/drafts.spec.ts` (8 specs: tip placement, save and restore across
 sign-out and a second browser, In progress on the card, privacy, version change, Start over, screenshots, submit deletes) and the learner spec's reload step are written but NOT run (no test project).
+
+### Profile: "In progress" group (`feat/server-drafts`)
+
+- `/profile` → "Your challenges" starts with an **In progress** group when there are drafts (hidden otherwise): one row per challenge with its title, category, "saved N ago" (`timeAgo`, moved out of the
+  draft notice into `utils.ts`) and a Continue button (`aria-label="Continue <title>"`) to the challenge, most recently saved first. The rule is the cards' one (`inProgressChallenges`: a draft + an open attempt
+  via `attemptState().canSubmit`) plus "still visible to the learner" (published, their track, category not archived), because each row links to it.
+- A challenge with a draft and earlier attempts shows once, in this group, with "Best so far: X / Y" (the best published attempt, from its own `max_score`); it is filtered out of the history list, so the
+  "Submitted" list below (that subheading appears only when both groups exist) never repeats it. The stats are unchanged. With drafts but no other attempts the "No attempts yet" empty state is not shown.
+- Tests: `in-progress.test.ts` (rule parity, best score, visibility, ordering), `timeAgo`; 3 more specs in `e2e/drafts.spec.ts` (not run here, no test project). Checked on a temporary page at 1280 dark / 375 light: no overflow, long titles wrap, the link's accessible name is unique.

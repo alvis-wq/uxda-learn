@@ -83,6 +83,19 @@ test.describe("server-side drafts", () => {
     await expect(page.getByRole("heading", { name: "[E2E] Quiz" }).locator("..")).toContainText("In progress");
   });
 
+  test("the profile lists it under In progress, with a Continue link", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/profile");
+    const group = page.getByTestId("in-progress-group");
+    await expect(group.getByRole("heading", { name: "In progress" })).toBeVisible();
+    const row = group.getByTestId("in-progress-row").filter({ hasText: "[E2E] Quiz" });
+    await expect(row).toContainText("[E2E] Test challenges");
+    await expect(row).toContainText(/saved .* ago|saved just now/);
+    await expect(row.getByTestId("in-progress-best")).toHaveCount(0); // no earlier attempt
+    await row.getByRole("link", { name: "Continue [E2E] Quiz" }).click();
+    await expect(page).toHaveURL(/\/challenges\/e2e-quiz$/);
+  });
+
   test("a draft is private: another user, or an admin, can't read it", async () => {
     const designerId = await profileId(TEST_EMAILS.designer);
     for (const role of ["strategist", "admin"] as const) {
@@ -158,6 +171,30 @@ test.describe("server-side drafts", () => {
     await expect(next).toBeEnabled(); // the restored screenshot counts towards the minimum
   });
 
+  test("a challenge with a draft and an earlier attempt shows once, in In progress, with its best score", async ({ page }) => {
+    const db = adminDb();
+    const id = (await profileId(TEST_EMAILS.strategist))!;
+    const { data: inserted, error } = await db
+      .from("submissions")
+      .insert({
+        user_id: id, challenge_slug: "e2e-screenshot", challenge_version: 1, attempt: 1, answers: {}, image_paths: [],
+        reflection: "x", status: "published", auto_score: 0, final_score: 4, max_score: 10, published_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    try {
+      await loginAs(page, "strategist");
+      await page.goto("/profile");
+      const row = page.getByTestId("in-progress-row").filter({ hasText: "[E2E] Screenshot" });
+      await expect(row).toHaveCount(1);
+      await expect(row.getByTestId("in-progress-best")).toContainText("Best so far: 4 / 10");
+      await expect(page.getByTestId("challenge-history").filter({ hasText: "[E2E] Screenshot" })).toHaveCount(0);
+    } finally {
+      await db.from("submissions").delete().eq("id", inserted!.id);
+    }
+  });
+
   test("a successful submit deletes the draft", async ({ page }) => {
     await loginAs(page, "strategist");
     await page.goto("/challenges/e2e-screenshot");
@@ -173,5 +210,9 @@ test.describe("server-side drafts", () => {
     // No "In progress" afterwards, and nothing to restore.
     await page.goto("/categories/e2e-tests");
     await expect(page.getByTestId("challenge-card").filter({ hasText: "[E2E] Screenshot" })).not.toContainText("In progress");
+    // The profile hides the group when there is no draft, and lists the submission with the others.
+    await page.goto("/profile");
+    await expect(page.getByTestId("in-progress-group")).toHaveCount(0);
+    await expect(page.getByTestId("challenge-history").filter({ hasText: "[E2E] Screenshot" })).toHaveCount(1);
   });
 });
