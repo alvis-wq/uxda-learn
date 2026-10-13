@@ -70,6 +70,8 @@ create table challenges (
   due_at timestamptz,
   -- File name in public/challenges/ (card artwork); display only, not part of content_hash.
   image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$'),
+  -- Short markdown hint above the questions; display only, not part of content_hash.
+  tip text check (tip is null or char_length(tip) <= 1000),
   updated_at timestamptz not null default now()
 );
 
@@ -124,6 +126,26 @@ create table acknowledgements (
   challenge_version int not null,
   acknowledged_at timestamptz not null default now(),
   primary key (user_id, challenge_slug)
+);
+
+-- A learner's in-progress answers (Stepper state), so they can continue later from any device. Deleted on submit.
+-- Written by the user's own session under RLS (own rows only; admins have no access).
+create table submission_drafts (
+  user_id uuid not null references profiles(id) on delete cascade,
+  challenge_slug text not null references challenges(slug),
+  challenge_version int not null,
+  answers jsonb not null default '{}',
+  figma_url text,
+  reflection text,
+  image_paths text[] not null default '{}',
+  current_step int not null default 1,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, challenge_slug),
+  check (jsonb_typeof(answers) = 'object' and octet_length(answers::text) <= 200000),
+  check (current_step between 1 and 100),
+  check (figma_url is null or char_length(figma_url) <= 2000),
+  check (reflection is null or char_length(reflection) <= 20000),
+  check (cardinality(image_paths) <= 10)
 );
 
 -- Who changed a challenge's admin-owned settings (status, required_for, due_at), and when.
@@ -209,6 +231,7 @@ alter table submissions     enable row level security;
 alter table evaluations     enable row level security;
 alter table acknowledgements enable row level security;
 alter table challenge_settings_audit enable row level security;
+alter table submission_drafts enable row level security;
 
 create policy profiles_select on profiles for select to authenticated
   using (id = auth.uid() or public.is_admin());
@@ -237,6 +260,15 @@ create policy acknowledgements_select on acknowledgements for select to authenti
 create policy challenge_settings_audit_select on challenge_settings_audit for select to authenticated
   using (public.is_admin());
 -- No write policies or grants: written only by set_challenge_setting() (service role).
+
+-- Own rows only, read and write; no is_admin() clause, so admins can't see or edit drafts either.
+create policy submission_drafts_select on submission_drafts for select to authenticated using (user_id = auth.uid());
+create policy submission_drafts_insert on submission_drafts for insert to authenticated with check (user_id = auth.uid());
+create policy submission_drafts_update on submission_drafts for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy submission_drafts_delete on submission_drafts for delete to authenticated using (user_id = auth.uid());
+revoke all on submission_drafts from anon, authenticated;
+grant select, insert, update, delete on submission_drafts to authenticated;
 
 -- Storage ------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
