@@ -1,3 +1,4 @@
+import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
 import { isChallengeVisible, type Audience, type Track } from "@/lib/challenges/model";
 import { attemptState, type AttemptSummary } from "@/lib/submissions/rules";
 
@@ -9,6 +10,8 @@ export type InProgressChallenge = {
   savedAt: string;
   /** The score that counts so far, from earlier published attempts: "7 / 10". Null when none is published yet. */
   best: { score: number; max: number } | null;
+  /** "Step 2 of 5": null for a challenge without a Stepper. */
+  progress: DraftProgress | null;
 };
 
 /**
@@ -17,9 +20,17 @@ export type InProgressChallenge = {
  * their track), since each row links to it. Most recently saved first.
  */
 export function inProgressChallenges(input: {
-  drafts: { challenge_slug: string; updated_at: string }[];
+  drafts: { challenge_slug: string; updated_at: string; current_step: number }[];
   attempts: (AttemptSummary & { challenge_slug: string })[];
-  challenges: { slug: string; title: string; status: string; category_slug: string; audiences: readonly Audience[] }[];
+  challenges: {
+    slug: string;
+    title: string;
+    status: string;
+    category_slug: string;
+    audiences: readonly Audience[];
+    questions: unknown;
+    submission_spec: unknown;
+  }[];
   categories: { slug: string; title: string; archived: boolean; audiences: readonly Audience[] }[];
   track: Track | null | undefined;
 }): InProgressChallenge[] {
@@ -43,6 +54,7 @@ export function inProgressChallenges(input: {
       categoryTitle: category?.title ?? challenge.category_slug,
       savedAt: draft.updated_at,
       best: counted ? { score: Number(counted.final_score), max: Number(counted.max_score) } : null,
+      progress: draftProgress(challenge, draft.current_step),
     });
   }
   return rows.sort((a, b) => b.savedAt.localeCompare(a.savedAt));

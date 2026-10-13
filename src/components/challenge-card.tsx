@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
+import { DraftProgressBar } from "@/components/draft-progress";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { cardCta, cardSpans, type CardSpan } from "@/lib/challenges/card";
@@ -56,12 +57,12 @@ export function ChallengeCard({
       data-span={span}
       data-has-image={hasImage ? "" : undefined}
       className={cn(
-        "challenge-card group bg-tile relative isolate flex min-h-64 w-full overflow-hidden rounded-[24px] border p-[var(--pad)] transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
+        "challenge-card group bg-tile relative isolate flex min-h-64 w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
         "hover:border-primary has-[a:focus-visible]:ring-ring/50 has-[a:focus-visible]:ring-[3px]",
         IMAGE_WIDTH[span],
       )}
     >
-      <div className={cn("grid min-w-0 flex-1 gap-x-4 sm:gap-x-6", hasImage && "grid-cols-[minmax(0,1fr)_var(--img-w)]")}>
+      <div className={cn("grid min-w-0 flex-1 gap-x-4 px-[var(--pad)] pt-[var(--pad)] sm:gap-x-6", hasImage ? "grid-cols-[minmax(0,1fr)_var(--img-w)]" : "grid-cols-1")}>
         <div className="flex min-w-0 flex-col gap-4">
           <div className="grid gap-2">
             <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">
@@ -84,20 +85,6 @@ export function ChallengeCard({
               {cta}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </span>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <ChallengeMeta challenge={ch} />
-              <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} />
-              <StatusBadge
-                status={ch.latestStatus}
-                acknowledged={ch.type === "acknowledge" ? ch.acknowledged : undefined}
-                inProgress={ch.inProgress}
-              />
-              {ch.type !== "acknowledge" && ch.bestScore !== null && (
-                <span className="text-meta font-medium">
-                  Best: {ch.bestScore} / {ch.points}
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -113,6 +100,28 @@ export function ChallengeCard({
             />
           </div>
         )}
+      </div>
+      {/* The meta rows span the whole card (below the artwork's column, which they are painted over), so they are
+          two rows at every width. z-[5]: above the artwork, below the card-wide link (z-10). */}
+      <div className="bg-tile relative z-[5] px-[var(--pad)] pt-4 pb-[var(--pad)]">
+        {/* Always two rows: 1) what it is, 2) where the learner stands. */}
+        <div className="grid gap-2" data-testid="card-meta">
+          <ChallengeMeta challenge={ch} nowrap />
+          <div className="flex flex-wrap items-center gap-2" data-testid="card-badges">
+            <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} className="contents" />
+            <StatusBadge
+              status={ch.latestStatus}
+              acknowledged={ch.type === "acknowledge" ? ch.acknowledged : undefined}
+              inProgress={ch.inProgress}
+            />
+            {ch.draftProgress && <DraftProgressBar progress={ch.draftProgress} inline />}
+            {ch.type !== "acknowledge" && ch.bestScore !== null && (
+              <span className="text-meta font-medium">
+                Best: {ch.bestScore} / {ch.points}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </article>
   );
@@ -135,7 +144,7 @@ export function ChallengeCardGrid({
   return (
     <ul className="grid gap-4 lg:grid-cols-12">
       {items.map((ch, i) => (
-        <li key={ch.slug} className={cn("flex", GRID_SPAN[spans[i]])}>
+        <li key={ch.slug} className={cn("flex min-w-0", GRID_SPAN[spans[i]])}>
           <ChallengeCard
             challenge={ch}
             span={spans[i]}

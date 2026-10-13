@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { DraftProgressBar } from "@/components/draft-progress";
 import { Button } from "@/components/ui/button";
 import type { InProgressChallenge } from "@/lib/submissions/in-progress";
 import { timeAgo } from "@/lib/utils";
@@ -20,6 +21,7 @@ export function InProgressList({ items, now }: { items: InProgressChallenge[]; n
             <p className="text-muted-foreground text-meta">
               {c.categoryTitle} · saved {timeAgo(c.savedAt, now)}
             </p>
+            {c.progress && <DraftProgressBar progress={c.progress} className="mt-1.5" />}
             {c.best && (
               <p className="text-muted-foreground text-meta" data-testid="in-progress-best">
                 Best so far: <span className="tabular-nums">{c.best.score} / {c.best.max}</span>

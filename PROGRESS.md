@@ -713,3 +713,35 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - `scripts/reset-user-data.ts` (`npm run reset:users -- [emails] [--apply]`): deletes submissions (+ evaluations by cascade), acknowledgements, drafts and Storage screenshots of the given accounts (accounts stay), and
   always removes the leftover test accounts (`test-strategist@`, `test-designer@`, `test-admin@` on the first allowed domain) completely. Dry run by default, listing counts per account; `--apply` deletes, then re-reads
   and fails loudly if anything is left. Exact addresses only (no wildcards). Argument parsing is unit-tested (`reset-args.test.ts`); the script itself has NOT been run (not against the live database, as asked, and there is no test project).
+
+## Home: category pills, and progress on in-progress cards (`feat/home-pills`)
+
+- **Pills** (`components/category-pills.tsx`): the categories move to directly below the hero (above "Required for you") as a `<nav aria-label="Categories">` of real links to `/categories/<slug>`. Each pill is 36px tall (`h-9`: the
+  header nav's `--rn-h`, and our default button), fully rounded like the buttons, card fill with a border and the 3px focus ring; it shows the title, a compact `done/total`, and a lavender dot while required challenges are left.
+  The count and dot are decoration; a screen-reader-only text carries "— 1 of 4 completed, 2 required to do" (so e2e's `toContainText("0 of 3 completed")` still holds). The row wraps from `sm`, and below it scrolls sideways
+  (`overflow-x-auto`, no scrollbar) inside the page gutters. A category with no visible challenge gets no pill. The big "Categories" card section and the "Coming soon" chips are gone (the screen-reader `h2` "Categories" stays
+  for the row). With no categories at all the page shows the "No challenges yet" empty state in the row's place.
+- **Draft progress** (`components/draft-progress.tsx`, `lib/challenges/draft-progress.ts`): "Step 2 of 5" and a segmented bar in the Stepper's bar style (4px bars, 6px gap, primary on the input track, steps up to the current one filled).
+  Computed from the draft's `current_step` and the number of steps the challenge's Stepper has now (`planSteps`, the same count the Stepper's own eyebrow shows), a step past the current plan held at the last one. Null for a challenge
+  without a Stepper (single-step), so nothing extra shows there. Shown on challenge cards (home required list, category page), just above the meta row, and in the profile's In progress rows. The card queries now also select
+  `questions,submission_spec` (public columns, no answers) to count the steps; only the count reaches the client.
+- Checks: `npm run check` and `npm run build` ✅. Checked on a temporary page rendering the real `HomeView`: 1280 and 375 px, dark and light, axe (wcag2a/aa/21aa) clean in all four, no horizontal page overflow, pills 36px, 5 pills for
+  6 categories (the empty one hidden), keyboard focus ring present, order hero → pills → required. Found and fixed one overflow: the pills' screen-reader-only text was positioned against the page rather than the scrolling row,
+  so it stretched the page to 844px at 375 (now `relative` on each pill). e2e: updated `drafts.spec.ts` (Step 2 of 3 on the card and the profile row) and two new `home.spec.ts` specs; none run here (no test project).
+
+### Home order, Overall progress, two-row card meta (`feat/home-pills`)
+
+- **Order on `/`**: greeting, points, rank (the "Completed" stat is gone) → **Overall progress** (`3 of 13 challenges completed`, one bar, and `Required: 1 of 4 done · 1 overdue` when the learner has required challenges;
+  it replaces the bar under "Required for you") → **Categories** (label + pills) → **Required for you** (outstanding required cards only, then a muted hint) . No "All challenges" section. `HomeData.overall` counts every challenge
+  the learner can see (acknowledge ones included, like the category counts); `required.optionalRemaining` is visible, not required, not done.
+- **Hint** (`optionalHint`, tested): required left → "9 more optional challenges in the categories above." (hidden at 0); none left → "All required done. 9 optional challenges are waiting in the categories." ("All required done."
+  alone at 0). The "Required for you" section shows only when the learner has required challenges at all.
+- **Section labels**: one small, muted style (`SectionLabel`, the "Total points" style) for Overall progress, Categories, Required for you, and the profile's In progress / Submitted.
+- **Cards, two rows at every width** (home, category pages): row 1 = type, difficulty, points, time on one line that never wraps; row 2 = Required, due/overdue, status, step progress (inline text + short bar), best score. To make row 1
+  fit the narrow cards (the artwork column left only ~200px; even compacted it overflowed) the two rows now sit in a full-width footer band under the artwork's column (`bg-tile`, above the artwork, below the card-wide link),
+  and row 1 is 12px with 14px icons. Measured with the longest realistic content ("Screenshots · Hard · 100 pts · ~120 min") at 320/375/768/1024/1280, home and category layouts: row 1 fits at every width from 375 up and no page overflows;
+  at 320 only that worst case is clipped. Row 2 may wrap inside itself when it holds many badges.
+- Fixed on the way: the pills row blew its grid column out to 660px at 375 (`min-w-0` on the nav); cards got `min-w-0` for the same reason.
+- Checks: `npm run check` ✅ (430 tests) · `npm run build` ✅. Temporary page rendering the real `HomeView` and the card grid, 320-1280 px, dark and light: axe (wcag2a/aa/21aa) clean, no horizontal overflow from 320 up.
+  E2E updated (required/dashboard/home specs; hint, overall count, card rows) but not run: no test project.
+- To look at: no challenge artwork exists yet in `public/challenges/`, so I could not see how an image sits above the new footer band (it is tucked behind it, as before it bled off the card's bottom edge).

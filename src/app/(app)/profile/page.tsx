@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MessageSquareText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { SectionLabel } from "@/components/section-label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -28,13 +29,13 @@ export default async function ProfilePage() {
   // Saved, unsubmitted work (RLS: only the learner's own drafts).
   const { data: drafts, error: draftsError } = await supabase
     .from("submission_drafts")
-    .select("challenge_slug,updated_at")
+    .select("challenge_slug,updated_at,current_step")
     .eq("user_id", profile.id);
   if (draftsError) throw new Error(`Couldn't load your drafts: ${draftsError.message}`);
 
   const slugs = [...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug)])];
   const { data: challenges } = slugs.length
-    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences").in("slug", slugs)
+    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec").in("slug", slugs)
     : { data: [] };
   const titleOf = (slug: string) => challenges?.find((c) => c.slug === slug)?.title ?? slug;
 
@@ -94,12 +95,12 @@ export default async function ProfilePage() {
         </h2>
         {inProgress.length > 0 && (
           <div className="grid gap-3" data-testid="in-progress-group">
-            <h3 className="text-muted-foreground text-meta font-medium">In progress</h3>
+            <SectionLabel as="h3">In progress</SectionLabel>
             <InProgressList items={inProgress} now={now} />
           </div>
         )}
         {inProgress.length > 0 && history.length > 0 && (
-          <h3 className="text-muted-foreground text-meta mt-2 font-medium">Submitted</h3>
+          <SectionLabel as="h3" className="mt-2">Submitted</SectionLabel>
         )}
         {history.length > 0 ? (
           <ChallengeHistoryList groups={history} titleOf={titleOf} />

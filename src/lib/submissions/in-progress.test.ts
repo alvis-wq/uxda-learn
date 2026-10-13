@@ -9,15 +9,18 @@ const attempt = (slug: string, n: number, status: AttemptSummary["status"], scor
   final_score: score,
   max_score: max,
 });
-const challenge = (slug: string, over = {}) => ({ slug, title: `T ${slug}`, status: "published", category_slug: "cat", audiences: ["all"] as const, ...over });
+const quiz = [1, 2].map((n) => ({ id: `q${n}`, kind: "single", prompt: "P", points: 1, options: [{ id: "a", label: "A" }, { id: "b", label: "B" }] }));
+const challenge = (slug: string, over = {}) => ({
+  slug, title: `T ${slug}`, status: "published", category_slug: "cat", audiences: ["all"] as const, questions: quiz, submission_spec: {}, ...over,
+});
 const categories = [{ slug: "cat", title: "Category", archived: false, audiences: ["all"] as const }];
 const base = { categories, track: "designer" as const };
-const draft = (slug: string, at = "2026-10-13T10:00:00Z") => ({ challenge_slug: slug, updated_at: at });
+const draft = (slug: string, at = "2026-10-13T10:00:00Z", step = 1) => ({ challenge_slug: slug, updated_at: at, current_step: step });
 
 describe("inProgressChallenges", () => {
   it("lists a draft on a challenge with no attempts, with its title, category and save time", () => {
     expect(inProgressChallenges({ ...base, drafts: [draft("a")], attempts: [], challenges: [challenge("a")] })).toEqual([
-      { slug: "a", title: "T a", categoryTitle: "Category", savedAt: "2026-10-13T10:00:00Z", best: null },
+      { slug: "a", title: "T a", categoryTitle: "Category", savedAt: "2026-10-13T10:00:00Z", best: null, progress: { step: 1, total: 3 } },
     ]);
   });
 
@@ -60,6 +63,17 @@ describe("inProgressChallenges", () => {
       challenges,
     });
     expect(rows).toEqual([]);
+  });
+
+  it("carries how far along the draft is, out of the challenge's Stepper steps; none without a Stepper", () => {
+    const rows = inProgressChallenges({
+      ...base,
+      drafts: [draft("a", undefined, 2), draft("solo", undefined, 1)],
+      attempts: [],
+      challenges: [challenge("a"), challenge("solo", { questions: quiz.slice(0, 1) })],
+    });
+    expect(rows.find((r) => r.slug === "a")?.progress).toEqual({ step: 2, total: 3 });
+    expect(rows.find((r) => r.slug === "solo")?.progress).toBeNull();
   });
 
   it("puts the most recently saved first", () => {

@@ -21,7 +21,8 @@ test.describe("home page", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Welcome, Test" })).toBeVisible();
     await expect(page.getByTestId("hero-points")).toBeVisible();
     await expect(page.getByTestId("hero-rank")).toBeVisible();
-    await expect(page.getByTestId("hero-completed")).toBeVisible();
+    await expect(page.getByTestId("hero-completed")).toHaveCount(0); // the "Completed" stat moved into Overall progress
+    await expect(page.getByTestId("overall-count")).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(problems).toEqual([]);
   });
@@ -170,6 +171,14 @@ test.describe("home page", () => {
     await expect(quiz).toContainText("Start");
     await expect(quiz).toContainText("10 pts");
     await expect(quiz.getByRole("link")).toHaveCount(1); // the whole card is one link, named by the title
+    // The meta is always two rows: what it is (type, difficulty, points, time), then where the learner stands.
+    const meta = quiz.getByTestId("card-meta");
+    const [row1, row2] = [meta.locator("> div").nth(0), meta.getByTestId("card-badges")];
+    await expect(row1).toContainText("10 pts");
+    await expect(row2).toContainText("Not started");
+    const tops = await row1.locator("> *").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2)));
+    expect(new Set(tops).size).toBe(1); // row 1 never wraps
+    expect((await row2.boundingBox())!.y).toBeGreaterThan((await row1.boundingBox())!.y + (await row1.boundingBox())!.height - 1);
     await expect(quiz).toHaveCSS("border-top-left-radius", /^(24|32)px$/);
     // No artwork configured for the fixtures: no image, text uses the full card.
     await expect(quiz.locator("img")).toHaveCount(0);
@@ -197,5 +206,40 @@ test.describe("theme", () => {
     await page.getByRole("button", { name: "Toggle dark mode" }).click();
     await expect(page.locator("html")).toHaveClass(/\bdark\b/);
     expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
+  });
+
+  test("categories are a row of pills right below the hero, above the required challenges", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const pills = page.getByTestId("category-pills");
+    const hero = (await page.getByTestId("hero").boundingBox())!;
+    const row = (await pills.boundingBox())!;
+    expect(row.y).toBeGreaterThanOrEqual(hero.y + hero.height);
+    const required = page.getByTestId("required-section");
+    if (await required.count()) expect(row.y + row.height).toBeLessThanOrEqual((await required.boundingBox())!.y);
+
+    // One real link per category with a visible challenge, 36px tall (the header nav's height), with count and name.
+    const pill = pills.getByRole("link", { name: /\[E2E\] Test challenges/ });
+    await expect(pill).toContainText("completed");
+    await expect(pill.locator("[aria-hidden]").first()).toContainText(/\d+\/\d+/);
+    expect((await pill.boundingBox())!.height).toBe(36);
+    await pill.focus();
+    await expect(pill).toHaveCSS("box-shadow", /0px 0px 0px 3px/); // visible keyboard focus
+    await expect(page.getByText("Coming soon")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeAttached(); // screen-reader heading for the row
+
+    await pill.click();
+    await expect(page).toHaveURL(/\/categories\/e2e-tests$/);
+  });
+
+  test("the pill row scrolls sideways on a phone without making the page scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginAs(page, "designer");
+    await page.goto("/");
+    await expect(page.getByTestId("category-pills")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const list = page.getByTestId("category-pills").locator("ul");
+    await expect(list).toHaveCSS("overflow-x", "auto");
+    await expect(list).toHaveCSS("flex-wrap", "nowrap");
   });
 });

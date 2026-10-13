@@ -3,20 +3,42 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(path.resolve(__dirname, "home-view.tsx"), "utf8");
-const line = (needle: string) => source.split("\n").find((l) => l.includes(needle)) ?? "";
+const at = (needle: string) => source.indexOf(needle);
 
-describe("home page: the 'Coming soon' label and chips (over the aurora at the end of the page)", () => {
-  it("chips are solid card-coloured pills with a border", () => {
-    const chip = line("comingSoon.map") ? source.split("\n")[source.split("\n").findIndex((l) => l.includes("comingSoon.map")) + 1] : "";
-    expect(chip).toContain("bg-card");
-    expect(chip).toContain("rounded-full");
-    expect(chip).toContain("border");
+describe("home page layout", () => {
+  it("orders the sections: hero, overall progress, categories, required for you", () => {
+    const order = ['data-testid="hero"', 'data-testid="overall-progress"', "<CategoryPills", 'data-testid="required-section"'].map(at);
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it("the label uses the full foreground colour, not muted", () => {
-    const label = line('id="soon-heading"');
-    expect(label).toContain("text-foreground");
-    expect(label).not.toContain("text-muted-foreground");
+  it("has no 'Completed' stat in the hero and no 'All challenges' section", () => {
+    expect(source).not.toContain("hero-completed");
+    expect(source).not.toContain("All challenges");
+  });
+
+  it("uses the shared small, muted section label for every section", () => {
+    for (const id of ["overall-heading", "categories-heading", "required-heading"]) {
+      expect(source).toMatch(new RegExp(`<SectionLabel id="${id}">`));
+    }
+  });
+
+  it("puts the category pills directly below the hero and above the required challenges", () => {
+    expect(at('data-testid="hero"')).toBeGreaterThan(-1);
+    expect(at("<CategoryPills")).toBeGreaterThan(at('data-testid="hero"'));
+    expect(at("<CategoryPills")).toBeLessThan(at('data-testid="required-section"'));
+  });
+
+  it("has no card section for categories and no 'Coming soon' chips any more", () => {
+    expect(source).not.toContain("Coming soon");
+    expect(source).not.toContain("comingSoon");
+    expect(source).not.toContain("<Card");
+    expect(source).not.toContain("CardTitle");
+  });
+
+  it("gives a category with no visible challenges no pill", () => {
+    expect(source).toMatch(/categories\.filter\(\(c\) => c\.total > 0\)/);
+    expect(source).toContain("<CategoryPills categories={withChallenges}");
   });
 
   it("the page's bottom padding is the glow's reach, so at the end all text sits above the glow", () => {
