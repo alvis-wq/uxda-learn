@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Info, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +8,8 @@ import Stepper, { Step } from "@/components/stepper/Stepper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { PublicQuestion, SubmissionSpec } from "@/lib/content/schema";
-import { clearDraft, draftKey, loadDraftRaw, parseDraft, saveDraft, type Draft } from "@/lib/submissions/draft";
+import type { FormDraft } from "@/lib/data/drafts";
+import type { DraftInput } from "@/lib/submissions/input";
 import {
   clampStep,
   isComplete,
@@ -19,6 +20,9 @@ import {
   type StepProblems,
 } from "@/lib/submissions/steps";
 import { submitChallenge } from "./actions";
+import { discardDraft } from "./draft-actions";
+import { SaveIndicator, useDraftAutosave } from "./draft-autosave";
+import { DraftNotice } from "./draft-notice";
 import { QuestionField } from "./question-field";
 import { ScreenshotUploader, useScreenshotUploads, type UploadedImage } from "./screenshot-uploader";
 import { FigmaField, ReflectionField } from "./submission-fields";
@@ -29,53 +33,52 @@ const EMPTY_FIELDS: Fields = { answers: {}, figmaUrl: "", reflection: "" };
 type Props = {
   slug: string;
   userId: string;
-  /** Content version: a changed challenge doesn't pick up an old draft. */
+  /** Content version the form was rendered from; saved with the draft, and a save from an older page is refused. */
   version: number;
   questions: PublicQuestion[];
   spec: SubmissionSpec;
   plan: StepPlan;
   /** The brief (and how it's scored), rendered on the server; shown as the first step of a mixed challenge. */
   brief?: ReactNode;
+  /** The challenge's `tip`, rendered on the server; shown above the questions. */
+  tip?: ReactNode;
+  /** The learner's saved work, restored on the server (null: a fresh form). */
+  initialDraft: FormDraft | null;
   attemptNumber: number;
   maxAttempts: number;
 };
 
-const noop = () => () => {};
-
 /**
- * A drafted challenge form in the React Bits Stepper. Server and first client render show a fresh form; once
- * hydrated it remounts once with whatever draft sessionStorage holds (so there's no hydration mismatch).
+ * A drafted challenge form in the React Bits Stepper. It starts from the learner's saved draft (read on the server,
+ * so the first paint already has their answers) and saves itself as they work: see useDraftAutosave.
  */
-export function SteppedChallengeForm(props: Props) {
-  const hydrated = useSyncExternalStore(noop, () => true, () => false);
-  const key = draftKey(props.userId, props.slug, props.version);
-  const draft = hydrated ? parseDraft(loadDraftRaw(key), props.questions, props.plan.steps.length) : null;
-  return <Form key={hydrated ? "restored" : "fresh"} {...props} storageKey={key} initialDraft={draft} persist={hydrated} />;
-}
-
-function Form({
+export function SteppedChallengeForm({
   slug,
   userId,
+  version,
   questions,
   spec,
   plan,
   brief,
+  tip,
+  initialDraft,
   attemptNumber,
   maxAttempts,
-  storageKey,
-  initialDraft,
-  persist,
-}: Props & { storageKey: string; initialDraft: Draft | null; persist: boolean }) {
+}: Props) {
   const router = useRouter();
   const challenge = useMemo(() => ({ slug, questions, submission_spec: spec }), [slug, questions, spec]);
 
   // Everything the learner has entered lives here, above the Stepper, which unmounts the steps they aren't on.
-  const [fields, setFields] = useState<Fields>(
-    initialDraft
-      ? { answers: initialDraft.answers, figmaUrl: initialDraft.figmaUrl, reflection: initialDraft.reflection }
-      : EMPTY_FIELDS,
-  );
-  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [start] = useState(() => {
+    const fields: Fields = initialDraft
+      ? { answers: initialDraft.draft.answers, figmaUrl: initialDraft.draft.figmaUrl, reflection: initialDraft.draft.reflection }
+      : EMPTY_FIELDS;
+    const images: UploadedImage[] = initialDraft?.images ?? [];
+    const restored = stepProblems(plan, challenge, userId, { ...fields, images, uploading: false });
+    return { fields, images, step: initialDraft ? clampStep(plan, restored, initialDraft.draft.step) : 1 };
+  });
+  const [fields, setFields] = useState<Fields>(start.fields);
+  const [images, setImages] = useState<UploadedImage[]>(start.images);
   const uploads = useScreenshotUploads({ userId, slug, max: spec.screenshots?.max ?? 0, images, setImages });
 
   const problems = useMemo(
@@ -83,11 +86,7 @@ function Form({
     [plan, challenge, userId, fields, images, uploads.uploading],
   );
 
-  const [step, setStep] = useState(() => {
-    if (!initialDraft) return 1;
-    const restored = stepProblems(plan, challenge, userId, { ...fields, images: [], uploading: false });
-    return clampStep(plan, restored, initialDraft.step);
-  });
+  const [step, setStep] = useState(start.step);
   // Focus only moves to a step's heading once the learner has navigated, never on first load.
   const [navigated, setNavigated] = useState(false);
 
@@ -100,15 +99,40 @@ function Form({
   const blocker = current.kind === "review" ? null : (problems[current.id] ?? null);
   const blocked = pending || (current.kind === "review" ? !complete : Boolean(blocker));
 
-  // Keep a draft so a refresh doesn't lose answers. Written after every change; cleared when empty. Not before
-  // hydration: that first, empty instance must not wipe the draft the restored one is about to read.
-  useEffect(() => {
-    if (!persist) return;
-    const untouched =
-      step === 1 && !fields.figmaUrl && !fields.reflection && Object.keys(fields.answers).length === 0;
-    if (untouched) clearDraft(storageKey);
-    else saveDraft(storageKey, { ...fields, step });
-  }, [persist, storageKey, fields, step]);
+  // Saved to the server as the learner works. The baseline is what the form opened with, so opening it saves nothing.
+  const snapshot = (f: Fields, imgs: UploadedImage[], at: number): DraftInput => ({
+    version,
+    step: at,
+    answers: f.answers,
+    imagePaths: imgs.map((i) => i.path),
+    figmaUrl: f.figmaUrl,
+    reflection: f.reflection,
+  });
+  const autosave = useDraftAutosave(slug, snapshot(fields, images, step), snapshot(start.fields, start.images, start.step));
+  const [notice, setNotice] = useState(initialDraft);
+  const [startingOver, setStartingOver] = useState(false);
+
+  function startOver() {
+    setStartingOver(true);
+    void (async () => {
+      await autosave.pause();
+      const res = await discardDraft(slug);
+      setStartingOver(false);
+      autosave.resume();
+      if (!res.ok) {
+        toast.error("Couldn't discard your saved answers. Please try again.");
+        return;
+      }
+      setFields(EMPTY_FIELDS);
+      setImages([]);
+      setStep(1);
+      setNavigated(false);
+      setServerErrors({});
+      setFormError(null);
+      setNotice(null);
+      autosave.reset(snapshot(EMPTY_FIELDS, [], 1));
+    })();
+  }
 
   const setAnswer = (id: string, value: string | string[]) =>
     setFields((f) => ({ ...f, answers: { ...f.answers, [id]: value } }));
@@ -126,6 +150,8 @@ function Form({
     setServerErrors({});
     startTransition(async () => {
       try {
+        // No save may land after the submit that deletes the draft.
+        await autosave.pause();
         const res = await submitChallenge(slug, {
           answers: fields.answers,
           imagePaths: images.map((i) => i.path),
@@ -133,13 +159,13 @@ function Form({
           reflection: fields.reflection || null,
         });
         if (!res.ok) {
+          autosave.resume();
           setFormError(res.error);
           setServerErrors(
             Object.fromEntries(Object.entries(res.fieldErrors ?? {}).map(([field, message]) => [stepForField(plan, field), message])),
           );
           return;
         }
-        clearDraft(storageKey);
         images.forEach((i) => URL.revokeObjectURL(i.previewUrl));
         setFields(EMPTY_FIELDS);
         setImages([]);
@@ -148,12 +174,15 @@ function Form({
         toast.success(res.status === "published" ? "Submitted and graded." : "Submitted — awaiting review.");
         router.refresh();
       } catch {
+        autosave.resume();
         setFormError("Something went wrong. Please try again.");
       }
     });
   }
 
   const total = plan.steps.length;
+  // The tip sits above the questions: on the first step that has any.
+  const tipStepId = tip ? plan.steps.find((s) => s.kind === "question" || s.kind === "questions")?.id : undefined;
   const stepNumber = (def: StepDef) => plan.steps.indexOf(def) + 1;
   const optional = (def: StepDef) =>
     (def.kind === "figma" && spec.figma_url && !spec.figma_url.required) ||
@@ -184,6 +213,7 @@ function Form({
             eyebrow={`Question ${index + 1} of ${questions.length} · ${q.points} pts`}
             title={q.prompt}
           >
+            {def.id === tipStepId && tip}
             <QuestionField
               q={q}
               index={index}
@@ -200,6 +230,7 @@ function Form({
       case "questions":
         return (
           <StepFrame {...frame} headingId={headingId} eyebrow={eyebrow(def)} title="Questions">
+            {def.id === tipStepId && tip}
             <div className="grid gap-8">
               {questions.map((q, i) => (
                 <QuestionField
@@ -310,6 +341,9 @@ function Form({
 
   return (
     <div className="grid gap-4">
+      {notice && (
+        <DraftNotice savedAt={notice.savedAt} reset={notice.reset} busy={startingOver || pending} onStartOver={startOver} />
+      )}
       <Stepper
         step={step}
         onStepChange={goTo}
@@ -332,9 +366,12 @@ function Form({
           </Step>
         ))}
       </Stepper>
-      <p className="text-muted-foreground text-sm">
-        Attempt {attemptNumber} of {maxAttempts}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <p className="text-muted-foreground text-sm">
+          Attempt {attemptNumber} of {maxAttempts}
+        </p>
+        <SaveIndicator status={autosave.status} />
+      </div>
     </div>
   );
 }

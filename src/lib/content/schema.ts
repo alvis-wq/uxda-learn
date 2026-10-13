@@ -136,6 +136,7 @@ export const challengeFrontmatterSchema = z.strictObject({
   summary: z.string().trim().max(300).optional(),
   image: imageFile.optional(), // overrides the category's image
   due_at: z.iso.datetime({ offset: true }).optional(),
+  tip: z.string().trim().min(1, "must not be empty").max(1000, "keep the tip short (at most 1000 characters)").optional(), // markdown hint above the questions
   questions: z.array(questionSchema).default([]),
   submission: submissionSpecSchema.optional(),
   rubric: z.array(rubricCriterionSchema).default([]),

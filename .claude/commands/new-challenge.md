@@ -21,6 +21,7 @@ Create a challenge from this description: $ARGUMENTS
      ("everyone must…", "all designers need to…"). Otherwise leave it out (optional).
    - `required_for: all` means every track, so the challenge and its category must be
      visible to everyone; otherwise list the tracks. Every listed track must be able to see it.
+   - Add `tip` (one or two short markdown sentences) only when there is a useful hint to give above the questions; it is display-only.
    - If a deadline is mentioned, add `due_at` (ISO 8601 with offset, e.g. `2026-11-01T17:00:00Z`).
      If it's required but no deadline is given, ask in the summary instead of inventing one.
    - `status`, `required_for` and `due_at` in the file are only **starting values**: content:sync

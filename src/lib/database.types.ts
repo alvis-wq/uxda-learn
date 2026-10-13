@@ -196,6 +196,7 @@ export type Database = {
           status: string
           submission_spec: Json
           summary: string | null
+          tip: string | null
           title: string
           type: Database["public"]["Enums"]["challenge_type"]
           updated_at: string
@@ -218,6 +219,7 @@ export type Database = {
           status?: string
           submission_spec?: Json
           summary?: string | null
+          tip?: string | null
           title: string
           type: Database["public"]["Enums"]["challenge_type"]
           updated_at?: string
@@ -240,6 +242,7 @@ export type Database = {
           status?: string
           submission_spec?: Json
           summary?: string | null
+          tip?: string | null
           title?: string
           type?: Database["public"]["Enums"]["challenge_type"]
           updated_at?: string
@@ -347,6 +350,57 @@ export type Database = {
           track?: Database["public"]["Enums"]["track"] | null
         }
         Relationships: []
+      }
+      submission_drafts: {
+        Row: {
+          answers: Json
+          challenge_slug: string
+          challenge_version: number
+          current_step: number
+          figma_url: string | null
+          image_paths: string[]
+          reflection: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          challenge_slug: string
+          challenge_version: number
+          current_step?: number
+          figma_url?: string | null
+          image_paths?: string[]
+          reflection?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          challenge_slug?: string
+          challenge_version?: number
+          current_step?: number
+          figma_url?: string | null
+          image_paths?: string[]
+          reflection?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_drafts_challenge_slug_fkey"
+            columns: ["challenge_slug"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "submission_drafts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submissions: {
         Row: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ export function ChallengeForm({
   userId,
   questions,
   spec,
+  tip,
   attemptNumber,
   maxAttempts,
 }: {
@@ -26,6 +27,8 @@ export function ChallengeForm({
   userId: string;
   questions: PublicQuestion[];
   spec: SubmissionSpec;
+  /** The challenge's `tip`, rendered on the server. */
+  tip?: ReactNode;
   attemptNumber: number;
   maxAttempts: number;
 }) {
@@ -68,6 +71,7 @@ export function ChallengeForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-8" noValidate>
+      {questions.length > 0 && tip}
       {questions.map((q, i) => (
         <QuestionField
           key={q.id}

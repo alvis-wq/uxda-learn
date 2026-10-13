@@ -8,7 +8,9 @@
  *     leaderboard function is callable.
  *  5. allowed_email_domains matches ALLOWED_EMAIL_DOMAINS, and the signup trigger accepts
  *     those domains and rejects others.
- *  6. set_challenge_setting writes the value + one audit row (none for a no-op); users can't
+ *  6. Drafts (submission_drafts): a user reads and writes only their own rows, not even an admin sees or edits
+ *     someone else's, anon sees none, and the shape limits hold.
+ *  7. set_challenge_setting writes the value + one audit row (none for a no-op); users can't
  *     call it or read the audit log.
  */
 import { randomBytes } from "node:crypto";
@@ -30,6 +32,7 @@ const EXPECTED_TABLES = [
   "evaluations",
   "acknowledgements",
   "challenge_settings_audit",
+  "submission_drafts",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
@@ -162,6 +165,41 @@ async function main() {
     if (!lbErr) pass("signed-in user can call get_leaderboard(track[])");
     else fail(`get_leaderboard(track[]) failed: ${lbErr.message}`);
 
+    console.log("Submission drafts");
+    const draft = { challenge_slug: SENTINEL_CHALLENGE, challenge_version: 1, answers: { q1: "a" }, current_step: 2 };
+    const { error: ownDraftErr } = await authed.from("submission_drafts").upsert({ ...draft, user_id: userId });
+    const { data: ownDrafts } = await authed.from("submission_drafts").select("current_step");
+    if (!ownDraftErr && ownDrafts?.length === 1 && ownDrafts[0].current_step === 2) pass("user can write and read their own draft");
+    else fail(`user cannot save their own draft: ${ownDraftErr?.message ?? JSON.stringify(ownDrafts)}`);
+    const { data: anonDrafts } = await anonClient().from("submission_drafts").select("user_id");
+    if (!anonDrafts?.length) pass("anon reads 0 drafts");
+    else fail(`anon CAN READ drafts (${anonDrafts.length})`);
+    const { error: bigErr } = await authed
+      .from("submission_drafts")
+      .update({ image_paths: Array.from({ length: 11 }, (_, i) => `p${i}`) })
+      .eq("user_id", userId);
+    if (bigErr) pass(`draft shape limits hold (${bigErr.code ?? bigErr.message})`);
+    else fail("a draft with 11 screenshots was ACCEPTED");
+    if (otherId) {
+      const { error: seedDraftErr } = await admin.from("submission_drafts").insert({ ...draft, user_id: otherId });
+      if (seedDraftErr) throw new Error(`sentinel draft: ${seedDraftErr.message}`);
+      const { error: forgeErr } = await authed.from("submission_drafts").upsert({ ...draft, user_id: otherId, current_step: 9 });
+      const { data: forged } = await admin.from("submission_drafts").select("current_step").eq("user_id", otherId).single();
+      if (forgeErr && forged?.current_step === 2) pass("user cannot write another user's draft");
+      else fail("user COULD write another user's draft");
+      // Not even an admin: promote the temp user, then look for the other user's row.
+      await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+      const { data: adminSees } = await authed.from("submission_drafts").select("user_id");
+      const { error: adminEditErr } = await authed.from("submission_drafts").update({ current_step: 9 }).eq("user_id", otherId);
+      const { data: afterEdit } = await admin.from("submission_drafts").select("current_step").eq("user_id", otherId).single();
+      await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+      if (adminSees?.every((r) => r.user_id === userId) && !adminEditErr && afterEdit?.current_step === 2) {
+        pass("an admin cannot read or edit another user's draft");
+      } else {
+        fail(`an admin COULD reach another user's draft: ${JSON.stringify({ adminSees, adminEditErr, afterEdit })}`);
+      }
+    }
+
     console.log("Challenge settings & audit log");
     const set = (p_field: string, p_value: unknown) =>
       admin.rpc("set_challenge_setting", {
@@ -204,6 +242,7 @@ async function main() {
     await admin.from("challenge_settings_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     if (userId) await admin.auth.admin.deleteUser(userId);
     await admin.from("acknowledgements").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
+    await admin.from("submission_drafts").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenge_keys").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenges").delete().eq("slug", SENTINEL_CHALLENGE);
     await admin.from("categories").delete().eq("slug", SENTINEL_CATEGORY);

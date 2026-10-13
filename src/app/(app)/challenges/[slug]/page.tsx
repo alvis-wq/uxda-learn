@@ -4,11 +4,13 @@ import { notFound } from "next/navigation";
 import { CheckCircle2, ChevronLeft, Eye, Info } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { Markdown } from "@/components/markdown";
+import { TipBox } from "@/components/tip-box";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
+import { prepareFormDraft } from "@/lib/data/drafts";
 import { getChallengePage } from "@/lib/data/learner";
 import { isResultVisible, MAX_ATTEMPTS } from "@/lib/submissions/rules";
 import { planSteps } from "@/lib/submissions/steps";
@@ -24,7 +26,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   const profile = await requireOnboardedProfile();
   const data = await getChallengePage(profile, slug);
   if (!data) notFound();
-  const { challenge, categoryTitle, progress, attempts, preview } = data;
+  const { challenge, categoryTitle, progress, attempts, preview, draft } = data;
   const { state } = progress;
   const isAck = challenge.type === "acknowledge";
 
@@ -33,6 +35,10 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   const plan = planSteps({ questions: challenge.questions, submission_spec: challenge.submission_spec });
   const stepped = !preview && !isAck && state.canSubmit && plan.mode !== "single";
   const briefInStepper = stepped && plan.mode === "mixed";
+  const tip = challenge.tip ? <TipBox>{challenge.tip}</TipBox> : undefined;
+  // The saved draft is only read into the form when the form is shown.
+  const initialDraft =
+    stepped && draft ? await prepareFormDraft(draft, challenge, profile.id, plan.steps.length) : null;
 
   const rubric = challenge.rubric.length > 0 && (
     <section aria-labelledby="rubric-heading" className="grid gap-3">
@@ -62,7 +68,13 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{challenge.title}</h1>
-          <StatusBadge status={state.latest?.status} acknowledged={isAck ? progress.done : undefined} />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge
+              status={state.latest?.status}
+              acknowledged={isAck ? progress.done : undefined}
+              inProgress={progress.inProgress}
+            />
+          </div>
         </div>
         <div className="mt-3 grid gap-3">
           <RequiredBadges required={progress.required} dueAt={challenge.due_at} done={progress.done} />
@@ -149,6 +161,8 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
           </h2>
           {state.canSubmit && stepped ? (
             <SteppedChallengeForm
+              // A new attempt (after a submit) starts a new form: fresh state, autosave on again.
+              key={state.attemptsUsed}
               slug={challenge.slug}
               userId={profile.id}
               version={challenge.version}
@@ -163,6 +177,8 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                   </div>
                 ) : undefined
               }
+              tip={tip}
+              initialDraft={initialDraft}
               attemptNumber={state.attemptsUsed + 1}
               maxAttempts={MAX_ATTEMPTS}
             />
@@ -172,6 +188,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
               userId={profile.id}
               questions={challenge.questions}
               spec={challenge.submission_spec}
+              tip={tip}
               attemptNumber={state.attemptsUsed + 1}
               maxAttempts={MAX_ATTEMPTS}
             />

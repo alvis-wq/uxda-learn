@@ -100,3 +100,56 @@ export function submissionInputSchema(
     reflection,
   });
 }
+
+export type DraftInput = {
+  /** The content version the learner's form was rendered from. */
+  version: number;
+  /** 1-based Stepper step. */
+  step: number;
+  answers: Record<string, string | string[]>;
+  imagePaths: string[];
+  figmaUrl: string;
+  reflection: string;
+};
+
+/**
+ * The same fields as a submission, validated for what they are rather than for being finished: an answer may be
+ * missing, empty or too short, a Figma link half typed. What must still hold is what a stored draft could otherwise
+ * smuggle in: known question ids and options, the learner's own screenshot paths (at most the allowed number),
+ * fields the challenge doesn't have left empty, and bounded text. A complete, valid submission always passes.
+ */
+export function draftInputSchema(
+  challenge: Pick<Challenge, "slug" | "questions" | "submission_spec">,
+  userId: string,
+  stepCount: number,
+) {
+  const answerShape: Record<string, z.ZodType<string | string[]>> = {};
+  for (const q of challenge.questions) {
+    if (q.kind === "text") {
+      answerShape[q.id] = z.string().max(MAX_TEXT, "Answer is too long.");
+    } else {
+      const ids = q.options.map((o) => o.id) as [string, ...string[]];
+      answerShape[q.id] =
+        q.kind === "single"
+          ? z.enum(ids)
+          : z.array(z.enum(ids)).refine((a) => new Set(a).size === a.length, "Each option can only be chosen once.");
+    }
+  }
+
+  const spec = challenge.submission_spec;
+  return z.object({
+    version: z.number().int().positive(),
+    step: z.number().int().min(1).max(Math.max(stepCount, 1)),
+    answers: z.strictObject(answerShape).partial(),
+    imagePaths: z
+      .array(z.string())
+      .max(spec.screenshots?.max ?? 0, "Too many screenshots.")
+      .refine((p) => new Set(p).size === p.length, "Duplicate screenshot.")
+      .refine((p) => p.every((x) => isOwnImagePath(x, userId, challenge.slug)), "Invalid screenshot upload."),
+    figmaUrl: z.string().max(2000).refine((v) => v === "" || spec.figma_url !== undefined, "A Figma link isn't part of this challenge."),
+    reflection: z
+      .string()
+      .max(MAX_TEXT, "Reflection is too long.")
+      .refine((v) => v === "" || spec.reflection !== undefined, "Reflection isn't part of this challenge."),
+  });
+}

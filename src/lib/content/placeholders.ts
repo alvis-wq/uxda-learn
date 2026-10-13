@@ -35,6 +35,7 @@ export function challengeParts(c: {
   title: string;
   summary?: string | null;
   body: string;
+  tip?: string | null;
   questions?: unknown;
   submission?: unknown;
   rubric?: unknown;
@@ -44,6 +45,7 @@ export function challengeParts(c: {
     title: c.title,
     summary: c.summary,
     brief: c.body,
+    tip: c.tip,
     questions: c.questions,
     "submission instructions": c.submission,
     rubric: c.rubric,

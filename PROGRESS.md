@@ -672,3 +672,26 @@ clicks/keys take seconds on the page while the X renders, so a few checks drive 
   Nothing else assumed 6 s (the sequence ends at 2.9 s, so the clip now outlives it by ~1.1 s instead of ~3.1 s; mid-sequence turn-on still always has room, tested; the skip fade only
   applies during the sequence and is unaffected). The E2E position bound now uses the constant.
 
+
+## Server-side drafts + challenge tip (`feat/server-drafts`)
+
+- Migration `20261013090000_submission_drafts.sql` (applied by you, `db:types` regenerated): table `submission_drafts` (PK `user_id, challenge_slug`; `challenge_version`,
+  `answers` jsonb, `figma_url`, `reflection`, `image_paths`, `current_step`, `updated_at`; size/shape checks) with select/insert/update/delete policies on `user_id = auth.uid()`
+  and **no** `is_admin()` clause; and `challenges.tip` (text, <= 1000 chars). `docs/schema.sql` updated. `npm run db:check` gained 5 checks (own read/write, anon sees none,
+  shape limits, can't write another user's draft, an admin can't read or edit another user's draft), all passing on the main project.
+- Autosave (`draft-actions.ts` `saveDraft`): session check, visibility and attempts (service role, as for a submit), the new `draftInputSchema` (partial answers allowed; known question ids/options,
+  the learner's own screenshot paths up to the max, nothing for fields the challenge lacks), the write under the learner's own session (RLS is the hard stop). A blank form deletes the row.
+  A page rendered from an older version is refused (`stale`). The client (`Autosaver`, `draft-autosave.tsx`) saves 1 s after the last edit and at once on a step change, one save at a time,
+  retries with growing delay, flushes when the tab is hidden or the form unmounts, and pauses around submit. A quiet `role=status` line shows Saving… / Saved / "Couldn't save yet".
+- Restore (`restoreDraft`, `prepareFormDraft`): the page reads the draft on the server (no hydration remount any more; the sessionStorage draft is gone). Answers whose question ids/options still exist
+  are kept, anything else is dropped and, when the version changed, the note says some answers were reset. Screenshot paths are checked as the learner's own and looked up in Storage via signed URLs
+  (a missing file is dropped). "Continue where you left off · saved N ago" with a two-click **Start over** (`discardDraft`).
+- `submitChallenge` deletes the draft after the insert (best effort). Cards (home required list + category page) and the challenge header show **In progress** (and the CTA says Continue) when a draft
+  exists and the learner can still submit; `needs_resubmission`/retries show it next to their status.
+- `tip` in frontmatter (<= 1000 chars, markdown): `TipBox` above the questions (first questions step of a stepped challenge; above the plain form otherwise). Display-only like `image`: not in `content_hash`;
+  a change is a version-neutral `challengeDisplayUpdates` write in content:sync (replaces `challengeImageUpdates`); TODO placeholders in it are caught. Documented in `docs/content-format.md`, `/new-challenge`.
+
+Checks: `npm run check` ✅ · `npm run build` ✅. Unit: `restoreDraft`, `isBlankDraft`, `draftInputSchema` (incl. "anything a complete submission accepts passes"), the autosave timing rules (fake timers), `saveDraft`/`discardDraft`/
+submit-deletes-draft against a fake DB, tip schema/hash/sync/placeholders, card CTA. Browser-verified on a temporary harness (deleted): restored step + tip + reset note, an edit triggers the autosave and an
+unauthenticated save shows the error line instead of crashing, Start over's confirm toggles, 1280 dark and 375 light, no horizontal overflow. `e2e/drafts.spec.ts` (8 specs: tip placement, save and restore across
+sign-out and a second browser, In progress on the card, privacy, version change, Start over, screenshots, submit deletes) and the learner spec's reload step are written but NOT run (no test project).

@@ -63,6 +63,7 @@ difficulty: 2                      # 1 easy, 2 medium, 3 hard (not used by ackno
 points: 30                         # MUST equal sum of question points + rubric points
 estimated_minutes: 90
 image: three-tools.webp            # optional card artwork in public/challenges/ (overrides the category's)
+tip: Start with the brief's last paragraph; it lists what is scored.   # optional hint above the questions (markdown, up to 1000 chars)
 status: draft                      # initial value* — draft | published | archived
 questions:                         # optional
   - id: q1
@@ -89,6 +90,10 @@ grader_notes: |                    # PRIVATE — evaluator only, never shown to 
 ## Brief
 ...
 ```
+`tip` is a short markdown hint shown in a subtle box above the questions (on the first questions step
+of a stepped challenge). It is display-only, like `image`: changing it never bumps the `version`, and it
+can't contain a `TODO…` placeholder in a published challenge.
+
 \* Used only when the challenge is first synced; afterwards these are managed in Admin → Content
 (see "Who owns what").
 

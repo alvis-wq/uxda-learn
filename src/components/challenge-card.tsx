@@ -47,7 +47,7 @@ export function ChallengeCard({
   now: Date;
 }) {
   const Heading = `h${headingLevel}` as const;
-  const cta = cardCta({ type: ch.type, acknowledged: ch.acknowledged, latestStatus: ch.latestStatus });
+  const cta = cardCta({ type: ch.type, acknowledged: ch.acknowledged, latestStatus: ch.latestStatus, inProgress: ch.inProgress });
   const hasImage = Boolean(ch.imageUrl);
 
   return (
@@ -87,7 +87,11 @@ export function ChallengeCard({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <ChallengeMeta challenge={ch} />
               <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} />
-              <StatusBadge status={ch.latestStatus} acknowledged={ch.type === "acknowledge" ? ch.acknowledged : undefined} />
+              <StatusBadge
+                status={ch.latestStatus}
+                acknowledged={ch.type === "acknowledge" ? ch.acknowledged : undefined}
+                inProgress={ch.inProgress}
+              />
               {ch.type !== "acknowledge" && ch.bestScore !== null && (
                 <span className="text-meta font-medium">
                   Best: {ch.bestScore} / {ch.points}

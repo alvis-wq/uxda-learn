@@ -57,7 +57,9 @@ async function main() {
     );
   }
   for (const u of plan.challengeHashRefreshes) console.log(`  challenge hash refresh: ${u.slug} (version unchanged)`);
-  for (const u of plan.challengeImageUpdates) console.log(`  challenge image: ${u.slug} → ${u.image ?? "none"} (version unchanged)`);
+  for (const u of plan.challengeDisplayUpdates) {
+    console.log(`  challenge display: ${u.slug} (image ${u.image ?? "none"}, tip ${u.tip ? "set" : "none"}; version unchanged)`);
+  }
   for (const slug of plan.challengeArchives) console.log(`  challenge archived: ${slug}`);
   for (const slug of plan.categoryArchives) console.log(`  category archived: ${slug}`);
 
@@ -94,8 +96,8 @@ async function main() {
   for (const { slug, content_hash } of plan.challengeHashRefreshes) {
     check(await db.from("challenges").update({ content_hash }).eq("slug", slug), `hash refresh ${slug}`);
   }
-  for (const { slug, image } of plan.challengeImageUpdates) {
-    check(await db.from("challenges").update({ image }).eq("slug", slug), `image ${slug}`);
+  for (const { slug, image, tip } of plan.challengeDisplayUpdates) {
+    check(await db.from("challenges").update({ image, tip }).eq("slug", slug), `display ${slug}`);
   }
   for (const slug of plan.challengeArchives) {
     // Through set_challenge_setting so the archive shows up in the challenge's audit log.
