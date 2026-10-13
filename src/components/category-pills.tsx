@@ -8,7 +8,7 @@ import type { CategoryProgress } from "@/lib/data/learner";
  */
 export function CategoryPills({ categories }: { categories: CategoryProgress[] }) {
   return (
-    <nav aria-label="Categories" data-testid="category-pills">
+    <nav aria-label="Categories" data-testid="category-pills" className="min-w-0">
       <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
         {categories.map((c) => (
           <li key={c.slug} className="shrink-0">

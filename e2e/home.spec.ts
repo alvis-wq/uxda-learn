@@ -21,7 +21,8 @@ test.describe("home page", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Welcome, Test" })).toBeVisible();
     await expect(page.getByTestId("hero-points")).toBeVisible();
     await expect(page.getByTestId("hero-rank")).toBeVisible();
-    await expect(page.getByTestId("hero-completed")).toBeVisible();
+    await expect(page.getByTestId("hero-completed")).toHaveCount(0); // the "Completed" stat moved into Overall progress
+    await expect(page.getByTestId("overall-count")).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(problems).toEqual([]);
   });
@@ -170,6 +171,14 @@ test.describe("home page", () => {
     await expect(quiz).toContainText("Start");
     await expect(quiz).toContainText("10 pts");
     await expect(quiz.getByRole("link")).toHaveCount(1); // the whole card is one link, named by the title
+    // The meta is always two rows: what it is (type, difficulty, points, time), then where the learner stands.
+    const meta = quiz.getByTestId("card-meta");
+    const [row1, row2] = [meta.locator("> div").nth(0), meta.getByTestId("card-badges")];
+    await expect(row1).toContainText("10 pts");
+    await expect(row2).toContainText("Not started");
+    const tops = await row1.locator("> *").evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2)));
+    expect(new Set(tops).size).toBe(1); // row 1 never wraps
+    expect((await row2.boundingBox())!.y).toBeGreaterThan((await row1.boundingBox())!.y + (await row1.boundingBox())!.height - 1);
     await expect(quiz).toHaveCSS("border-top-left-radius", /^(24|32)px$/);
     // No artwork configured for the fixtures: no image, text uses the full card.
     await expect(quiz.locator("img")).toHaveCount(0);

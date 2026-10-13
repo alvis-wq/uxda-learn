@@ -15,7 +15,7 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await page.goto("/");
   await expect(page.getByTestId("hero-points")).toContainText("0");
   await expect(page.getByTestId("hero-rank")).toContainText("Not ranked");
-  await expect(page.getByTestId("hero-completed")).toContainText("0 of");
+  await expect(page.getByTestId("overall-count")).toContainText("0 of");
 
   // Hidden by default (E2E setup) — the leaderboard says so.
   await page.goto("/leaderboard");
@@ -55,12 +55,12 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await expect(me).toContainText("You");
   await expect(me.getByRole("cell").last()).toHaveText("4");
 
-  // Home hero: total points, rank within the designers group, completed count.
+  // Home: total points, rank within the designers group, and the overall tracker.
   await page.goto("/");
   await expect(page.getByTestId("hero-points")).toContainText("4");
   await expect(page.getByTestId("hero-rank")).toContainText("#1");
   await expect(page.getByTestId("hero-rank")).toContainText("Designers");
-  await expect(page.getByTestId("hero-completed")).toContainText("1 of");
+  await expect(page.getByTestId("overall-count")).toContainText("1 of");
 
   await page.goto("/leaderboard?group=designers");
   await page.getByRole("link", { name: "Strategists" }).click();

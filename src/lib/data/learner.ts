@@ -183,9 +183,6 @@ function cardOf(
 
 export type HomeHero = {
   totalScore: number;
-  /** Scored challenges completed, out of the scored ones visible to the learner. */
-  completed: number;
-  totalScored: number;
   groupLabel: string | null;
   /** Null when the learner isn't on the leaderboard (hidden from it). */
   rank: { position: number; of: number } | null;
@@ -193,8 +190,17 @@ export type HomeHero = {
 
 export type HomeData = {
   hero: HomeHero;
+  /** Every challenge the learner can see (acknowledge ones included, as in the category counts), and how many are done. */
+  overall: { done: number; total: number };
   categories: CategoryProgress[];
-  required: { total: number; done: number; outstanding: CardChallenge[]; overdue: number };
+  required: {
+    total: number;
+    done: number;
+    outstanding: CardChallenge[];
+    overdue: number;
+    /** Challenges that are neither required nor completed: waiting in the categories. */
+    optionalRemaining: number;
+  };
 };
 
 export async function getHomeData(profile: Profile, now = new Date()): Promise<HomeData> {
@@ -247,23 +253,23 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     return cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
   });
 
-  const { totalScore, completed } = summarizeScores(subs);
+  const { totalScore } = summarizeScores(subs);
   const hero: HomeHero = {
     totalScore,
-    completed,
-    totalScored: visible.filter((ch) => ch.type !== "acknowledge").length,
     groupLabel: group?.label ?? null,
     rank: board?.data ? rankOf(board.data, profile.id) : null,
   };
 
   return {
     hero,
+    overall: { done: visible.filter((ch) => ch.done).length, total: visible.length },
     categories,
     required: {
       total: required.length,
       done: required.filter((ch) => ch.done).length,
       outstanding,
       overdue: outstanding.filter((ch) => ch.requiredState === "overdue").length,
+      optionalRemaining: visible.filter((ch) => !ch.required && !ch.done).length,
     },
   };
 }

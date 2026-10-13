@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MessageSquareText } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { SectionLabel } from "@/components/section-label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -94,12 +95,12 @@ export default async function ProfilePage() {
         </h2>
         {inProgress.length > 0 && (
           <div className="grid gap-3" data-testid="in-progress-group">
-            <h3 className="text-muted-foreground text-meta font-medium">In progress</h3>
+            <SectionLabel as="h3">In progress</SectionLabel>
             <InProgressList items={inProgress} now={now} />
           </div>
         )}
         {inProgress.length > 0 && history.length > 0 && (
-          <h3 className="text-muted-foreground text-meta mt-2 font-medium">Submitted</h3>
+          <SectionLabel as="h3" className="mt-2">Submitted</SectionLabel>
         )}
         {history.length > 0 ? (
           <ChallengeHistoryList groups={history} titleOf={titleOf} />

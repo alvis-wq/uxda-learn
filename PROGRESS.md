@@ -728,3 +728,20 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Checks: `npm run check` and `npm run build` ✅. Checked on a temporary page rendering the real `HomeView`: 1280 and 375 px, dark and light, axe (wcag2a/aa/21aa) clean in all four, no horizontal page overflow, pills 36px, 5 pills for
   6 categories (the empty one hidden), keyboard focus ring present, order hero → pills → required. Found and fixed one overflow: the pills' screen-reader-only text was positioned against the page rather than the scrolling row,
   so it stretched the page to 844px at 375 (now `relative` on each pill). e2e: updated `drafts.spec.ts` (Step 2 of 3 on the card and the profile row) and two new `home.spec.ts` specs; none run here (no test project).
+
+### Home order, Overall progress, two-row card meta (`feat/home-pills`)
+
+- **Order on `/`**: greeting, points, rank (the "Completed" stat is gone) → **Overall progress** (`3 of 13 challenges completed`, one bar, and `Required: 1 of 4 done · 1 overdue` when the learner has required challenges;
+  it replaces the bar under "Required for you") → **Categories** (label + pills) → **Required for you** (outstanding required cards only, then a muted hint) . No "All challenges" section. `HomeData.overall` counts every challenge
+  the learner can see (acknowledge ones included, like the category counts); `required.optionalRemaining` is visible, not required, not done.
+- **Hint** (`optionalHint`, tested): required left → "9 more optional challenges in the categories above." (hidden at 0); none left → "All required done. 9 optional challenges are waiting in the categories." ("All required done."
+  alone at 0). The "Required for you" section shows only when the learner has required challenges at all.
+- **Section labels**: one small, muted style (`SectionLabel`, the "Total points" style) for Overall progress, Categories, Required for you, and the profile's In progress / Submitted.
+- **Cards, two rows at every width** (home, category pages): row 1 = type, difficulty, points, time on one line that never wraps; row 2 = Required, due/overdue, status, step progress (inline text + short bar), best score. To make row 1
+  fit the narrow cards (the artwork column left only ~200px; even compacted it overflowed) the two rows now sit in a full-width footer band under the artwork's column (`bg-tile`, above the artwork, below the card-wide link),
+  and row 1 is 12px with 14px icons. Measured with the longest realistic content ("Screenshots · Hard · 100 pts · ~120 min") at 320/375/768/1024/1280, home and category layouts: row 1 fits at every width from 375 up and no page overflows;
+  at 320 only that worst case is clipped. Row 2 may wrap inside itself when it holds many badges.
+- Fixed on the way: the pills row blew its grid column out to 660px at 375 (`min-w-0` on the nav); cards got `min-w-0` for the same reason.
+- Checks: `npm run check` ✅ (430 tests) · `npm run build` ✅. Temporary page rendering the real `HomeView` and the card grid, 320-1280 px, dark and light: axe (wcag2a/aa/21aa) clean, no horizontal overflow from 320 up.
+  E2E updated (required/dashboard/home specs; hint, overall count, card rows) but not run: no test project.
+- To look at: no challenge artwork exists yet in `public/challenges/`, so I could not see how an image sits above the new footer band (it is tucked behind it, as before it bled off the card's bottom edge).

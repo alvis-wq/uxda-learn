@@ -6,6 +6,23 @@ const source = readFileSync(path.resolve(__dirname, "home-view.tsx"), "utf8");
 const at = (needle: string) => source.indexOf(needle);
 
 describe("home page layout", () => {
+  it("orders the sections: hero, overall progress, categories, required for you", () => {
+    const order = ['data-testid="hero"', 'data-testid="overall-progress"', "<CategoryPills", 'data-testid="required-section"'].map(at);
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("has no 'Completed' stat in the hero and no 'All challenges' section", () => {
+    expect(source).not.toContain("hero-completed");
+    expect(source).not.toContain("All challenges");
+  });
+
+  it("uses the shared small, muted section label for every section", () => {
+    for (const id of ["overall-heading", "categories-heading", "required-heading"]) {
+      expect(source).toMatch(new RegExp(`<SectionLabel id="${id}">`));
+    }
+  });
+
   it("puts the category pills directly below the hero and above the required challenges", () => {
     expect(at('data-testid="hero"')).toBeGreaterThan(-1);
     expect(at("<CategoryPills")).toBeGreaterThan(at('data-testid="hero"'));
