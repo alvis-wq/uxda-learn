@@ -10,6 +10,7 @@ import { describePlaceholders } from "@/lib/content/placeholders";
 import { getContentOverview } from "@/lib/data/admin-content";
 import { audienceLabel } from "@/lib/tracks";
 import { AuditHistory } from "./audit-history";
+import { FeedbackList } from "./feedback-list";
 import { ChallengeSettingsControls } from "./settings-controls";
 
 export const metadata: Metadata = { title: "Content · Admin · UXDA Learn" };
@@ -81,6 +82,7 @@ export default async function AdminContentPage() {
                           </span>
                         </p>
                       )}
+                      {(c.status === "draft" || c.feedback.length > 0) && <FeedbackList items={c.feedback} />}
                       <AuditHistory rows={c.history} />
                     </CardContent>
                   </Card>

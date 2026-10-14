@@ -1,6 +1,18 @@
 import { CheckCircle2, ExternalLink, XCircle } from "lucide-react";
-import type { PublicQuestion } from "@/lib/content/schema";
+import type { ReactNode } from "react";
+import { choicesOf, type PublicQuestion } from "@/lib/content/schema";
 import { tryAgainMessage, type AnswerReveal, type QuestionResult } from "@/lib/submissions/results";
+
+/** An order answer, one item per line with its position. */
+function NumberedItems({ labels }: { labels: string[] }) {
+  return (
+    <ol className="mt-1 grid list-decimal gap-0.5 pl-5">
+      {labels.map((l, i) => (
+        <li key={i}>{l}</li>
+      ))}
+    </ol>
+  );
+}
 
 /** Correct / incorrect: colour, icon and text together, never colour alone. */
 function ResultMark({ correct }: { correct: boolean }) {
@@ -42,30 +54,34 @@ export function SubmissionAnswers({
         <section className="grid gap-4" aria-label="Answers">
           {questions.map((q, i) => {
             const a = answers[q.id];
-            let shown: string;
+            const choices = choicesOf(q);
+            const label = (id: string) => choices?.find((o) => o.id === id)?.label ?? id;
+            const ids = Array.isArray(a) ? a.filter((x): x is string => typeof x === "string") : typeof a === "string" ? [a] : [];
+            let shown: ReactNode;
             if (q.kind === "text") shown = typeof a === "string" ? a : "—";
-            else {
-              const ids = Array.isArray(a) ? a : typeof a === "string" ? [a] : [];
-              shown = ids.map((id) => q.options.find((o) => o.id === id)?.label ?? id).join("; ") || "—";
-            }
+            else if (q.kind === "order") shown = ids.length ? <NumberedItems labels={ids.map(label)} /> : "—";
+            else shown = ids.map(label).join("; ") || "—";
             const result = q.kind === "text" ? undefined : resultFor.get(q.id);
-            const rightAnswer = result?.correctOptionIds
-              ?.map((id) => (q.kind === "text" ? id : (q.options.find((o) => o.id === id)?.label ?? id)))
-              .join("; ");
+            const rightIds = result?.correctOptionIds ?? null;
+            const rightAnswer = rightIds
+              ? q.kind === "order"
+                ? <NumberedItems labels={rightIds.map(label)} />
+                : rightIds.map(label).join("; ")
+              : null;
+            const rightTitle = q.kind === "order" ? "Correct order:" : rightIds && rightIds.length > 1 ? "Correct answers:" : "Correct answer:";
             return (
               <div key={q.id} className="grid gap-1" data-testid="answer" data-result={result ? (result.correct ? "correct" : "incorrect") : undefined}>
                 <p className="text-sm font-medium">
                   {i + 1}. {q.prompt}
                 </p>
                 <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
-                  <p className="text-muted-foreground min-w-0 flex-1 basis-48 text-sm whitespace-pre-line">{shown}</p>
+                  <div className="text-muted-foreground min-w-0 flex-1 basis-48 text-sm whitespace-pre-line">{shown}</div>
                   {result && <ResultMark correct={result.correct} />}
                 </div>
                 {result && !result.correct && rightAnswer && (
-                  <p className="text-sm" data-testid="right-answer">
-                    <span className="font-medium">{result.correctOptionIds!.length > 1 ? "Correct answers:" : "Correct answer:"}</span>{" "}
-                    {rightAnswer}
-                  </p>
+                  <div className="text-sm" data-testid="right-answer">
+                    <span className="font-medium">{rightTitle}</span> {rightAnswer}
+                  </div>
                 )}
                 {result && !result.correct && !rightAnswer && reveal && !reveal.reveal && (
                   <p className="text-muted-foreground text-sm" data-testid="try-again">

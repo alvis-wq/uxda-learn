@@ -46,6 +46,8 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   const quizCard = page.getByTestId("challenge-card").filter({ has: page.getByRole("link", { name: "[E2E] Quiz" }) });
   await expect(quizCard).toContainText("View result");
   await expect(quizCard).toContainText("Best: 4 / 10");
+  // 4 / 10 with attempts left: "Try again" sits next to "View result" and opens the challenge at its form.
+  await expect(quizCard.getByTestId("card-try-again")).toHaveAttribute("href", "/challenges/e2e-quiz#submit");
 
   await page.goto("/profile");
   await expect(page.getByTestId("stat-total")).toHaveText("4");

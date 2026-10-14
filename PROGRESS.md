@@ -777,3 +777,23 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 
 - After submitting an auto-graded quiz both forms go straight to `/submissions/[id]` (score, ✓/✗ per question, reveal rules, "Try again" while attempts remain). Review-bound submissions are unchanged. E2E learner and dashboard specs updated for the new landing page (not run: no test project).
+
+## Order questions, Latvian letters and fixes (`feat/order-question-and-fixes`)
+
+- `order` question kind end to end: Zod (authored + public), `content:validate` (unique ids and labels), sync (shuffled public items, ordered key), grading, submission and draft schemas, drafts restore, results (✓/✗, reveal as a numbered list), admin content preview, docs and `/new-challenge`. `OrderField` with drag handle (mouse, touch, keyboard via dnd-kit) and Move up/down buttons.
+- "Try again" button on cards beside "View result" (`showTryAgain`, `canRetry`).
+- Fonts: Urbanist self-hosted from the original file (Google's latin-ext subset misplaces ā ē ī ū macrons), plus Outfit's ģ for U+0123. Verified in zoomed screenshots at weights 400 and 600.
+- Screenshot uploader: paste, drag and drop, help line, status announcements. Markdown links: other sites in a new tab with an icon and `noopener noreferrer`; links into the app in the same tab, no icon.
+- Content: links in collaboration-standards (+ q1 as an order question), dna-7-values, superheroes (tip); brief and "builds on" line in wf-2..wf-6; wf-5 screenshots optional with a link-only rubric; `claude-at-uxda` replaced by the draft acknowledge challenge `claude-rules-at-uxda`. **Needs `npm run content:sync`** (not run).
+- Checks: `npm run content:validate` ✅ · `npm run check` · `npm run build`. A temporary page in a browser: order list by buttons, keyboard, mouse and touch; paste and drop; link icons; card button; axe (wcag2a/aa/21aa) clean and no overflow at 1280/375/320 in both themes. E2E (`order.spec.ts`, `screenshot-paste.spec.ts`, dashboard/learner updates) written, not run: no test project.
+
+## Testers (`feat/order-question-and-fixes`)
+
+- Migration `20261014100000_testers.sql`: `profiles.is_tester`, `is_tester()` / `my_track_sees()`, `challenges_select` for testers on drafts, `submissions.is_test` (own numbering, 3-attempt check kept for real attempts, owner can read test attempts only while the challenge is a draft), `get_leaderboard` ignores tests, `profile_flag_audit` + `set_user_tester()`, `challenge_feedback`. `docs/schema.sql` and `database.types.ts` updated (types by hand until `db:types` is re-run); `db:check` covers draft visibility per track/category/archived, self-flagging, the audit function, attempt numbering, hiding after publish, the leaderboard and admin-only feedback.
+- App: Tester switch on Admin → Users; tester-aware visibility, submit and draft-save (test attempts); "Draft — testing" badge on cards and the challenge page; testing notice; answer key always on test attempts only; "Feedback for Alvis" box; Admin → Content lists feedback (newest first, name, date) and the test attempts; every `submissions` read filtered on `is_test` (guarded by a test).
+- Checks: unit tests (visibility, testing state, submit/save as tester and non-tester, reveal rule, feedback and tester-switch actions, the is_test scan); a temporary page in a browser for the new UI (axe clean, no overflow at 1280/375/320, both themes). `e2e/testers.spec.ts` written, not run: no test project, and the migration isn't applied there.
+
+## Challenge page: the question is the focus (`feat/order-question-and-fixes`)
+
+- Brief: leading title heading skipped, collapsed to its first paragraph (toggle) once started (`src/lib/challenges/brief.ts` + tests, `collapsible-brief.tsx`); "Your submission" heading screen-reader only with a stepper; compact restore notice; tighter spacing. A temporary page in a browser: question heading 158px higher, toggle by Enter and Space, notice 20px high, axe clean and no overflow at 1280/375/320 in both themes. E2E (`drafts.spec.ts`, the quiz fixture now has a repeated heading and two paragraphs) updated, not run.- wf-1..wf-6: "Time" line removed so the first paragraph is the task (`wf-brief.test.ts`). `content:validate` OK. **Needs `npm run content:sync`** (not run).
+

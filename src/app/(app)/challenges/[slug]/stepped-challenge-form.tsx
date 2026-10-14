@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import Stepper, { Step } from "@/components/stepper/Stepper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { PublicQuestion, SubmissionSpec } from "@/lib/content/schema";
+import { choicesOf, type PublicQuestion, type SubmissionSpec } from "@/lib/content/schema";
 import type { FormDraft } from "@/lib/data/drafts";
 import type { DraftInput } from "@/lib/submissions/input";
 import {
@@ -22,6 +22,7 @@ import {
 import { submitChallenge } from "./actions";
 import { discardDraft } from "./draft-actions";
 import { SaveIndicator, useDraftAutosave } from "./draft-autosave";
+import { useReportStarted } from "./collapsible-brief";
 import { DraftNotice } from "./draft-notice";
 import { QuestionField } from "./question-field";
 import { ScreenshotUploader, useScreenshotUploads, type UploadedImage } from "./screenshot-uploader";
@@ -45,7 +46,8 @@ type Props = {
   /** The learner's saved work, restored on the server (null: a fresh form). */
   initialDraft: FormDraft | null;
   attemptNumber: number;
-  maxAttempts: number;
+  /** null for a test attempt (no limit). */
+  maxAttempts: number | null;
 };
 
 /**
@@ -111,6 +113,11 @@ export function SteppedChallengeForm({
   const autosave = useDraftAutosave(slug, snapshot(fields, images, step), snapshot(start.fields, start.images, start.step));
   const [notice, setNotice] = useState(initialDraft);
   const [startingOver, setStartingOver] = useState(false);
+
+  // Started = saved work, a step past the first, or anything entered: the brief then shrinks to its first paragraph.
+  const hasInput =
+    Object.keys(fields.answers).length > 0 || fields.figmaUrl !== "" || fields.reflection !== "" || images.length > 0;
+  useReportStarted(notice !== null || step > 1 || hasInput);
 
   function startOver() {
     setStartingOver(true);
@@ -191,6 +198,7 @@ export function SteppedChallengeForm({
   const tipStepId = tip ? plan.steps.find((s) => s.kind === "question" || s.kind === "questions")?.id : undefined;
   const stepNumber = (def: StepDef) => plan.steps.indexOf(def) + 1;
   const optional = (def: StepDef) =>
+    (def.kind === "screenshots" && spec.screenshots && spec.screenshots.min === 0) ||
     (def.kind === "figma" && spec.figma_url && !spec.figma_url.required) ||
     (def.kind === "reflection" && spec.reflection && !spec.reflection.required);
   const eyebrow = (def: StepDef, extra?: string) =>
@@ -346,7 +354,7 @@ export function SteppedChallengeForm({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       {notice && (
         <DraftNotice savedAt={notice.savedAt} reset={notice.reset} busy={startingOver || pending} onStartOver={startOver} />
       )}
@@ -374,7 +382,7 @@ export function SteppedChallengeForm({
       </Stepper>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p className="text-muted-foreground text-sm">
-          Attempt {attemptNumber} of {maxAttempts}
+          {maxAttempts === null ? `Test attempt ${attemptNumber}` : `Attempt ${attemptNumber} of ${maxAttempts}`}
         </p>
         <SaveIndicator status={autosave.status} />
       </div>
@@ -406,7 +414,7 @@ function StepFrame({
   }, []);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4">
       <header className="grid gap-1">
         <p className="text-muted-foreground text-meta">{eyebrow}</p>
         <h3 ref={heading} id={headingId} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">
@@ -447,7 +455,9 @@ function Review({
     const a = fields.answers[q.id];
     if (q.kind === "text") return typeof a === "string" && a.trim() ? a : null;
     const ids = Array.isArray(a) ? a : typeof a === "string" ? [a] : [];
-    const labels = ids.map((id) => q.options.find((o) => o.id === id)?.label ?? id);
+    const choices = choicesOf(q) ?? [];
+    const labels = ids.map((id) => choices.find((o) => o.id === id)?.label ?? id);
+    if (q.kind === "order") return labels.length ? labels.map((l, i) => `${i + 1}. ${l}`).join("\n") : null;
     return labels.length ? labels.join("; ") : null;
   };
   const empty = <span className="text-muted-foreground">Nothing added</span>;

@@ -39,7 +39,7 @@ function fakeDb(tables: Record<string, Row[]>) {
 }
 
 const USER = { id: "11111111-1111-4111-8111-111111111111" };
-const profile = (track: string | null) => ({ id: USER.id, track, is_admin: false });
+const profile = (track: string | null, tester = false) => ({ id: USER.id, track, is_admin: false, is_tester: tester });
 
 const ack = (over: Row = {}): Row => ({
   slug: "safety-rules",
@@ -113,6 +113,25 @@ describe("acknowledgeChallenge", () => {
       error: "This challenge can't be acknowledged.",
     });
     expect(db.writes).toEqual([]);
+  });
+});
+
+describe("acknowledgeChallenge as a tester", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(USER);
+    getCurrentProfile.mockResolvedValue(profile("designer", true));
+  });
+
+  it("cannot confirm a draft: nothing is recorded while testing", async () => {
+    const db = setup(ack({ status: "draft" }));
+    await expect(acknowledgeChallenge("safety-rules")).resolves.toEqual({ ok: false, error: "This challenge can't be acknowledged." });
+    expect(db.writes).toEqual([]);
+  });
+
+  it("confirms a published one as usual", async () => {
+    setup(ack());
+    await expect(acknowledgeChallenge("safety-rules")).resolves.toMatchObject({ ok: true });
   });
 });
 

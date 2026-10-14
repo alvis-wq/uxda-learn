@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { LoadedChallenge } from "./load";
 import type { Audience } from "@/lib/tracks";
+import { shuffleItems } from "./order";
 import type { Category, PublicQuestion, Question } from "./schema";
 
 /** JSON with object keys sorted, so equal data always serialises identically (jsonb reorders keys). */
@@ -17,6 +18,8 @@ export function canonicalJson(value: unknown): string {
 
 export function toPublicQuestion(q: Question): PublicQuestion {
   if (q.kind === "text") return q;
+  // The authored items are in the correct order: store them shuffled, never as written.
+  if (q.kind === "order") return { ...q, items: shuffleItems(q.id, q.items) };
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { answer, ...rest } = q;
   return rest;
@@ -161,6 +164,7 @@ export function toChallengeRows(
   for (const q of c.questions) {
     if (q.kind === "single") answer_key[q.id] = q.answer;
     else if (q.kind === "multi") answer_key[q.id] = [...q.answer].sort();
+    else if (q.kind === "order") answer_key[q.id] = q.items.map((item) => item.id); // the sequence matters: not sorted
   }
 
   return {

@@ -40,10 +40,11 @@ grader_notes: |
   flag figma_inaccessible.
 ---
 ## Build a screen with /new-screen
-**Time:** about 20 minutes
+**The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
 
-Same brief as before: the **savings goal** screen. This time you build it in Figma with
-**Claude Code** and our **uxda-wireframes** plugin, using real library components.
+This builds on [Quick draft with the Make Kit](/challenges/wf-1-make-kit-quick-draft). Same brief, new tool:
+this time you build the screen in Figma with **Claude Code** and our **uxda-wireframes** plugin,
+using real library components.
 
 ### What to do
 1. Open Claude Code and run **/new-screen**.

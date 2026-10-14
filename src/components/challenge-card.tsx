@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
+import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
-import { cardCta, cardSpans, type CardSpan } from "@/lib/challenges/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cardCta, cardSpans, showTryAgain, type CardSpan } from "@/lib/challenges/card";
 import type { CardChallenge } from "@/lib/data/learner";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +51,7 @@ export function ChallengeCard({
 }) {
   const Heading = `h${headingLevel}` as const;
   const cta = cardCta({ type: ch.type, acknowledged: ch.acknowledged, latestStatus: ch.latestStatus, inProgress: ch.inProgress });
+  const tryAgain = showTryAgain(cta, ch.canRetry);
   const hasImage = Boolean(ch.imageUrl);
 
   return (
@@ -77,7 +80,7 @@ export function ChallengeCard({
           </div>
           {body && <p className="text-muted-foreground line-clamp-3">{body}</p>}
 
-          <div className="mt-auto grid gap-4 pt-2">
+          <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
             <span
               aria-hidden
               className="bg-primary text-primary-foreground inline-flex h-10 w-fit items-center gap-2 rounded-full px-5 text-sm font-medium"
@@ -85,6 +88,17 @@ export function ChallengeCard({
               {cta}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </span>
+            {tryAgain && (
+              // A real link above the card-wide one (z-20 over its z-10): same page, but straight to the form.
+              <Link
+                href={`/challenges/${ch.slug}#submit`}
+                data-testid="card-try-again"
+                className={cn(buttonVariants({ variant: "outline" }), "relative z-20 h-10 px-5")}
+              >
+                Try again
+                <span className="sr-only"> — {ch.title}</span>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -108,6 +122,7 @@ export function ChallengeCard({
         <div className="grid gap-2" data-testid="card-meta">
           <ChallengeMeta challenge={ch} nowrap />
           <div className="flex flex-wrap items-center gap-2" data-testid="card-badges">
+            {ch.isDraft && <DraftBadge />}
             <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} className="contents" />
             <StatusBadge
               status={ch.latestStatus}

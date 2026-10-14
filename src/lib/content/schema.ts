@@ -73,6 +73,15 @@ const multiQuestionSchema = z.strictObject({
   points,
 });
 
+/** Drag items into the right order. Authors list `items` in the CORRECT order; sync stores them shuffled (see order.ts). */
+const orderQuestionSchema = z.strictObject({
+  id,
+  kind: z.literal("order"),
+  prompt: nonEmpty,
+  items: z.array(optionSchema).min(2, "needs at least 2 items"),
+  points,
+});
+
 const textQuestionSchema = z.strictObject({
   id,
   kind: z.literal("text"),
@@ -84,6 +93,7 @@ const textQuestionSchema = z.strictObject({
 export const questionSchema = z.discriminatedUnion("kind", [
   singleQuestionSchema,
   multiQuestionSchema,
+  orderQuestionSchema,
   textQuestionSchema,
 ]);
 
@@ -117,6 +127,7 @@ export const rubricCriterionSchema = z.strictObject({
 export const publicQuestionSchema = z.discriminatedUnion("kind", [
   singleQuestionSchema.omit({ answer: true }),
   multiQuestionSchema.omit({ answer: true }),
+  orderQuestionSchema, // as stored: the items are already shuffled, so this never shows the answer
   textQuestionSchema,
 ]);
 
@@ -153,12 +164,19 @@ export type ChallengeFrontmatter = z.infer<typeof challengeFrontmatterSchema>;
 export type PublicQuestion =
   | Omit<Extract<Question, { kind: "single" }>, "answer">
   | Omit<Extract<Question, { kind: "multi" }>, "answer">
+  | Extract<Question, { kind: "order" }>
   | Extract<Question, { kind: "text" }>;
 
-export const AUTO_GRADED_KINDS = ["single", "multi"] as const;
+export const AUTO_GRADED_KINDS = ["single", "multi", "order"] as const;
 
 export function isAutoGraded(q: Question | PublicQuestion): boolean {
-  return q.kind === "single" || q.kind === "multi";
+  return q.kind !== "text";
+}
+
+/** The options (single / multi) or items (order) of a question; null for a text question. */
+export function choicesOf(q: Question | PublicQuestion): { id: string; label: string }[] | null {
+  if (q.kind === "text") return null;
+  return q.kind === "order" ? q.items : q.options;
 }
 
 /** True when a submission needs human/AI review (anything beyond auto-graded questions). */

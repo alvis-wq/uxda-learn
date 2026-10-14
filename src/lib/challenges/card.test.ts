@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardCta, cardSpans, resolveCardImage } from "./card";
+import { cardCta, cardSpans, resolveCardImage, showTryAgain } from "./card";
 
 describe("cardCta", () => {
   it("Start when there is no attempt yet", () => {
@@ -47,5 +47,18 @@ describe("cardSpans", () => {
   });
   it("is empty for no cards", () => {
     expect(cardSpans(0)).toEqual([]);
+  });
+});
+
+describe("showTryAgain", () => {
+  it("shows next to View result when the learner can attempt again", () => {
+    expect(showTryAgain("View result", true)).toBe(true);
+  });
+  it("hides it without attempts left or with full marks (canRetry false)", () => {
+    expect(showTryAgain("View result", false)).toBe(false);
+  });
+  it("hides it when the card already offers Start or Continue", () => {
+    expect(showTryAgain("Start", true)).toBe(false);
+    expect(showTryAgain("Continue", true)).toBe(false);
   });
 });

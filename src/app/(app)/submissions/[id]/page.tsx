@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Info } from "lucide-react";
+import { ChevronLeft, FlaskConical, Info } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { SubmissionAnswers } from "@/components/submission-answers";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
-import { parseChallenge } from "@/lib/challenges/model";
+import { challengeNeedsReview, parseChallenge } from "@/lib/challenges/model";
 import { getLearnerAttemptResults } from "@/lib/data/attempt-results";
 import { createClient } from "@/lib/supabase/server";
 import { isResultVisible } from "@/lib/submissions/rules";
+import { showsTestTotal } from "@/lib/submissions/testing";
 
 export const metadata: Metadata = { title: "Submission · UXDA Learn" };
 
@@ -35,6 +37,7 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
 
   const { data: row } = await supabase.from("challenges").select("*").eq("slug", sub.challenge_slug).maybeSingle();
   const challenge = row ? parseChallenge(row) : null;
+  const testNeedsReview = sub.is_test && !!challenge && challengeNeedsReview(challenge);
 
   // Per-question marks. The right answers come back only when this learner is entitled to them (full marks or all
   // attempts used), so nothing else can leak into the page.
@@ -57,19 +60,32 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
         {challenge?.title ?? sub.challenge_slug}
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Attempt {sub.attempt}</h1>
-        <StatusBadge status={sub.status} />
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {sub.is_test ? "Test attempt" : "Attempt"} {sub.attempt}
+        </h1>
+        {sub.is_test ? <Badge variant="outline">Test</Badge> : <StatusBadge status={sub.status} />}
       </div>
       <p className="text-muted-foreground -mt-4 text-sm">
         Submitted {new Date(sub.submitted_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
       </p>
 
+      {sub.is_test && (
+        <Alert data-testid="test-attempt-notice">
+          <FlaskConical aria-hidden />
+          <AlertDescription>
+            Test attempt on a draft: it doesn&apos;t count towards your points, the leaderboard or your attempts, and the
+            correct answers are shown so you can check them.
+            {testNeedsReview && " Only the questions with an answer key are marked; written, screenshot and Figma parts aren't scored."}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {isResultVisible(sub.status) && (
         <Card>
           <CardHeader>
             <CardTitle>
-              {sub.status === "published" ? "Result" : "Changes requested"}
-              {sub.final_score !== null && (
+              {sub.is_test ? "Test result" : sub.status === "published" ? "Result" : "Changes requested"}
+              {sub.final_score !== null && (!sub.is_test || showsTestTotal(testNeedsReview)) && (
                 <span className="ml-2 font-normal" data-testid="attempt-result-score">
                   {sub.final_score} / {sub.max_score} pts
                 </span>
@@ -99,12 +115,22 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
         reveal={attemptResults.state === "ready" ? attemptResults.reveal : undefined}
       />
 
-      {attemptResults.state === "ready" && !attemptResults.reveal.reveal && isResultVisible(sub.status) && (
+      {sub.is_test ? (
         <div>
-          <Link href={`/challenges/${sub.challenge_slug}`} className={buttonVariants()} data-testid="try-again-link">
-            Try again
+          <Link href={`/challenges/${sub.challenge_slug}#submit`} className={buttonVariants()} data-testid="test-again-link">
+            Test again
           </Link>
         </div>
+      ) : (
+        attemptResults.state === "ready" &&
+        !attemptResults.reveal.reveal &&
+        isResultVisible(sub.status) && (
+          <div>
+            <Link href={`/challenges/${sub.challenge_slug}`} className={buttonVariants()} data-testid="try-again-link">
+              Try again
+            </Link>
+          </div>
+        )
       )}
     </main>
   );

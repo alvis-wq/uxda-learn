@@ -12,6 +12,10 @@
  *     someone else's, anon sees none, and the shape limits hold.
  *  7. set_challenge_setting writes the value + one audit row (none for a no-op); users can't
  *     call it or read the audit log.
+ *  8. Testers: only a tester sees a draft, only when their track (and its category's) can see it, never an archived
+ *     one; users can't flag themselves; set_user_tester audits; test attempts are numbered apart from the 3-attempt
+ *     limit, hidden from their owner once the challenge is published, and left out of the leaderboard; feedback is
+ *     admin-only.
  */
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -33,6 +37,8 @@ const EXPECTED_TABLES = [
   "acknowledgements",
   "challenge_settings_audit",
   "submission_drafts",
+  "profile_flag_audit",
+  "challenge_feedback",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
@@ -64,7 +70,13 @@ async function checkTablesAndRls() {
 
 type Client = ReturnType<typeof anonClient>;
 
-type PrivateTable = "challenge_keys" | "admin_allowlist" | "allowed_email_domains" | "challenge_settings_audit";
+type PrivateTable =
+  | "challenge_keys"
+  | "admin_allowlist"
+  | "allowed_email_domains"
+  | "challenge_settings_audit"
+  | "profile_flag_audit"
+  | "challenge_feedback";
 
 async function expectNoRows(client: Client, table: PrivateTable, who: string) {
   const { data, error } = await client.from(table).select("*");
@@ -229,6 +241,83 @@ async function main() {
     if (userRpcErr && stillPublished?.status === "published") pass(`user cannot call set_challenge_setting (${userRpcErr.code ?? userRpcErr.message})`);
     else fail("user COULD call set_challenge_setting");
 
+    console.log("Testers");
+    const seesSentinel = async () => ((await authed.from("challenges").select("slug").eq("slug", SENTINEL_CHALLENGE)).data ?? []).length === 1;
+    const setStatus = (status: string) => admin.from("challenges").update({ status }).eq("slug", SENTINEL_CHALLENGE);
+    await admin.from("profiles").update({ track: "designer", is_admin: false, is_tester: false, show_on_leaderboard: true }).eq("id", userId);
+    await setStatus("draft");
+    if (!(await seesSentinel())) pass("a user who is not a tester cannot see a draft challenge");
+    else fail("a non-tester CAN SEE a draft challenge");
+    const { error: selfTesterErr } = await authed.from("profiles").update({ is_tester: true }).eq("id", userId);
+    const { data: stillNot } = await admin.from("profiles").select("is_tester").eq("id", userId).single();
+    if (selfTesterErr && stillNot?.is_tester === false) pass("user cannot make themselves a tester");
+    else fail("user COULD set is_tester on their profile");
+    const { error: userTesterRpc } = await authed.rpc("set_user_tester", { p_user: userId, p_value: true, p_actor: userId });
+    if (userTesterRpc) pass(`user cannot call set_user_tester (${userTesterRpc.code ?? userTesterRpc.message})`);
+    else fail("user COULD call set_user_tester");
+    const notAdmin = await admin.rpc("set_user_tester", { p_user: userId, p_value: true, p_actor: userId });
+    if (notAdmin.error) pass("set_user_tester refuses an actor who is not an admin");
+    else fail("set_user_tester ACCEPTED a non-admin actor");
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const flagged = await admin.rpc("set_user_tester", { p_user: userId, p_value: true, p_actor: userId });
+    const flaggedAgain = await admin.rpc("set_user_tester", { p_user: userId, p_value: true, p_actor: userId });
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    const { data: flagAudit } = await admin.from("profile_flag_audit").select("old_value,new_value,changed_by").eq("profile_id", userId);
+    if (flagged.data === true && flaggedAgain.data === false && flagAudit?.length === 1 && flagAudit[0].old_value === false &&
+        flagAudit[0].new_value === true && flagAudit[0].changed_by === userId) {
+      pass("set_user_tester sets the flag and writes one audit row (none for a no-op)");
+    } else {
+      fail(`set_user_tester: ${flagged.error?.message ?? JSON.stringify({ flagged: flagged.data, flaggedAgain: flaggedAgain.data, flagAudit })}`);
+    }
+    await expectNoRows(authed, "profile_flag_audit", "authenticated user");
+    await expectNoRows(authed, "challenge_feedback", "authenticated user");
+
+    if (await seesSentinel()) pass("a tester sees a draft challenge their track can see");
+    else fail("a tester CANNOT see a draft their track can see");
+    await admin.from("challenges").update({ audiences: ["strategist"] }).eq("slug", SENTINEL_CHALLENGE);
+    if (!(await seesSentinel())) pass("a tester does not see a draft their track can't see");
+    else fail("a tester SEES a draft aimed at another track");
+    await admin.from("challenges").update({ audiences: ["all"] }).eq("slug", SENTINEL_CHALLENGE);
+    await admin.from("categories").update({ audiences: ["strategist"] }).eq("slug", SENTINEL_CATEGORY);
+    if (!(await seesSentinel())) pass("a tester does not see a draft in a category their track can't see");
+    else fail("a tester SEES a draft in a category aimed at another track");
+    await admin.from("categories").update({ audiences: ["all"], archived: true }).eq("slug", SENTINEL_CATEGORY);
+    if (!(await seesSentinel())) pass("a tester does not see a draft in an archived category");
+    else fail("a tester SEES a draft in an archived category");
+    await admin.from("categories").update({ archived: false }).eq("slug", SENTINEL_CATEGORY);
+    await setStatus("archived");
+    if (!(await seesSentinel())) pass("a tester does not see an archived challenge");
+    else fail("a tester SEES an archived challenge");
+    await setStatus("draft");
+
+    // Test attempts: numbered apart from the 3-attempt limit, hidden from their owner after publishing, never on the leaderboard.
+    const attempt = (n: number, is_test: boolean) => ({
+      user_id: userId!, challenge_slug: SENTINEL_CHALLENGE, challenge_version: 1, attempt: n, is_test,
+      status: "published" as const, auto_score: 1, final_score: 1, max_score: 1,
+    });
+    const testRows = await admin.from("submissions").insert([attempt(1, true), attempt(2, true), attempt(3, true), attempt(4, true)]);
+    const realRows = await admin.from("submissions").insert([attempt(1, false), attempt(2, false), attempt(3, false)]);
+    const fourthReal = await admin.from("submissions").insert(attempt(4, false));
+    if (!testRows.error && !realRows.error && fourthReal.error) pass("test attempts go past 3 and are numbered apart; a 4th real attempt is refused");
+    else fail(`attempt numbering: ${JSON.stringify({ test: testRows.error?.message, real: realRows.error?.message, fourthReal: fourthReal.error?.message })}`);
+    const readTests = async () => ((await authed.from("submissions").select("id").eq("is_test", true)).data ?? []).length;
+    if ((await readTests()) === 4) pass("the owner reads their test attempts while the challenge is a draft");
+    else fail("the owner cannot read their test attempts on a draft");
+    await setStatus("published");
+    if ((await readTests()) === 0) pass("after publishing, the owner no longer sees their test attempts");
+    else fail("the owner STILL SEES test attempts after the challenge was published");
+    const { data: adminTests } = await admin.from("submissions").select("id").eq("is_test", true).eq("challenge_slug", SENTINEL_CHALLENGE);
+    if (adminTests?.length === 4) pass("test attempts stay in the table for admins");
+    else fail("test attempts went missing");
+    const { data: board } = await authed.rpc("get_leaderboard", { p_tracks: ["designer"] });
+    const mine = board?.find((r) => r.user_id === userId);
+    if (mine && Number(mine.total_score) === 1 && mine.completed === 1) pass("the leaderboard counts the real attempts and not the test ones");
+    else fail(`leaderboard row: ${JSON.stringify(mine)}`);
+    await admin.from("submissions").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
+    const feedbackWrite = await authed.from("challenge_feedback").insert({ challenge_slug: SENTINEL_CHALLENGE, user_id: userId, body: "hi" });
+    if (feedbackWrite.error) pass(`user cannot write feedback directly (${feedbackWrite.error.code ?? feedbackWrite.error.message})`);
+    else fail("user COULD insert feedback directly");
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -240,6 +329,8 @@ async function main() {
     }
   } finally {
     await admin.from("challenge_settings_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
+    await admin.from("challenge_feedback").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
+    await admin.from("submissions").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     if (userId) await admin.auth.admin.deleteUser(userId);
     await admin.from("acknowledgements").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("submission_drafts").delete().eq("challenge_slug", SENTINEL_CHALLENGE);

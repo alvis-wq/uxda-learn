@@ -22,6 +22,8 @@ type SubmissionForResults = {
   challenge_slug: string;
   challenge_version: number;
   answers: unknown;
+  /** A tester's attempt on a draft: the answer key is always shown, to let them check it. */
+  is_test: boolean;
 };
 
 async function build(sub: SubmissionForResults, challenge: Challenge | null, reveal: () => Promise<AnswerReveal>) {
@@ -44,7 +46,9 @@ async function build(sub: SubmissionForResults, challenge: Challenge | null, rev
 
 /**
  * Per-question results for one of the signed-in learner's own attempts. The right answers are included only when
- * `answerReveal` says so (full marks on the challenge, or all attempts used), judged on their attempts as of now.
+ * `answerReveal` says so (full marks on the challenge, or all attempts used), judged on their real attempts as of
+ * now. The one exception is a TEST attempt (a tester on a draft): it always carries the key, so the tester can
+ * check the answers. Testers get no special treatment on published challenges.
  */
 export function getLearnerAttemptResults(
   userId: string,
@@ -52,11 +56,13 @@ export function getLearnerAttemptResults(
   challenge: Challenge | null,
 ): Promise<AttemptResultsView> {
   return build(sub, challenge, async () => {
+    if (sub.is_test) return REVEAL_ALL;
     const { data } = await (await createClient())
       .from("submissions")
       .select("status,final_score,max_score")
       .eq("user_id", userId)
-      .eq("challenge_slug", sub.challenge_slug);
+      .eq("challenge_slug", sub.challenge_slug)
+      .eq("is_test", false); // test attempts neither open the key nor use up attempts
     return answerReveal(data ?? []);
   });
 }

@@ -11,7 +11,9 @@ import { formatSettingValue } from "@/lib/admin/challenge-settings";
 import { describePlaceholders } from "@/lib/content/placeholders";
 import { getChallengePreview } from "@/lib/data/admin-content";
 import { audienceLabel } from "@/lib/tracks";
+import { formatDateTime } from "@/lib/utils";
 import { AuditHistory } from "../audit-history";
+import { FeedbackList } from "../feedback-list";
 
 export const metadata: Metadata = { title: "Preview · Content · Admin · UXDA Learn" };
 
@@ -20,7 +22,7 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
   const { slug } = await params;
   const data = await getChallengePreview(slug);
   if (!data) notFound();
-  const { challenge, questions, graderNotes, category, placeholders, history } = data;
+  const { challenge, questions, graderNotes, category, placeholders, history, feedback, testAttempts } = data;
   const spec = challenge.submission_spec;
 
   return (
@@ -103,6 +105,15 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
                     Free text{q.min_words ? `, at least ${q.min_words} words` : ""} — reviewed against the rubric and
                     grader notes.
                   </p>
+                ) : q.kind === "order" ? (
+                  <>
+                    <p className="text-muted-foreground text-meta">Put in this order (learners see them shuffled)</p>
+                    <ol className="grid list-decimal gap-1 pl-5 font-medium" data-testid="preview-order">
+                      {(q.correct ?? q.items.map((item) => item.id)).map((itemId) => (
+                        <li key={itemId}>{q.items.find((item) => item.id === itemId)?.label ?? itemId}</li>
+                      ))}
+                    </ol>
+                  </>
                 ) : (
                   <>
                     <p className="text-muted-foreground text-meta">
@@ -201,6 +212,36 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
             Grader notes
           </h2>
           <p className="bg-muted rounded-lg px-4 py-3 text-sm whitespace-pre-line">{graderNotes}</p>
+        </section>
+      )}
+
+      <section aria-labelledby="feedback-heading" className="grid gap-3">
+        <h2 id="feedback-heading" className="text-lg font-semibold">
+          Tester feedback
+        </h2>
+        <FeedbackList items={feedback} open />
+      </section>
+
+      {testAttempts.length > 0 && (
+        <section aria-labelledby="tests-heading" className="grid gap-3">
+          <h2 id="tests-heading" className="text-lg font-semibold">
+            Test attempts
+          </h2>
+          <p className="text-muted-foreground text-meta">
+            Made by testers while this was a draft. They never count towards points, the leaderboard or attempt limits.
+          </p>
+          <ul className="grid gap-1 text-sm" data-testid="test-attempts">
+            {testAttempts.map((t) => (
+              <li key={t.id}>
+                <Link href={`/admin/submissions/${t.id}`} className="underline underline-offset-4">
+                  {t.who} · attempt {t.attempt}
+                </Link>{" "}
+                <span className="text-muted-foreground text-meta">
+                  · {t.score} / {t.max} pts auto-graded · {formatDateTime(t.submitted_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

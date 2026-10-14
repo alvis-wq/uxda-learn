@@ -37,15 +37,18 @@ export function challengeNeedsReview(c: Pick<Challenge, "questions" | "submissio
 
 /**
  * Learners see a challenge when it's published, its category isn't archived, and both the
- * category's and the challenge's audiences include `all` or their track.
+ * category's and the challenge's audiences include `all` or their track. A tester also sees (and can take) drafts
+ * that pass the same audience checks; archived stays hidden from everyone. The database enforces the same rule for
+ * testers in the challenges_select policy: this is the app-side twin, used where rows are read with the service role.
  */
 export function isChallengeVisible(
   challenge: { status: string; audiences: readonly Audience[] },
   category: { archived: boolean; audiences: readonly Audience[] } | null | undefined,
   track: Track | null | undefined,
+  tester = false,
 ): boolean {
   return (
-    challenge.status === "published" &&
+    (challenge.status === "published" || (tester && challenge.status === "draft")) &&
     !!category &&
     !category.archived &&
     isVisibleToTrack(category.audiences, track) &&

@@ -67,11 +67,19 @@ tip: Start with the brief's last paragraph; it lists what is scored.   # optiona
 status: draft                      # initial value* — draft | published | archived
 questions:                         # optional
   - id: q1
-    kind: single                   # single | multi (auto-graded) | text (AI-reviewed)
+    kind: single                   # single | multi | order (auto-graded) | text (AI-reviewed)
     prompt: Which tool is cheapest for early exploration?
     options: [{ id: a, label: Claude Code }, { id: b, label: Figma Make }]
-    answer: b                      # single: id; multi: [ids]; text: omit
+    answer: b                      # single: id; multi: [ids]; order / text: omit
     points: 5
+  - id: q2
+    kind: order                    # learners drag `items` into the right order
+    prompt: Put the steps of a risk message in order.
+    items:                         # list them in the CORRECT order — learners see them shuffled
+      - { id: observe, label: Observation }
+      - { id: consequence, label: Consequence }
+      - { id: next, label: Next step }
+    points: 4
 submission:                        # optional — omit for quiz-only
   screenshots: { min: 1, max: 6, label: What to capture }
   figma_url: { required: false, label: Link to the final frame (node URL) }
@@ -90,12 +98,33 @@ grader_notes: |                    # PRIVATE — evaluator only, never shown to 
 ## Brief
 ...
 ```
+An `order` question needs at least 2 items with different ids and different labels. You write `items`
+in the correct order; `content:sync` stores them shuffled (the same fixed shuffle every time, never the
+correct order), and the correct order lives only in the private key. It is graded like `multi`:
+all-or-nothing, so one item in the wrong place scores 0. Learners move items by dragging, or with the
+Move up / Move down buttons on each item (and from the keyboard). Changing the items changes the
+challenge `version`.
+
+`submission.screenshots.min: 0` makes the screenshots optional (the Stepper shows "Optional"); use it when the
+Figma link alone shows the work, and write the rubric so the link can earn full marks.
+
+Links in a brief (`[text](https://…)`) to other sites (Drive, Figma, …) open in a new tab with an
+external-link icon. Links into the app open in the same tab, with no icon: link to another challenge with
+`/challenges/<slug>`, to a category with `/categories/<slug>`, or use `#anchor`.
+
 `tip` is a short markdown hint shown in a subtle box above the questions (on the first questions step
 of a stepped challenge). It is display-only, like `image`: changing it never bumps the `version`, and it
 can't contain a `TODO…` placeholder in a published challenge.
 
 \* Used only when the challenge is first synced; afterwards these are managed in Admin → Content
 (see "Who owns what").
+
+## Drafts and testers
+A challenge synced as `status: draft` is invisible to learners. An admin can mark any user a **tester**
+(Admin → Users → Tester); testers also see drafts that their track can see (the challenge's and its
+category's audiences), labelled "Draft — testing", and can take them. Those attempts are test attempts: they
+don't count anywhere, have no attempt limit, always show the correct answers, and disappear for the tester when
+the challenge is published. Testers can leave feedback on a draft; it shows under Admin → Content.
 
 ## Required vs optional
 - `required_for` uses the same shape as audiences. Everything not listed is optional.

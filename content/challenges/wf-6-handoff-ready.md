@@ -54,12 +54,13 @@ grader_notes: |
   If the link can't be opened: score from screenshots, confidence low, flag figma_inaccessible.
 ---
 ## Make it handoff-ready
-**Time:** about 40 minutes
+**The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
 
-Your flow is done. Now make it ready for a developer or the client.
+This builds on [From Claude Design to Figma](/challenges/wf-4-claude-design-to-figma): you take that flow
+and make it ready for a developer or the client.
 
 ### What to do
-1. Take your 3-screen savings-goal flow in Figma (from "From Claude Design to Figma").
+1. Take your 3-screen savings-goal flow in Figma.
 2. In Claude Code, run **/format** to put it into a **Commentary Section**.
 3. Ask Claude Code to add **handoff annotations** and set the **review status**.
 4. Read the annotations. **Rewrite one** that's vague, wrong, or states a guess as a fact.

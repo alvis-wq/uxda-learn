@@ -75,6 +75,24 @@ export async function setUserTrack(userId: string, track: string): Promise<Actio
   return { ok: true };
 }
 
+/**
+ * Turn the tester switch on or off for any user (any track). Goes through set_user_tester(), which updates the
+ * profile and writes the audit row (who, when, old -> new) in one transaction; the SQL function itself refuses a
+ * non-admin actor, on top of the check here.
+ */
+export async function setUserTester(userId: string, isTester: boolean): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return NOT_ADMIN;
+  const id = userIdSchema.safeParse(userId);
+  const flag = z.boolean().safeParse(isTester);
+  if (!id.success || !flag.success) return { ok: false, error: "Invalid input." };
+
+  const { error } = await createAdminClient().rpc("set_user_tester", { p_user: id.data, p_value: flag.data, p_actor: admin.id });
+  if (error) return { ok: false, error: "Couldn't update tester access." };
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
 export async function setUserAdmin(userId: string, isAdmin: boolean): Promise<ActionResult> {
   const admin = await getAdminOrNull();
   if (!admin) return NOT_ADMIN;

@@ -29,6 +29,7 @@ export async function pullBatch(db: Db, opts: { baseDir: string; now?: Date }) {
     .from("submissions")
     .select("*, profiles!submissions_user_id_fkey(full_name,email,track)")
     .eq("status", "submitted")
+    .eq("is_test", false) // test attempts are published on the spot and never evaluated
     .order("submitted_at");
   if (error) throw new Error(`Couldn't load submissions: ${error.message}`);
 

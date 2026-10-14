@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { imagesFromTransfer, isFileDrag, isTextPaste } from "@/lib/submissions/clipboard";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/submissions/input";
+import { cn } from "@/lib/utils";
 
 export type UploadedImage = { path: string; previewUrl: string; name: string };
 type Pending = { id: string; name: string };
@@ -103,8 +105,35 @@ export function ScreenshotUploader({
     () => true,
     () => false,
   );
-  const describedBy = error || uploadError ? "screenshots-error" : "screenshots-hint";
+  const describedBy = [error || uploadError ? "screenshots-error" : "screenshots-hint", "screenshots-help"].join(" ");
   const blocked = !ready || disabled || remaining <= 0;
+  // Paste and drop stay live at the limit (they answer with the "up to N" message); only not-ready or disabled stops them.
+  const accepting = ready && !disabled;
+  const [dragging, setDragging] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const dragDepth = useRef(0);
+
+  function take(files: File[], from: "the clipboard" | "your drop") {
+    if (files.length === 0) return;
+    setAnnouncement(`Uploading ${files.length} screenshot${files.length > 1 ? "s" : ""} from ${from}.`);
+    onAdd(files);
+  }
+
+  // Cmd/Ctrl+V anywhere on the page while this is mounted (a Stepper only mounts the screenshots step while it is the
+  // current one). A text paste into a field is left alone.
+  const takePasted = useEffectEvent((files: File[]) => take(files, "the clipboard"));
+  useEffect(() => {
+    if (!accepting) return;
+    function onPaste(e: ClipboardEvent) {
+      if (isTextPaste(e.target, e.clipboardData)) return;
+      const files = imagesFromTransfer(e.clipboardData, "paste");
+      if (files.length === 0) return;
+      e.preventDefault();
+      takePasted(files);
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [accepting]);
 
   return (
     <fieldset className="grid gap-3" aria-describedby={describedBy}>
@@ -157,16 +186,48 @@ export function ScreenshotUploader({
           onAdd(files);
         }}
       />
-      <Button
-        type="button"
-        variant="outline"
-        className="w-fit"
-        disabled={blocked}
-        onClick={() => inputRef.current?.click()}
+      <div
+        data-testid="screenshot-dropzone"
+        data-dragging={dragging ? "" : undefined}
+        className={cn(
+          "grid justify-items-start gap-2 rounded-lg border border-dashed p-4 transition-colors",
+          dragging && "border-primary bg-accent",
+        )}
+        onDragEnter={(e) => {
+          if (!accepting || !isFileDrag(e.dataTransfer)) return;
+          e.preventDefault();
+          dragDepth.current += 1;
+          setDragging(true);
+        }}
+        onDragOver={(e) => {
+          if (!accepting || !isFileDrag(e.dataTransfer)) return;
+          e.preventDefault(); // allows the drop
+          e.dataTransfer.dropEffect = "copy";
+        }}
+        onDragLeave={() => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragging(false);
+        }}
+        onDrop={(e) => {
+          dragDepth.current = 0;
+          setDragging(false);
+          if (!accepting || !isFileDrag(e.dataTransfer)) return;
+          e.preventDefault();
+          take(imagesFromTransfer(e.dataTransfer, "drop"), "your drop");
+        }}
       >
-        <ImagePlus aria-hidden />
-        Add screenshots
-      </Button>
+        <Button type="button" variant="outline" disabled={blocked} onClick={() => inputRef.current?.click()}>
+          <ImagePlus aria-hidden />
+          Add screenshots
+        </Button>
+        <p className="text-muted-foreground text-sm">Or drag images here, or paste one with ⌘V / Ctrl+V.</p>
+      </div>
+      <p id="screenshots-help" className="text-muted-foreground text-sm" data-testid="screenshot-help">
+        Mac: ⌘⇧4 to capture an area (⌘⇧⌃4 copies it, then paste here). Windows: Win+Shift+S, then paste.
+      </p>
+      <p role="status" className="sr-only" data-testid="screenshot-status">
+        {announcement}
+      </p>
       {(error || uploadError) && (
         <p id="screenshots-error" role="alert" className="text-destructive text-sm">
           {uploadError ?? error}

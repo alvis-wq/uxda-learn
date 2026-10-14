@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isBlankDraft } from "@/lib/submissions/draft";
 import { draftInputSchema } from "@/lib/submissions/input";
 import { attemptState } from "@/lib/submissions/rules";
+import { isTestChallenge, testingState } from "@/lib/submissions/testing";
 import { planSteps } from "@/lib/submissions/steps";
 
 export type SaveDraftResult =
@@ -34,7 +35,7 @@ export async function saveDraft(slugInput: string, rawInput: unknown): Promise<S
   if (!slug.success) return { ok: false, error: "Challenge not found." };
 
   const admin = createAdminClient();
-  const row = await loadOpenChallenge(admin, slug.data, profile.track);
+  const row = await loadOpenChallenge(admin, slug.data, profile.track, profile.is_tester);
   if (!row || row.type === "acknowledge") return { ok: false, error: "This challenge isn't open for submissions." };
   const challenge = parseChallenge(row);
 
@@ -47,9 +48,10 @@ export async function saveDraft(slugInput: string, rawInput: unknown): Promise<S
     .from("submissions")
     .select("attempt,status,final_score,max_score")
     .eq("user_id", user.id)
-    .eq("challenge_slug", challenge.slug);
+    .eq("challenge_slug", challenge.slug)
+    .eq("is_test", isTestChallenge(row.status));
   if (prevError) return { ok: false, error: "Couldn't save your progress." };
-  const state = attemptState(previous);
+  const state = isTestChallenge(row.status) ? testingState(previous) : attemptState(previous);
   if (!state.canSubmit) return { ok: false, error: state.reason ?? "You can't submit right now." };
 
   const plan = planSteps(challenge);

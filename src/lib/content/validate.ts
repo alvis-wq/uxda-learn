@@ -81,6 +81,13 @@ export function validateContent(
 
     for (const q of c.questions) {
       if (q.kind === "text") continue;
+      if (q.kind === "order") {
+        for (const iid of duplicates(q.items.map((item) => item.id))) err(file, `question ${q.id}: duplicate item id "${iid}"`);
+        for (const label of duplicates(q.items.map((item) => item.label.trim().toLowerCase()))) {
+          err(file, `question ${q.id}: two items are both "${label}" — each item must be different`);
+        }
+        continue;
+      }
       const optionIds = q.options.map((o) => o.id);
       for (const oid of duplicates(optionIds)) err(file, `question ${q.id}: duplicate option id "${oid}"`);
       const answers = q.kind === "single" ? [q.answer] : q.answer;

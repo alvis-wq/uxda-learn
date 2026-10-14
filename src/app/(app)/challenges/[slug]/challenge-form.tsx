@@ -30,7 +30,8 @@ export function ChallengeForm({
   /** The challenge's `tip`, rendered on the server. */
   tip?: ReactNode;
   attemptNumber: number;
-  maxAttempts: number;
+  /** null for a test attempt (no limit). */
+  maxAttempts: number | null;
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Answers>({});
@@ -133,7 +134,7 @@ export function ChallengeForm({
           {pending ? "Submitting…" : "Submit"}
         </Button>
         <span className="text-muted-foreground text-sm">
-          Attempt {attemptNumber} of {maxAttempts}
+          {maxAttempts === null ? `Test attempt ${attemptNumber}` : `Attempt ${attemptNumber} of ${maxAttempts}`}
         </span>
       </div>
     </form>

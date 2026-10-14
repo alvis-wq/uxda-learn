@@ -23,6 +23,22 @@ function toAuditRow(r: AuditSelect): AuditRow {
   return { ...r, actor: r.actor ? (r.actor.full_name ?? r.actor.email) : null };
 }
 
+export type FeedbackItem = { id: string; body: string; created_at: string; who: string };
+
+type FeedbackSelect = {
+  id: string;
+  challenge_slug: string;
+  body: string;
+  created_at: string;
+  author: { full_name: string | null; email: string } | null;
+};
+
+const FEEDBACK_COLUMNS = "id,challenge_slug,body,created_at,author:profiles!challenge_feedback_user_id_fkey(full_name,email)";
+
+function toFeedbackItem(r: FeedbackSelect): FeedbackItem {
+  return { id: r.id, body: r.body, created_at: r.created_at, who: r.author ? (r.author.full_name ?? r.author.email) : "Former user" };
+}
+
 /**
  * Admin → Content: every challenge with its settings, who can see it, placeholders and change
  * history. Public rows and the audit log are read with the admin's RLS client; grader notes
@@ -31,7 +47,7 @@ function toAuditRow(r: AuditSelect): AuditRow {
 export async function getContentOverview() {
   await requireAdmin();
   const supabase = await createClient();
-  const [categories, challenges, subs, audit, keys] = await Promise.all([
+  const [categories, challenges, subs, audit, keys, feedback] = await Promise.all([
     supabase.from("categories").select("*").order("sort_order"),
     supabase
       .from("challenges")
@@ -39,11 +55,13 @@ export async function getContentOverview() {
         "slug,category_slug,title,summary,body_md,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric",
       )
       .order("title"),
-    supabase.from("submissions").select("challenge_slug"),
+    supabase.from("submissions").select("challenge_slug").eq("is_test", false),
     supabase.from("challenge_settings_audit").select(AUDIT_COLUMNS).order("changed_at", { ascending: false }),
     createAdminClient().from("challenge_keys").select("challenge_slug,grader_notes"),
+    // Admin RLS lets the admin's own client read every note.
+    supabase.from("challenge_feedback").select(FEEDBACK_COLUMNS).order("created_at", { ascending: false }),
   ]);
-  for (const res of [categories, challenges, subs, audit, keys]) {
+  for (const res of [categories, challenges, subs, audit, keys, feedback]) {
     if (res.error) throw new Error(`Couldn't load content: ${res.error.message}`);
   }
 
@@ -53,6 +71,10 @@ export async function getContentOverview() {
   const history = new Map<string, AuditRow[]>();
   for (const r of (audit.data ?? []) as AuditSelect[]) {
     history.set(r.challenge_slug, [...(history.get(r.challenge_slug) ?? []), toAuditRow(r)]);
+  }
+  const feedbackBySlug = new Map<string, FeedbackItem[]>();
+  for (const r of (feedback.data ?? []) as unknown as FeedbackSelect[]) {
+    feedbackBySlug.set(r.challenge_slug, [...(feedbackBySlug.get(r.challenge_slug) ?? []), toFeedbackItem(r)]); // newest first
   }
   const cats = categories.data ?? [];
 
@@ -79,6 +101,7 @@ export async function getContentOverview() {
           graderNotes: notes.get(c.slug) ?? null,
         }),
         history: history.get(c.slug) ?? [],
+        feedback: feedbackBySlug.get(c.slug) ?? [],
       })),
   }));
 }
@@ -93,7 +116,7 @@ export async function getChallengePreview(slug: string) {
   const supabase = await createClient();
   const { data: row } = await supabase.from("challenges").select("*").eq("slug", slug).maybeSingle();
   if (!row) return null;
-  const [{ data: category }, { data: key }, audit] = await Promise.all([
+  const [{ data: category }, { data: key }, audit, feedback, tests] = await Promise.all([
     supabase.from("categories").select("title,audiences,archived").eq("slug", row.category_slug).maybeSingle(),
     createAdminClient().from("challenge_keys").select("answer_key,grader_notes").eq("challenge_slug", slug).maybeSingle(),
     supabase
@@ -101,8 +124,18 @@ export async function getChallengePreview(slug: string) {
       .select(AUDIT_COLUMNS)
       .eq("challenge_slug", slug)
       .order("changed_at", { ascending: false }),
+    supabase.from("challenge_feedback").select(FEEDBACK_COLUMNS).eq("challenge_slug", slug).order("created_at", { ascending: false }),
+    // Test attempts: only admins can read them once the challenge is published.
+    supabase
+      .from("submissions")
+      .select("id,attempt,auto_score,max_score,submitted_at,tester:profiles!submissions_user_id_fkey(full_name,email)")
+      .eq("challenge_slug", slug)
+      .eq("is_test", true)
+      .order("submitted_at", { ascending: false }),
   ]);
   if (audit.error) throw new Error(`Couldn't load history: ${audit.error.message}`);
+  if (feedback.error) throw new Error(`Couldn't load feedback: ${feedback.error.message}`);
+  if (tests.error) throw new Error(`Couldn't load test attempts: ${tests.error.message}`);
 
   const challenge = parseChallenge(row);
   const answers = (key?.answer_key ?? {}) as Record<string, string | string[] | undefined>;
@@ -119,5 +152,14 @@ export async function getChallengePreview(slug: string) {
     category,
     placeholders: challengePlaceholders({ challenge: row, category, graderNotes: key?.grader_notes ?? null }),
     history: ((audit.data ?? []) as AuditSelect[]).map(toAuditRow),
+    feedback: ((feedback.data ?? []) as unknown as FeedbackSelect[]).map(toFeedbackItem),
+    testAttempts: (tests.data ?? []).map((t) => ({
+      id: t.id,
+      attempt: t.attempt,
+      score: Number(t.auto_score),
+      max: Number(t.max_score),
+      submitted_at: t.submitted_at,
+      who: t.tester ? (t.tester.full_name ?? t.tester.email) : "Former user",
+    })),
   };
 }
