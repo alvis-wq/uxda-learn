@@ -312,3 +312,8 @@
 - A required path the learner can't see (draft for a non-tester, archived) holds nothing back — otherwise a path could be locked forever by something nobody can do.
 - A path the learner already has an attempt in is never locked (as for milestones), so imported progress keeps working.
 - brand-the-template now requires connect-design-systems too, so the three designer paths run in order.
+
+## Path chains (`feat/path-chains`)
+
+- A chain sits where the step the learner is on sorts (the first path that isn't done; step 1 once all are), so a chain whose first step is done moves up with the step in progress instead of dropping to the completed cards. Inside the chain the order is always the unlock order.
+- Steps are numbered over the paths the learner can see (drafts too, for a tester), the same on home and the category page, so a card says the same "Step N of M" everywhere.

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { filterByCategory, groupByCategory, homeGroup, parseHomeFilter, sortHomeChallenges, type HomeSortable } from "./home-order";
+import {
+  filterByCategory,
+  groupByCategory,
+  groupChains,
+  homeGroup,
+  parseHomeFilter,
+  pathChains,
+  sortHomeChallenges,
+  type ChainPlace,
+  type HomeSortable,
+} from "./home-order";
 
 const c = (slug: string, over: Partial<HomeSortable> = {}): HomeSortable => ({
   slug, title: slug, categorySlug: "a", categoryOrder: 10, difficulty: 1, inProgress: false, savedAt: null,
@@ -119,5 +129,96 @@ describe("groupByCategory", () => {
   it("leaves out a category with nothing in it, and gives no group to an unknown category", () => {
     const groups = groupByCategory([c("x", { categorySlug: "unknown" })], categories);
     expect(groups).toEqual([]);
+  });
+});
+
+describe("pathChains", () => {
+  const designer = [
+    { slug: "build-with-the-template", requires: ["brand-the-template"] },
+    { slug: "other", requires: [] },
+    { slug: "brand-the-template", requires: ["connect-design-systems"] },
+    { slug: "connect-design-systems", requires: [] },
+  ];
+
+  it("puts linked paths in one chain, in unlock order, whatever order they come in", () => {
+    const chains = pathChains(designer);
+    expect(chains.get("connect-design-systems")).toEqual({ id: "connect-design-systems", step: 1, of: 3 });
+    expect(chains.get("brand-the-template")).toEqual({ id: "connect-design-systems", step: 2, of: 3 });
+    expect(chains.get("build-with-the-template")).toEqual({ id: "connect-design-systems", step: 3, of: 3 });
+  });
+
+  it("leaves a path on its own out of any chain", () => {
+    expect(pathChains(designer).has("other")).toBe(false);
+  });
+
+  it("only counts links between the given paths (one the learner can't see breaks the chain there)", () => {
+    const chains = pathChains(designer.filter((p) => p.slug !== "brand-the-template"));
+    expect(chains.size).toBe(0);
+    const two = pathChains(designer.filter((p) => p.slug !== "connect-design-systems"));
+    expect(two.get("brand-the-template")).toEqual({ id: "brand-the-template", step: 1, of: 2 });
+    expect(two.get("build-with-the-template")).toEqual({ id: "brand-the-template", step: 2, of: 2 });
+  });
+
+  it("keeps separate chains apart, and orders a path that requires two after both", () => {
+    const chains = pathChains([
+      { slug: "c", requires: ["a", "b"] },
+      { slug: "b", requires: [] },
+      { slug: "a", requires: [] },
+      { slug: "y", requires: ["x"] },
+      { slug: "x", requires: [] },
+    ]);
+    expect(["b", "a", "c"].map((s) => chains.get(s)?.step)).toEqual([1, 2, 3]);
+    expect(chains.get("y")).toEqual({ id: "x", step: 2, of: 2 });
+  });
+});
+
+describe("groupChains", () => {
+  type Item = { slug: string; chain: ChainPlace | null; done: boolean };
+  const link = (id: string, step: number, of = 3) => ({ id, step, of });
+  const item = (slug: string, chain: ChainPlace | null = null, done = false): Item => ({ slug, chain, done });
+  const group = (sorted: Item[]) => groupChains(sorted, (i) => i.chain, (i) => i.done).map((i) => i.slug);
+
+  it("shows a chain's cards together in step order, where the step the learner is on sorts", () => {
+    const sorted = [
+      item("in-progress"),
+      item("brand", link("connect", 2)),
+      item("quiz"),
+      item("connect", link("connect", 1)),
+      item("build", link("connect", 3)),
+      item("done-one"),
+    ];
+    // Nothing done: the learner is on step 1.
+    expect(group(sorted)).toEqual(["in-progress", "quiz", "connect", "brand", "build", "done-one"]);
+  });
+
+  it("moves up with the first step that isn't done, even when step 1 sorts with the completed cards", () => {
+    const sorted = [
+      item("brand", link("connect", 2)), // in progress, sorted first
+      item("quiz"),
+      item("build", link("connect", 3)),
+      item("done-one", null, true),
+      item("connect", link("connect", 1), true), // done, sorted with the completed ones
+    ];
+    expect(group(sorted)).toEqual(["connect", "brand", "build", "quiz", "done-one"]);
+  });
+
+  it("sits where step 1 sorts once every step is done", () => {
+    const sorted = [
+      item("quiz"),
+      item("done-one", null, true),
+      item("build", link("connect", 3), true),
+      item("connect", link("connect", 1), true),
+      item("brand", link("connect", 2), true),
+    ];
+    expect(group(sorted)).toEqual(["quiz", "done-one", "connect", "brand", "build"]);
+  });
+
+  it("anchors on the first step in the list that isn't done when step 1 isn't in it", () => {
+    const sorted = [item("build", link("connect", 3)), item("quiz"), item("brand", link("connect", 2))];
+    expect(group(sorted)).toEqual(["quiz", "brand", "build"]);
+  });
+
+  it("leaves a list without chains as it is", () => {
+    expect(group([item("a"), item("b"), item("c")])).toEqual(["a", "b", "c"]);
   });
 });

@@ -65,3 +65,26 @@ export function cardSpans(count: number): CardSpan[] {
     return (row % 2 === 0) === first ? "wide" : "narrow";
   });
 }
+
+/**
+ * Spans for a list where some cards are in a chain of paths: those take the full width, one under the other, and the
+ * cards between chains alternate as in `cardSpans`, starting afresh after each chain.
+ */
+export function listSpans(chained: readonly boolean[]): CardSpan[] {
+  const spans: CardSpan[] = [];
+  let run = 0;
+  const flush = () => {
+    spans.push(...cardSpans(run));
+    run = 0;
+  };
+  for (const c of chained) {
+    if (c) {
+      flush();
+      spans.push("full");
+    } else {
+      run++;
+    }
+  }
+  flush();
+  return spans;
+}
