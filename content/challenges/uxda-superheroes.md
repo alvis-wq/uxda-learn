@@ -8,7 +8,7 @@ points: 10
 estimated_minutes: 3
 status: draft
 tip: >-
-  Stuck? The hero portraits are in our company Google Drive. Search for a colleague's name and you'll find their picture.
+  Stuck? The hero portraits are in [this Google Drive folder](https://drive.google.com/drive/folders/1VmVrJWG4kRV_OcHPEfLUS-7_uWGTqDEG). Search for a colleague's name and you'll find their picture.
 questions:
   - id: q1
     kind: single

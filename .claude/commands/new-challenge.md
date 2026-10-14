@@ -44,6 +44,9 @@ Create a challenge from this description: $ARGUMENTS
    - Every challenge other than quiz or acknowledge has a reflection prompt that makes them evaluate the AI's
      output (what was wrong, what they changed, why).
    - Quiz options: one clearly correct answer, plausible distractors, no "all of the above".
+   - Use `kind: order` when the sequence is the point (steps of a process, the order of a message): list `items`
+     in the CORRECT order (2 or more, each different); sync shuffles them for learners. All-or-nothing, so keep
+     it to 3–6 items.
    - Rubric: 2–5 criteria, each with full / partial / none levels that are observable in a
      screenshot, Figma frame or text. No vague criteria like "good quality".
    - `grader_notes`: what a strong answer contains and common mistakes.

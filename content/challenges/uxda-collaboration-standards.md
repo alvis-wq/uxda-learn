@@ -11,14 +11,13 @@ tip: >-
   Open the document and ask **Gemini in Google Drive**, or ask **Claude** with the Google Drive connector on, to find the answers for you.
 questions:
   - id: q1
-    kind: single
-    prompt: You want to raise a risk. In which order should your message go?
-    options:
-      - { id: a, label: "Recommendation → Observation → Next step → Consequence" }
-      - { id: b, label: "Observation → Consequence → Recommendation → Next step" }
-      - { id: c, label: "Consequence → Recommendation → Observation → Next step" }
-      - { id: d, label: "Next step → Observation → Consequence → Recommendation" }
-    answer: b
+    kind: order
+    prompt: You want to raise a risk. Put the parts of your message in the right order.
+    items:
+      - { id: observation, label: "Observation" }
+      - { id: consequence, label: "Consequence" }
+      - { id: recommendation, label: "Recommendation" }
+      - { id: next-step, label: "Next step" }
     points: 2
   - id: q2
     kind: single
@@ -74,6 +73,8 @@ questions:
 ## How we work together
 How do we talk about problems, disagree, and make decisions at UXDA? All the answers are in
 **"UXDA Internal Collaboration Principles & Standards | 2026"** in our company Google Drive.
+
+[Open the document](https://docs.google.com/document/d/1Bk-v8r3M_EXLNUAP0RD8BntyBOaJPI9RjWiRNznsN8A)
 
 
 6 questions, about 8 minutes.

@@ -103,6 +103,15 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
                     Free text{q.min_words ? `, at least ${q.min_words} words` : ""} — reviewed against the rubric and
                     grader notes.
                   </p>
+                ) : q.kind === "order" ? (
+                  <>
+                    <p className="text-muted-foreground text-meta">Put in this order (learners see them shuffled)</p>
+                    <ol className="grid list-decimal gap-1 pl-5 font-medium" data-testid="preview-order">
+                      {(q.correct ?? q.items.map((item) => item.id)).map((itemId) => (
+                        <li key={itemId}>{q.items.find((item) => item.id === itemId)?.label ?? itemId}</li>
+                      ))}
+                    </ol>
+                  </>
                 ) : (
                   <>
                     <p className="text-muted-foreground text-meta">

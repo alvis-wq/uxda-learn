@@ -30,3 +30,21 @@ describe("no scrim", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("fonts", () => {
+  const fonts = path.resolve(__dirname, "fonts");
+
+  it("self-hosts Urbanist (Google's latin-ext subset draws the macron of ā ē ī ū one letter to the right)", () => {
+    expect(layout).not.toContain("next/font/google");
+    expect(layout).toMatch(/localFont\(\{\s*src: "\.\/fonts\/Urbanist-Variable\.woff2"/);
+    expect(readdirSync(fonts)).toEqual(expect.arrayContaining(["Urbanist-Variable.woff2", "OFL-Urbanist.txt"]));
+  });
+
+  it("supplies only ģ from a second font, which must come first in the stack (Urbanist would build ģ from g + cedilla)", () => {
+    expect(layout).toMatch(/Outfit-gcommaaccent\.woff2/);
+    expect(layout).toMatch(/declarations: \[\{ prop: "unicode-range", value: "U\+0123" \}\]/);
+    expect(layout).toContain("${urbanistGcomma.variable}");
+    expect(css).toMatch(/--font-sans: var\(--font-urbanist-extra\), var\(--font-urbanist\)/);
+    expect(readdirSync(fonts)).toEqual(expect.arrayContaining(["Outfit-gcommaaccent.woff2", "OFL-Outfit.txt"]));
+  });
+});

@@ -138,6 +138,8 @@ export type CardChallenge = {
   latestStatus: SubmissionStatus | null;
   acknowledged: boolean;
   bestScore: number | null;
+  /** They can make another attempt and aren't at full marks (see showTryAgain). */
+  canRetry: boolean;
   /** The learner has saved, unsubmitted work on it. */
   inProgress: boolean;
   /** "Step 2 of 5" for that work; null when there is none or the challenge has no Stepper. */
@@ -183,6 +185,7 @@ function cardOf(
     latestStatus: p.state.latest?.status ?? null,
     acknowledged: p.acknowledgedAt !== null,
     bestScore: p.state.bestScore,
+    canRetry: ch.type !== "acknowledge" && p.state.attemptsUsed > 0 && p.state.canSubmit,
     inProgress: p.inProgress,
     draftProgress: p.draftProgress,
     savedAt: p.savedAt,

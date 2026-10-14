@@ -44,6 +44,12 @@ export function submissionInputSchema(
       answerShape[q.id] = z.enum(q.options.map((o) => o.id) as [string, ...string[]], {
         error: "Choose an answer.",
       });
+    } else if (q.kind === "order") {
+      const ids = q.items.map((i) => i.id) as [string, ...string[]];
+      answerShape[q.id] = z
+        .array(z.enum(ids), { error: "Put the items in order." })
+        .length(ids.length, "Put the items in order.")
+        .refine((a) => new Set(a).size === a.length, "Each item can only be used once.");
     } else if (q.kind === "multi") {
       const ids = q.options.map((o) => o.id) as [string, ...string[]];
       answerShape[q.id] = z
@@ -128,7 +134,7 @@ export function draftInputSchema(
     if (q.kind === "text") {
       answerShape[q.id] = z.string().max(MAX_TEXT, "Answer is too long.");
     } else {
-      const ids = q.options.map((o) => o.id) as [string, ...string[]];
+      const ids = (q.kind === "order" ? q.items : q.options).map((o) => o.id) as [string, ...string[]];
       answerShape[q.id] =
         q.kind === "single"
           ? z.enum(ids)

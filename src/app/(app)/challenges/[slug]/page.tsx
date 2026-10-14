@@ -155,7 +155,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
       )}
 
       {!preview && !isAck && (
-        <section aria-labelledby="submit-heading" className="grid gap-4">
+        <section id="submit" aria-labelledby="submit-heading" className="grid scroll-mt-6 gap-4">
           <h2 id="submit-heading" className="text-lg font-semibold">
             {attempts.length ? "Submit again" : "Your submission"}
           </h2>

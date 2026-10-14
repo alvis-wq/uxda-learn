@@ -54,9 +54,9 @@ export async function cleanTestUserData(db: Db) {
   }
 }
 
-/** Install the [E2E] fixture category + challenges (published) from e2e/fixtures/content. */
-export async function installFixtures(db: Db) {
-  const { content, errors } = loadAndValidate(FIXTURE_DIR);
+/** Install the [E2E] fixture category + challenges (published) from e2e/fixtures/content (or another content folder). */
+export async function installFixtures(db: Db, dir: string = FIXTURE_DIR) {
+  const { content, errors } = loadAndValidate(dir);
   if (errors.length) throw new Error(`Test fixtures invalid: ${JSON.stringify(errors)}`);
   const { error: catErr } = await db.from("categories").upsert(content.categories.map(toCategoryRow));
   if (catErr) throw new Error(`fixture categories: ${catErr.message}`);
@@ -74,6 +74,15 @@ export async function installFixtures(db: Db) {
     const { error: kErr } = await db.from("challenge_keys").upsert(key);
     if (kErr) throw new Error(`fixture key ${challenge.slug}: ${kErr.message}`);
   }
+}
+
+/** Remove some fixture challenges (and what hangs off them) but leave the category alone. */
+export async function removeChallenges(db: Db, slugs: string[]) {
+  await db.from("challenge_keys").delete().in("challenge_slug", slugs);
+  await db.from("acknowledgements").delete().in("challenge_slug", slugs);
+  await db.from("submission_drafts").delete().in("challenge_slug", slugs);
+  const { error } = await db.from("challenges").delete().in("slug", slugs);
+  if (error) await db.from("challenges").update({ status: "archived" }).in("slug", slugs);
 }
 
 export async function removeFixtures(db: Db) {

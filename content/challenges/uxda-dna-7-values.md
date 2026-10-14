@@ -65,5 +65,7 @@ questions:
 UXDA's culture is built on 7 values. All the answers are in the document
 **"2_DNA is based on 7 values"** in our company Google Drive.
 
+[Open the document](https://docs.google.com/document/d/1DdfjzXu-9cOBxfpEs9nnr8i4RmmUwZhJR4Ddx4m9Jkg)
+
 
 5 questions, about 6 minutes.

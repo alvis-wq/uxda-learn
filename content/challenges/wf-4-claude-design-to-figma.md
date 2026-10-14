@@ -53,7 +53,10 @@ grader_notes: |
 ## From Claude Design to Figma
 **Time:** about 35 minutes
 
-Now a short flow. In **Claude Design**, using the **UXDA wireframe design system**, make 3
+**The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
+
+This builds on [Build a screen with /new-screen](/challenges/wf-2-new-screen): there you made one screen,
+now you make a short flow. In **Claude Design**, using the **UXDA wireframe design system**, make 3
 screens for the savings goal:
 
 1. **Goal overview:** the goal, how much is saved, an "Add money" button.

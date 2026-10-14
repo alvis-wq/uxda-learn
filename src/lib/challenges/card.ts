@@ -25,6 +25,14 @@ export function cardCta(input: {
   }
 }
 
+/**
+ * A second "Try again" button beside "View result": the learner has made an attempt, can make another (attempts left,
+ * not at full marks, nothing awaiting review) and isn't being offered "Continue" for a saved draft instead.
+ */
+export function showTryAgain(cta: CardCta, canRetry: boolean): boolean {
+  return cta === "View result" && canRetry;
+}
+
 /** Where card artwork lives (public/challenges/). Files are referenced by bare name from content. */
 export const CARD_IMAGE_DIR = "/challenges";
 

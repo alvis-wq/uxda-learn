@@ -4,7 +4,8 @@ export type AnswerKey = Record<string, string | string[]>;
 export type Answers = Record<string, string | string[]>;
 
 /**
- * Auto-grade single/multi questions. Multi is all-or-nothing (exact set match).
+ * Auto-grade single/multi/order questions. Multi is all-or-nothing (exact set match); order is all-or-nothing too
+ * (exact sequence).
  * Text questions score 0 here; they're reviewed later.
  */
 export function gradeAnswers(questions: PublicQuestion[], key: AnswerKey, answers: Answers) {
@@ -16,6 +17,8 @@ export function gradeAnswers(questions: PublicQuestion[], key: AnswerKey, answer
       let correct = false;
       if (q.kind === "single") {
         correct = typeof expected === "string" && given === expected;
+      } else if (q.kind === "order") {
+        correct = Array.isArray(expected) && Array.isArray(given) && given.length === expected.length && given.every((v, i) => v === expected[i]);
       } else if (Array.isArray(expected) && Array.isArray(given)) {
         const a = [...new Set(given)].sort();
         const b = [...expected].sort();

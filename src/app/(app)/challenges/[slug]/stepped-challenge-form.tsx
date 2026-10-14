@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import Stepper, { Step } from "@/components/stepper/Stepper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { PublicQuestion, SubmissionSpec } from "@/lib/content/schema";
+import { choicesOf, type PublicQuestion, type SubmissionSpec } from "@/lib/content/schema";
 import type { FormDraft } from "@/lib/data/drafts";
 import type { DraftInput } from "@/lib/submissions/input";
 import {
@@ -191,6 +191,7 @@ export function SteppedChallengeForm({
   const tipStepId = tip ? plan.steps.find((s) => s.kind === "question" || s.kind === "questions")?.id : undefined;
   const stepNumber = (def: StepDef) => plan.steps.indexOf(def) + 1;
   const optional = (def: StepDef) =>
+    (def.kind === "screenshots" && spec.screenshots && spec.screenshots.min === 0) ||
     (def.kind === "figma" && spec.figma_url && !spec.figma_url.required) ||
     (def.kind === "reflection" && spec.reflection && !spec.reflection.required);
   const eyebrow = (def: StepDef, extra?: string) =>
@@ -447,7 +448,9 @@ function Review({
     const a = fields.answers[q.id];
     if (q.kind === "text") return typeof a === "string" && a.trim() ? a : null;
     const ids = Array.isArray(a) ? a : typeof a === "string" ? [a] : [];
-    const labels = ids.map((id) => q.options.find((o) => o.id === id)?.label ?? id);
+    const choices = choicesOf(q) ?? [];
+    const labels = ids.map((id) => choices.find((o) => o.id === id)?.label ?? id);
+    if (q.kind === "order") return labels.length ? labels.map((l, i) => `${i + 1}. ${l}`).join("\n") : null;
     return labels.length ? labels.join("; ") : null;
   };
   const empty = <span className="text-muted-foreground">Nothing added</span>;

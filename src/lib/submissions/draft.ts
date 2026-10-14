@@ -70,8 +70,14 @@ export function restoreDraft(row: DraftRow, challenge: Restorable, userId: strin
       if (typeof value === "string") answers[q.id] = value.slice(0, MAX_TEXT);
       else dropped++;
     } else {
-      const known = new Set(q.options.map((o) => o.id));
-      if (q.kind === "single") {
+      const known = new Set((q.kind === "order" ? q.items : q.options).map((o) => o.id));
+      if (q.kind === "order") {
+        // An order is one answer: a complete arrangement of the current items, or nothing.
+        const list = Array.isArray(value) ? value : [];
+        const complete = list.length === known.size && new Set(list).size === known.size && list.every((v) => known.has(v));
+        if (complete) answers[q.id] = list as string[];
+        else dropped++;
+      } else if (q.kind === "single") {
         if (typeof value === "string" && known.has(value)) answers[q.id] = value;
         else dropped++;
       } else {

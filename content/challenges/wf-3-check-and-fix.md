@@ -45,6 +45,10 @@ grader_notes: |
 ## Check it, fix it
 **Time:** about 15 minutes
 
+**The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
+
+This builds on [Build a screen with /new-screen](/challenges/wf-2-new-screen): check the screen you made there.
+
 Every screen should be checked before anyone else sees it. Our plugin has **/check** for that.
 
 ### What to do
