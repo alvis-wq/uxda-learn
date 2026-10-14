@@ -7,6 +7,8 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
 
 ## Stack (fixed — don't swap)
 - Next.js (latest stable, App Router) + TypeScript (strict)
+- Node 22 everywhere: `.nvmrc` (local, CI), `engines.node` `22.x` (Vercel). Regenerate `package-lock.json` with
+  Node 22's npm (10.x), or CI's `npm ci` can disagree with it
 - Supabase: Postgres, Auth (Google), Storage. Client via `@supabase/ssr`
 - Tailwind + shadcn/ui, lucide-react icons
 - Zod for all schemas (content files, form input, eval results)
