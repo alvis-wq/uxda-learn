@@ -22,6 +22,7 @@ import {
 import { submitChallenge } from "./actions";
 import { discardDraft } from "./draft-actions";
 import { SaveIndicator, useDraftAutosave } from "./draft-autosave";
+import { useReportStarted } from "./collapsible-brief";
 import { DraftNotice } from "./draft-notice";
 import { QuestionField } from "./question-field";
 import { ScreenshotUploader, useScreenshotUploads, type UploadedImage } from "./screenshot-uploader";
@@ -112,6 +113,11 @@ export function SteppedChallengeForm({
   const autosave = useDraftAutosave(slug, snapshot(fields, images, step), snapshot(start.fields, start.images, start.step));
   const [notice, setNotice] = useState(initialDraft);
   const [startingOver, setStartingOver] = useState(false);
+
+  // Started = saved work, a step past the first, or anything entered: the brief then shrinks to its first paragraph.
+  const hasInput =
+    Object.keys(fields.answers).length > 0 || fields.figmaUrl !== "" || fields.reflection !== "" || images.length > 0;
+  useReportStarted(notice !== null || step > 1 || hasInput);
 
   function startOver() {
     setStartingOver(true);
@@ -348,7 +354,7 @@ export function SteppedChallengeForm({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       {notice && (
         <DraftNotice savedAt={notice.savedAt} reset={notice.reset} busy={startingOver || pending} onStartOver={startOver} />
       )}
@@ -408,7 +414,7 @@ function StepFrame({
   }, []);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-4">
       <header className="grid gap-1">
         <p className="text-muted-foreground text-meta">{eyebrow}</p>
         <h3 ref={heading} id={headingId} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">

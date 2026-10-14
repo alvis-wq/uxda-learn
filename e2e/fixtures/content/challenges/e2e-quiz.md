@@ -26,4 +26,7 @@ questions:
     answer: [a, c]
     points: 6
 ---
+## [E2E] Quiz
 E2E fixture quiz.
+
+A second paragraph, only in the full brief.

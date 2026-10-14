@@ -56,7 +56,9 @@ test.describe("server-side drafts", () => {
     await page.getByRole("button", { name: "Sign out" }).click();
     await loginAs(page, "designer");
     await page.goto("/challenges/e2e-quiz");
-    await expect(page.getByTestId("draft-notice")).toContainText("Continue where you left off");
+    await expect(page.getByTestId("draft-notice")).toContainText(/Saved .* ago/);
+    await expect(page.getByTestId("draft-notice").getByRole("button", { name: "Start over" })).toBeVisible();
+    await expect(page.getByTestId("draft-notice")).not.toContainText("Continue where you left off");
     await expect(page.getByRole("heading", { name: "Pick the even numbers." })).toBeVisible();
     await expect(page.getByLabel("2", { exact: true })).toBeChecked();
     await back.click();
@@ -219,3 +221,56 @@ test.describe("server-side drafts", () => {
     await expect(page.getByTestId("challenge-history").filter({ hasText: "[E2E] Screenshot" })).toHaveCount(1);
   });
 });
+
+test.describe("the question is the focus", () => {
+  test("a brief that repeats the title loses that heading; once started it shrinks to its first paragraph", async ({ page }) => {
+    await cleanTestUserData();
+    await loginAs(page, "designer");
+    await page.goto("/challenges/e2e-quiz");
+
+    // Before starting: the whole brief, with one heading for the title (the repeated one is skipped), no step title above the stepper.
+    await expect(page.getByRole("heading", { name: "[E2E] Quiz" })).toHaveCount(1);
+    await expect(page.getByText("E2E fixture quiz.")).toBeVisible();
+    await expect(page.getByText("A second paragraph, only in the full brief.")).toBeVisible();
+    await expect(page.getByTestId("brief-toggle")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Your submission" })).toHaveCount(0); // sr-only heading is not visible
+    await expect(page.getByTestId("draft-notice")).toHaveCount(0);
+
+    // Past the first step: first paragraph only, with a toggle (state is not saved).
+    const { next } = stepButtons(page);
+    await page.getByLabel("Lavender").check();
+    await next.click();
+    await expect(page.getByTestId("brief")).toHaveAttribute("data-collapsed", "");
+    await expect(page.getByText("E2E fixture quiz.")).toBeVisible();
+    await expect(page.getByText("A second paragraph, only in the full brief.")).toHaveCount(0);
+    const toggle = page.getByTestId("brief-toggle");
+    await expect(toggle).toHaveText("Show full brief");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // Keyboard: focus the toggle and press Enter, then Space.
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveText("Hide full brief");
+    await expect(page.getByText("A second paragraph, only in the full brief.")).toBeVisible();
+    await page.keyboard.press("Space");
+    await expect(page.getByText("A second paragraph, only in the full brief.")).toHaveCount(0);
+
+    // Not remembered: open it, reload (the draft is saved, so it starts collapsed again).
+    await toggle.click();
+    await saved(page);
+    await page.reload();
+    await expect(page.getByTestId("brief")).toHaveAttribute("data-collapsed", "");
+    await expect(page.getByTestId("brief-toggle")).toHaveText("Show full brief");
+
+    // The restore notice is one compact line; Start over still asks first, then shows the full brief again.
+    const notice = page.getByTestId("draft-notice");
+    await expect(notice).toContainText(/^Saved .* ago\s*·\s*Start over$/);
+    expect((await notice.boundingBox())!.height).toBeLessThan(40);
+    await notice.getByRole("button", { name: "Start over" }).click();
+    await expect(notice).toContainText("Discard your saved answers?");
+    await notice.getByRole("button", { name: "Yes, start over" }).click();
+    await expect(page.getByText("A second paragraph, only in the full brief.")).toBeVisible();
+    await expect(page.getByTestId("brief-toggle")).toHaveCount(0);
+  });
+});
+

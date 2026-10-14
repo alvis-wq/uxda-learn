@@ -793,3 +793,7 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - App: Tester switch on Admin → Users; tester-aware visibility, submit and draft-save (test attempts); "Draft — testing" badge on cards and the challenge page; testing notice; answer key always on test attempts only; "Feedback for Alvis" box; Admin → Content lists feedback (newest first, name, date) and the test attempts; every `submissions` read filtered on `is_test` (guarded by a test).
 - Checks: unit tests (visibility, testing state, submit/save as tester and non-tester, reveal rule, feedback and tester-switch actions, the is_test scan); a temporary page in a browser for the new UI (axe clean, no overflow at 1280/375/320, both themes). `e2e/testers.spec.ts` written, not run: no test project, and the migration isn't applied there.
 
+## Challenge page: the question is the focus (`feat/order-question-and-fixes`)
+
+- Brief: leading title heading skipped, collapsed to its first paragraph (toggle) once started (`src/lib/challenges/brief.ts` + tests, `collapsible-brief.tsx`); "Your submission" heading screen-reader only with a stepper; compact restore notice; tighter spacing. A temporary page in a browser: question heading 158px higher, toggle by Enter and Space, notice 20px high, axe clean and no overflow at 1280/375/320 in both themes. E2E (`drafts.spec.ts`, the quiz fixture now has a repeated heading and two paragraphs) updated, not run.
+
