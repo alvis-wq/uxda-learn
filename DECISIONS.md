@@ -299,6 +299,5 @@
 - "Before you start" is its own optional path field (`before_you_start`, markdown ≤ 600 chars, new column) shown at the top of the path page — it's what to set up before milestone 1, unlike "Before you submit", which is a checklist for each submission.
 - Brief images: markdown `![alt](/challenges/file.png)` from `public/challenges/` only (same folder and file rule as card artwork), alt text required by `content:validate`; anything else isn't rendered — no remote images in the app, and every image has a text alternative.
 - Images are left out of a derived summary — "!alt" in a one-line summary says nothing.
-- `claude-code-sidebar.png` isn't in `public/challenges/` yet, so the cds-1 brief has no image; adding it is one line once the file exists.
 - Commands in the new briefs are bold (**/harvest**), like the existing briefs — inline code shows literal backticks with the typography plugin.
 - Milestones that ask for "one per design system" set `screenshots.min: 3` — the form then asks for all three.

@@ -40,6 +40,8 @@ In **Documents/UXDA-DS/**, create one folder per design system: **DIB**, **Arcni
 2. Inside it, create three folders: **DIB**, **Arcnine** and **Template**.
 3. Open each of the three folders in Claude Code. Each one gets its own section in the sidebar.
 
+![Example Claude Code sidebar with a separate section for each folder: Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template, each with a "DSX Connect design system" chat](/challenges/claude-code-sidebar.png)
+
 ### Our three design systems
 - **DIB** — find the file in our Figma.
 - **Arcnine** — find the file in our Figma.
