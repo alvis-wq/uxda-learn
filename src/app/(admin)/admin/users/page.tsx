@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireAdmin } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeScores } from "@/lib/submissions/rules";
-import { AdminSwitch, TrackSelect } from "./user-controls";
+import { AdminSwitch, TesterSwitch, TrackSelect } from "./user-controls";
 
 export const metadata: Metadata = { title: "Users · Admin · UXDA Learn" };
 
@@ -14,7 +14,7 @@ export default async function AdminUsersPage() {
   const supabase = await createClient();
   const [{ data: profiles, error }, { data: subs }] = await Promise.all([
     supabase.from("profiles").select("*").order("full_name", { nullsFirst: false }),
-    supabase.from("submissions").select("user_id,challenge_slug,status,final_score"),
+    supabase.from("submissions").select("user_id,challenge_slug,status,final_score").eq("is_test", false),
   ]);
   if (error) throw new Error(`Couldn't load users: ${error.message}`);
 
@@ -35,6 +35,7 @@ export default async function AdminUsersPage() {
                 <TableHead className="hidden text-right md:table-cell">Score</TableHead>
                 <TableHead className="hidden text-right md:table-cell">Completed</TableHead>
                 <TableHead className="hidden text-right md:table-cell">Pending</TableHead>
+                <TableHead>Tester</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead className="hidden md:table-cell">Joined</TableHead>
               </TableRow>
@@ -55,6 +56,9 @@ export default async function AdminUsersPage() {
                     <TableCell className="hidden text-right tabular-nums md:table-cell">{s.totalScore}</TableCell>
                     <TableCell className="hidden text-right tabular-nums md:table-cell">{s.completed}</TableCell>
                     <TableCell className="hidden text-right tabular-nums md:table-cell">{s.pending}</TableCell>
+                    <TableCell>
+                      <TesterSwitch userId={p.id} name={name} isTester={p.is_tester} />
+                    </TableCell>
                     <TableCell>
                       <AdminSwitch userId={p.id} name={name} isAdmin={p.is_admin} isSelf={p.id === me.id} />
                     </TableCell>

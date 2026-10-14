@@ -7,6 +7,7 @@ import { resolveCardImage } from "@/lib/challenges/card";
 import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
 import { sortHomeChallenges } from "@/lib/challenges/home-order";
 import type { DraftRow } from "@/lib/submissions/draft";
+import { isTestChallenge, testingState } from "@/lib/submissions/testing";
 import { groupForTrack, isRequiredFor, isVisibleToTrack } from "@/lib/tracks";
 import {
   attemptState,
@@ -20,8 +21,17 @@ import {
 /**
  * Learner-facing reads. All go through the user's RLS-scoped client and then apply the
  * product rules on top (published only, audiences = all + own track) — admins can read
- * drafts via RLS, but learner pages must not show them.
+ * drafts via RLS, but learner pages must not show them. A tester also gets the drafts their track can see (RLS lets
+ * them read those rows; `isChallengeVisible` is the app-side check) — shown as "Draft — testing", never counted.
+ *
+ * Test attempts (`is_test`) are left out of every read here except the draft's own page: nothing a tester does on a
+ * draft may reach points, completed counts, required progress or the attempt limit.
  */
+
+/** Statuses a learner's list may contain: published, plus drafts for a tester. */
+function listedStatuses(profile: Profile): string[] {
+  return profile.is_tester ? ["published", "draft"] : ["published"];
+}
 
 type SubmissionLite = AttemptSummary & { challenge_slug: string };
 
@@ -30,7 +40,8 @@ async function mySubmissions(userId: string, slug?: string): Promise<SubmissionL
   let q = supabase
     .from("submissions")
     .select("challenge_slug,attempt,status,final_score,max_score")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_test", false); // real attempts only: test attempts never count
   if (slug) q = q.eq("challenge_slug", slug);
   const { data, error } = await q;
   if (error) throw new Error(`Couldn't load your submissions: ${error.message}`);
@@ -81,6 +92,7 @@ export type ChallengeProgress = {
 function progressFor(
   ch: {
     slug: string;
+    status: string;
     type: Challenge["type"];
     required_for: Challenge["required_for"];
     due_at: string | null;
@@ -93,17 +105,19 @@ function progressFor(
   drafts: Drafts,
   now: Date,
 ): ChallengeProgress {
-  const state = attemptState(subs);
-  const acknowledgedAt = acks.get(ch.slug) ?? null;
-  const done = ch.type === "acknowledge" ? acknowledgedAt !== null : state.bestScore !== null;
+  // A draft is only ever tried as a test: nothing about it is done, required or limited.
+  const testing = isTestChallenge(ch.status);
+  const state = testing ? testingState(subs) : attemptState(subs);
+  const acknowledgedAt = testing ? null : (acks.get(ch.slug) ?? null);
+  const done = testing ? false : ch.type === "acknowledge" ? acknowledgedAt !== null : state.bestScore !== null;
   const draft = drafts.get(ch.slug);
   const inProgress = ch.type !== "acknowledge" && state.canSubmit && draft !== undefined;
   return {
     state,
     acknowledgedAt,
     done,
-    required: isRequiredFor(ch.required_for, profile.track),
-    requiredState: requiredState({ done, latestStatus: state.latest?.status, dueAt: ch.due_at, now }),
+    required: !testing && isRequiredFor(ch.required_for, profile.track),
+    requiredState: requiredState({ done, latestStatus: testing ? null : state.latest?.status, dueAt: testing ? null : ch.due_at, now }),
     inProgress,
     draftProgress: inProgress ? draftProgress(ch, draft.step) : null,
     savedAt: inProgress ? draft.savedAt : null,
@@ -140,6 +154,8 @@ export type CardChallenge = {
   bestScore: number | null;
   /** They can make another attempt and aren't at full marks (see showTryAgain). */
   canRetry: boolean;
+  /** A draft challenge a tester can try ("Draft — testing"). Never counted anywhere. */
+  isDraft: boolean;
   /** The learner has saved, unsubmitted work on it. */
   inProgress: boolean;
   /** "Step 2 of 5" for that work; null when there is none or the challenge has no Stepper. */
@@ -153,6 +169,7 @@ export type CardChallenge = {
 
 type CardSource = {
   slug: string;
+  status: string;
   category_slug: string;
   title: string;
   summary: string | null;
@@ -185,7 +202,8 @@ function cardOf(
     latestStatus: p.state.latest?.status ?? null,
     acknowledged: p.acknowledgedAt !== null,
     bestScore: p.state.bestScore,
-    canRetry: ch.type !== "acknowledge" && p.state.attemptsUsed > 0 && p.state.canSubmit,
+    canRetry: ch.type !== "acknowledge" && !isTestChallenge(ch.status) && p.state.attemptsUsed > 0 && p.state.canSubmit,
+    isDraft: isTestChallenge(ch.status),
     inProgress: p.inProgress,
     draftProgress: p.draftProgress,
     savedAt: p.savedAt,
@@ -230,7 +248,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     supabase
       .from("challenges")
       .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,image,questions,submission_spec")
-      .eq("status", "published"),
+      .in("status", listedStatuses(profile)),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
     myDrafts(profile.id),
@@ -242,9 +260,11 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
   const bySlug = groupBySlug(subs);
   const catBySlug = new Map(cats.data.map((c) => [c.slug, c]));
 
-  const visible = chs.data
-    .filter((ch) => isChallengeVisible(ch, catBySlug.get(ch.category_slug), profile.track))
+  const listed = chs.data
+    .filter((ch) => isChallengeVisible(ch, catBySlug.get(ch.category_slug), profile.track, profile.is_tester))
     .map((ch) => ({ ...ch, ...progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, drafts, now) }));
+  // Drafts are listed (a tester can open them) but never counted: not in category totals, Overall progress or required.
+  const visible = listed.filter((ch) => !isTestChallenge(ch.status));
 
   const categories = cats.data
     .filter((c) => isVisibleToTrack(c.audiences, profile.track))
@@ -265,7 +285,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
   const required = visible.filter((ch) => ch.required);
   const categoryOrder = new Map(cats.data.map((c, i) => [c.slug, i]));
   const challenges = sortHomeChallenges(
-    visible.map((ch) => {
+    listed.map((ch) => {
       const category = catBySlug.get(ch.category_slug);
       const card = cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
       return { ...card, categoryOrder: categoryOrder.get(ch.category_slug) ?? 0 };
@@ -306,7 +326,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
       .from("challenges")
       .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image,questions,submission_spec")
       .eq("category_slug", slug)
-      .eq("status", "published")
+      .in("status", listedStatuses(profile))
       .order("difficulty")
       .order("title"),
     mySubmissions(profile.id),
@@ -320,7 +340,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     category,
     challenges: requiredFirst(
       chs.data
-        .filter((ch) => isChallengeVisible(ch, category, profile.track))
+        .filter((ch) => isChallengeVisible(ch, category, profile.track, profile.is_tester))
         .map((ch) => {
           const progress = progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, drafts, now);
           return { ...cardOf(ch, category, progress), required: progress.required };
@@ -341,8 +361,11 @@ export type ChallengePageData = {
     max_score: number;
     feedback: string | null;
     submitted_at: string;
+    is_test: boolean;
   }[];
   preview: boolean; // admin viewing something learners can't see
+  /** A tester on a draft: every attempt here is a test attempt (`attempts` are the test attempts). */
+  testing: boolean;
   /** The learner's saved draft for this challenge, if any. */
   draft: DraftRow | null;
 };
@@ -361,15 +384,17 @@ export async function getChallengePage(
     .eq("slug", row.category_slug)
     .maybeSingle();
 
-  const learnerVisible = isChallengeVisible(row, category, profile.track);
+  const learnerVisible = isChallengeVisible(row, category, profile.track, profile.is_tester);
   if (!learnerVisible && !profile.is_admin) return null;
+  const testing = learnerVisible && isTestChallenge(row.status);
 
   const [{ data: attempts, error }, acks, { data: draft }] = await Promise.all([
     supabase
       .from("submissions")
-      .select("id,attempt,status,final_score,max_score,feedback,submitted_at")
+      .select("id,attempt,status,final_score,max_score,feedback,submitted_at,is_test")
       .eq("user_id", profile.id)
       .eq("challenge_slug", slug)
+      .eq("is_test", testing) // a draft shows only the tester's test attempts, a published challenge only real ones
       .order("attempt"),
     myAcknowledgements(profile.id),
     supabase
@@ -387,6 +412,7 @@ export async function getChallengePage(
     progress: progressFor(row, profile, attempts, acks, new Map(draft ? [[slug, { step: draft.current_step, savedAt: draft.updated_at }]] : []), now),
     attempts,
     preview: !learnerVisible,
+    testing,
     draft,
   };
 }

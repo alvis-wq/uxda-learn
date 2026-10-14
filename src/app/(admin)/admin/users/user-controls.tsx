@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { TRACKS } from "@/lib/tracks";
-import { setUserAdmin, setUserTrack } from "../actions";
+import { setUserAdmin, setUserTester, setUserTrack } from "../actions";
 
 export function TrackSelect({ userId, name, track }: { userId: string; name: string; track: string | null }) {
   const [pending, start] = useTransition();
@@ -67,3 +67,25 @@ export function AdminSwitch({
     />
   );
 }
+
+/** Testers can see and try draft challenges their track can see. Any user, any track. */
+export function TesterSwitch({ userId, name, isTester }: { userId: string; name: string; isTester: boolean }) {
+  const [pending, start] = useTransition();
+  const [checked, setChecked] = useOptimistic(isTester);
+  return (
+    <Switch
+      checked={checked}
+      disabled={pending}
+      aria-label={`Tester access for ${name}`}
+      onCheckedChange={(next) =>
+        start(async () => {
+          setChecked(next);
+          const res = await setUserTester(userId, next);
+          if (!res.ok) toast.error(res.error);
+          else toast.success(next ? `${name} can now test drafts.` : `${name} can no longer test drafts.`);
+        })
+      }
+    />
+  );
+}
+

@@ -23,6 +23,7 @@ export default async function ProfilePage() {
     .from("submissions")
     .select("id,challenge_slug,attempt,status,final_score,max_score,feedback,submitted_at,published_at")
     .eq("user_id", profile.id)
+    .eq("is_test", false) // test attempts never show up in history or stats
     .order("submitted_at", { ascending: false });
   if (error) throw new Error(`Couldn't load your submissions: ${error.message}`);
 

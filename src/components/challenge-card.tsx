@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
+import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -121,6 +122,7 @@ export function ChallengeCard({
         <div className="grid gap-2" data-testid="card-meta">
           <ChallengeMeta challenge={ch} nowrap />
           <div className="flex flex-wrap items-center gap-2" data-testid="card-badges">
+            {ch.isDraft && <DraftBadge />}
             <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} className="contents" />
             <StatusBadge
               status={ch.latestStatus}

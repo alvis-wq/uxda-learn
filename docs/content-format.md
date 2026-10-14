@@ -119,6 +119,13 @@ can't contain a `TODO…` placeholder in a published challenge.
 \* Used only when the challenge is first synced; afterwards these are managed in Admin → Content
 (see "Who owns what").
 
+## Drafts and testers
+A challenge synced as `status: draft` is invisible to learners. An admin can mark any user a **tester**
+(Admin → Users → Tester); testers also see drafts that their track can see (the challenge's and its
+category's audiences), labelled "Draft — testing", and can take them. Those attempts are test attempts: they
+don't count anywhere, have no attempt limit, always show the correct answers, and disappear for the tester when
+the challenge is published. Testers can leave feedback on a draft; it shows under Admin → Content.
+
 ## Required vs optional
 - `required_for` uses the same shape as audiences. Everything not listed is optional.
 - `required_for: all` means **every** track, so the challenge (and its category) must be visible

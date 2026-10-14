@@ -22,6 +22,8 @@ create table profiles (
   avatar_url text,
   track track,
   is_admin boolean not null default false,
+  -- Can see and take DRAFT challenges their track can see (RLS: challenges_select); service role sets it, audited.
+  is_tester boolean not null default false,
   show_on_leaderboard boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -87,7 +89,7 @@ create table submissions (
   user_id uuid not null references profiles(id) on delete cascade,
   challenge_slug text not null references challenges(slug),
   challenge_version int not null,
-  attempt int not null default 1 check (attempt between 1 and 3),
+  attempt int not null default 1,
   answers jsonb not null default '{}',
   image_paths text[] not null default '{}',
   figma_url text,
@@ -99,7 +101,11 @@ create table submissions (
   feedback text,
   submitted_at timestamptz not null default now(),
   published_at timestamptz,
-  unique (user_id, challenge_slug, attempt)
+  -- An attempt on a draft challenge by a tester: never counts (points, leaderboard, completed, required, the
+  -- 3-attempt limit) and is numbered on its own. Its owner reads it only while the challenge is a draft.
+  is_test boolean not null default false,
+  constraint submissions_attempt_range check (attempt >= 1 and (is_test or attempt <= 3)),
+  unique (user_id, challenge_slug, is_test, attempt)
 );
 
 create table evaluations (
@@ -164,10 +170,47 @@ create table challenge_settings_audit (
 );
 create index challenge_settings_audit_slug_idx on challenge_settings_audit (challenge_slug, changed_at desc);
 
+-- Who changed a user's flag (today: the tester switch on Admin → Users). Written only by set_user_tester().
+create table profile_flag_audit (
+  id bigint generated always as identity primary key,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  field text not null check (field in ('is_tester')),
+  old_value boolean,
+  new_value boolean not null,
+  changed_by uuid references profiles(id) on delete set null,
+  changed_at timestamptz not null default now()
+);
+create index profile_flag_audit_profile_idx on profile_flag_audit (profile_id, changed_at desc);
+
+-- Notes from testers on a draft challenge. Admin read only; written by a server action (service role).
+create table challenge_feedback (
+  id uuid primary key default gen_random_uuid(),
+  challenge_slug text not null references challenges(slug) on delete cascade,
+  user_id uuid references profiles(id) on delete set null,
+  body text not null check (char_length(btrim(body)) between 1 and 2000),
+  created_at timestamptz not null default now()
+);
+create index challenge_feedback_slug_idx on challenge_feedback (challenge_slug, created_at desc);
+
 -- Helpers ------------------------------------------------------------------
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
   select coalesce((select is_admin from profiles where id = auth.uid()), false);
+$$;
+
+create or replace function public.is_tester() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select is_tester from profiles where id = auth.uid()), false);
+$$;
+
+-- Does the signed-in user's track appear in this audience list ('all' = everyone)?
+create or replace function public.my_track_sees(a audience[]) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from profiles p
+    where p.id = auth.uid() and p.track is not null
+      and ('all'::audience = any(a) or p.track::text::audience = any(a))
+  );
 $$;
 
 create or replace function public.handle_new_user() returns trigger
@@ -199,7 +242,7 @@ language sql stable security definer set search_path = public as $$
   with best as (
     select s.user_id, s.challenge_slug, max(s.final_score) as score
     from submissions s
-    where s.status = 'published'
+    where s.status = 'published' and not s.is_test
     group by s.user_id, s.challenge_slug
   )
   select p.id, p.full_name, p.avatar_url, p.track,
@@ -220,6 +263,11 @@ $$;
 --                                       p_source text, p_actor uuid default null) returns boolean
 -- revoke execute ... from public, anon, authenticated; grant execute ... to service_role;
 
+-- Sets profiles.is_tester and writes the profile_flag_audit row in one transaction; the actor must be an admin.
+-- No-op (returns false, no audit row) when the value doesn't change. Service role only.
+-- Full body: supabase/migrations/20261014100000_testers.sql
+-- function public.set_user_tester(p_user uuid, p_value boolean, p_actor uuid) returns boolean
+
 -- RLS ----------------------------------------------------------------------
 alter table admin_allowlist enable row level security;   -- no policies
 alter table allowed_email_domains enable row level security;   -- no policies
@@ -232,6 +280,8 @@ alter table evaluations     enable row level security;
 alter table acknowledgements enable row level security;
 alter table challenge_settings_audit enable row level security;
 alter table submission_drafts enable row level security;
+alter table profile_flag_audit enable row level security;
+alter table challenge_feedback enable row level security;
 
 create policy profiles_select on profiles for select to authenticated
   using (id = auth.uid() or public.is_admin());
@@ -243,11 +293,35 @@ grant update (show_on_leaderboard) on profiles to authenticated;
 create policy categories_select on categories for select to authenticated
   using (not archived or public.is_admin());
 
+-- Testers also see DRAFT challenges that their track can see (the challenge's and its category's audiences, category
+-- not archived). Archived stays hidden from them.
 create policy challenges_select on challenges for select to authenticated
-  using (status = 'published' or public.is_admin());
+  using (
+    status = 'published'
+    or public.is_admin()
+    or (
+      status = 'draft'
+      and public.is_tester()
+      and public.my_track_sees(audiences)
+      and exists (
+        select 1 from categories c
+        where c.slug = challenges.category_slug and not c.archived and public.my_track_sees(c.audiences)
+      )
+    )
+  );
 
+-- A user's TEST attempts are readable by them only while the challenge is a draft (after publishing they start fresh).
 create policy submissions_select on submissions for select to authenticated
-  using (user_id = auth.uid() or public.is_admin());
+  using (
+    public.is_admin()
+    or (
+      user_id = auth.uid()
+      and (
+        not is_test
+        or exists (select 1 from challenges c where c.slug = submissions.challenge_slug and c.status = 'draft')
+      )
+    )
+  );
 -- No insert/update policies: all writes via server actions with service role.
 
 create policy evaluations_select on evaluations for select to authenticated
@@ -260,6 +334,12 @@ create policy acknowledgements_select on acknowledgements for select to authenti
 create policy challenge_settings_audit_select on challenge_settings_audit for select to authenticated
   using (public.is_admin());
 -- No write policies or grants: written only by set_challenge_setting() (service role).
+
+create policy profile_flag_audit_select on profile_flag_audit for select to authenticated using (public.is_admin());
+-- No write policies or grants: written only by set_user_tester() (service role, actor must be an admin).
+
+create policy challenge_feedback_select on challenge_feedback for select to authenticated using (public.is_admin());
+-- No write policies or grants: written by a server action (service role) for testers on a draft they can see.
 
 -- Own rows only, read and write; no is_admin() clause, so admins can't see or edit drafts either.
 create policy submission_drafts_select on submission_drafts for select to authenticated using (user_id = auth.uid());

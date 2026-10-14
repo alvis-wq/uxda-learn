@@ -41,7 +41,7 @@ function fakeDb(tables: Record<string, Row[]>, ops: Op[] = []) {
 }
 
 const USER = { id: "11111111-1111-4111-8111-111111111111" };
-const profile = (track: string | null) => ({ id: USER.id, track, is_admin: false });
+const profile = (track: string | null, tester = false) => ({ id: USER.id, track, is_admin: false, is_tester: tester });
 
 const quiz = (over: Row = {}): Row => ({
   slug: "demo",
@@ -152,9 +152,45 @@ describe("saveDraft", () => {
   });
 
   it("refuses when the learner can't submit any more (awaiting review)", async () => {
-    setup(quiz(), [{ user_id: USER.id, challenge_slug: "demo", attempt: 1, status: "submitted", final_score: null, max_score: 10 }]);
+    setup(quiz(), [{ user_id: USER.id, challenge_slug: "demo", attempt: 1, status: "submitted", final_score: null, max_score: 10, is_test: false }]);
     await expect(saveDraft("demo", input())).resolves.toEqual({ ok: false, error: "Your submission is awaiting review." });
     expect(userOps).toEqual([]);
+  });
+});
+
+describe("saveDraft as a tester", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(USER);
+    getCurrentProfile.mockResolvedValue(profile("designer", true));
+  });
+
+  it("saves progress on a draft challenge the tester's track can see", async () => {
+    setup(quiz({ status: "draft" }));
+    await expect(saveDraft("demo", input())).resolves.toMatchObject({ ok: true });
+    expect(userOps).toMatchObject([{ table: "submission_drafts", op: "upsert" }]);
+  });
+
+  it("is not held back by their real attempts: awaiting review or full marks don't block a test", async () => {
+    const real = (over: Row) => ({ user_id: USER.id, challenge_slug: "demo", is_test: false, max_score: 10, ...over });
+    setup(quiz({ status: "draft" }), [real({ attempt: 1, status: "submitted", final_score: null }), real({ attempt: 2, status: "published", final_score: 10 })]);
+    await expect(saveDraft("demo", input())).resolves.toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ["an archived challenge", quiz({ status: "archived" }), undefined],
+    ["a draft for another track", quiz({ status: "draft", audiences: ["strategist"] }), undefined],
+    ["a draft in an archived category", quiz({ status: "draft" }), { slug: "cat", archived: true, audiences: ["all"] }],
+    ["an acknowledge draft", quiz({ status: "draft", type: "acknowledge" }), undefined],
+  ])("still refuses %s", async (_label, challenge, category) => {
+    setup(challenge, [], category);
+    await expect(saveDraft("demo", input())).resolves.toMatchObject({ ok: false });
+    expect(userOps).toEqual([]);
+  });
+
+  it("a tester on a PUBLISHED challenge is limited like everyone else", async () => {
+    setup(quiz(), [{ user_id: USER.id, challenge_slug: "demo", attempt: 1, status: "submitted", final_score: null, max_score: 10, is_test: false }]);
+    await expect(saveDraft("demo", input())).resolves.toEqual({ ok: false, error: "Your submission is awaiting review." });
   });
 });
 
@@ -207,3 +243,80 @@ describe("submitChallenge and drafts", () => {
     expect(ops.filter((o) => o.table === "submission_drafts")).toEqual([]);
   });
 });
+
+describe("submitChallenge: test attempts", () => {
+  const oneQuestion = { questions: [{ id: "q1", kind: "single", prompt: "P", points: 10, options: [{ id: "a", label: "A" }, { id: "b", label: "B" }] }], submission_spec: {}, type: "quiz" };
+  const answer = { answers: { q1: "b" }, imagePaths: [], figmaUrl: null, reflection: null }; // wrong: the key is "a"
+  const attempt = (over: Row) => ({ user_id: USER.id, challenge_slug: "demo", status: "published", final_score: 0, max_score: 10, ...over });
+  const inserted = () => ops.find((o) => o.table === "submissions" && o.op === "insert");
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(USER);
+    getCurrentProfile.mockResolvedValue(profile("designer", true));
+  });
+
+  it("saves an attempt on a draft as a published test attempt, marked is_test, with the auto-graded score", async () => {
+    setup(quiz({ status: "draft", ...oneQuestion }));
+    await expect(submitChallenge("demo", { ...answer, answers: { q1: "a" } })).resolves.toMatchObject({ ok: true, status: "published" });
+    expect(inserted()?.row).toMatchObject({ is_test: true, attempt: 1, status: "published", auto_score: 10, final_score: 10, max_score: 10, user_id: USER.id });
+  });
+
+  it("is published at once even when the challenge would normally need review", async () => {
+    setup(quiz({ status: "draft" })); // mixed: a text question and a reflection
+    await expect(
+      submitChallenge("demo", { answers: { q1: "a", q2: "some words here for the answer" }, imagePaths: [], figmaUrl: null, reflection: "because" }),
+    ).resolves.toMatchObject({ ok: true, status: "published" });
+    expect(inserted()?.row).toMatchObject({ is_test: true, status: "published", final_score: 5 });
+  });
+
+  it("has no attempt limit: more than 3 test attempts, and full marks don't stop another", async () => {
+    const tests = [1, 2, 3, 4, 5].map((n) => attempt({ attempt: n, is_test: true, final_score: 10 }));
+    setup(quiz({ status: "draft", ...oneQuestion }), tests);
+    await expect(submitChallenge("demo", answer)).resolves.toMatchObject({ ok: true });
+    expect(inserted()?.row).toMatchObject({ is_test: true, attempt: 6 });
+  });
+
+  it("is not counted against, or blocked by, their real attempts", async () => {
+    const real = [1, 2, 3].map((n) => attempt({ attempt: n, is_test: false, final_score: 10 }));
+    setup(quiz({ status: "draft", ...oneQuestion }), real);
+    await expect(submitChallenge("demo", answer)).resolves.toMatchObject({ ok: true });
+    expect(inserted()?.row).toMatchObject({ is_test: true, attempt: 1 });
+  });
+
+  it("a non-tester cannot submit to a draft at all", async () => {
+    getCurrentProfile.mockResolvedValue(profile("designer", false));
+    setup(quiz({ status: "draft", ...oneQuestion }));
+    await expect(submitChallenge("demo", answer)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
+    expect(inserted()).toBeUndefined();
+  });
+
+  it.each([
+    ["an archived challenge", quiz({ status: "archived", ...oneQuestion }), undefined],
+    ["a draft aimed at another track", quiz({ status: "draft", audiences: ["strategist"], ...oneQuestion }), undefined],
+    ["a draft in an archived category", quiz({ status: "draft", ...oneQuestion }), { slug: "cat", archived: true, audiences: ["all"] }],
+  ])("a tester still cannot submit to %s", async (_label, challenge, category) => {
+    setup(challenge, [], category);
+    await expect(submitChallenge("demo", answer)).resolves.toMatchObject({ ok: false });
+    expect(inserted()).toBeUndefined();
+  });
+
+  it("on a PUBLISHED challenge a tester makes a normal attempt, with the normal limit", async () => {
+    setup(quiz(oneQuestion));
+    await expect(submitChallenge("demo", answer)).resolves.toMatchObject({ ok: true });
+    expect(inserted()?.row).toMatchObject({ is_test: false, attempt: 1 });
+
+    const used = [1, 2, 3].map((n) => attempt({ attempt: n, is_test: false, final_score: 0 }));
+    setup(quiz(oneQuestion), used);
+    await expect(submitChallenge("demo", answer)).resolves.toEqual({ ok: false, error: "You've used all 3 attempts." });
+    expect(inserted()).toBeUndefined();
+  });
+
+  it("test attempts on a published challenge's old record don't count: they are separate rows", async () => {
+    const oldTests = [1, 2, 3].map((n) => attempt({ attempt: n, is_test: true }));
+    setup(quiz(oneQuestion), oldTests); // published now: the tester starts fresh
+    await expect(submitChallenge("demo", answer)).resolves.toMatchObject({ ok: true });
+    expect(inserted()?.row).toMatchObject({ is_test: false, attempt: 1 });
+  });
+});
+

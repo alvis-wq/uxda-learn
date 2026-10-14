@@ -104,6 +104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_feedback: {
+        Row: {
+          body: string
+          challenge_slug: string
+          created_at: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          challenge_slug: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          challenge_slug?: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_feedback_challenge_slug_fkey"
+            columns: ["challenge_slug"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "challenge_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_keys: {
         Row: {
           answer_key: Json
@@ -318,6 +357,51 @@ export type Database = {
           },
         ]
       }
+      profile_flag_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          field: string
+          id: number
+          new_value: boolean
+          old_value: boolean | null
+          profile_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          field: string
+          id?: never
+          new_value: boolean
+          old_value?: boolean | null
+          profile_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          field?: string
+          id?: never
+          new_value?: boolean
+          old_value?: boolean | null
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_flag_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_flag_audit_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -326,6 +410,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_admin: boolean
+          is_tester: boolean
           show_on_leaderboard: boolean
           track: Database["public"]["Enums"]["track"] | null
         }
@@ -336,6 +421,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_admin?: boolean
+          is_tester?: boolean
           show_on_leaderboard?: boolean
           track?: Database["public"]["Enums"]["track"] | null
         }
@@ -346,6 +432,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_admin?: boolean
+          is_tester?: boolean
           show_on_leaderboard?: boolean
           track?: Database["public"]["Enums"]["track"] | null
         }
@@ -414,6 +501,7 @@ export type Database = {
           final_score: number | null
           id: string
           image_paths: string[]
+          is_test: boolean
           max_score: number
           published_at: string | null
           reflection: string | null
@@ -432,6 +520,7 @@ export type Database = {
           final_score?: number | null
           id?: string
           image_paths?: string[]
+          is_test?: boolean
           max_score: number
           published_at?: string | null
           reflection?: string | null
@@ -450,6 +539,7 @@ export type Database = {
           final_score?: number | null
           id?: string
           image_paths?: string[]
+          is_test?: boolean
           max_score?: number
           published_at?: string | null
           reflection?: string | null
@@ -491,6 +581,11 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_tester: { Args: never; Returns: boolean }
+      my_track_sees: {
+        Args: { a: Database["public"]["Enums"]["audience"][] }
+        Returns: boolean
+      }
       set_challenge_setting: {
         Args: {
           p_actor?: string
@@ -499,6 +594,10 @@ export type Database = {
           p_source: string
           p_value: Json
         }
+        Returns: boolean
+      }
+      set_user_tester: {
+        Args: { p_actor: string; p_user: string; p_value: boolean }
         Returns: boolean
       }
       valid_audiences: {

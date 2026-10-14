@@ -12,7 +12,7 @@ export async function GET() {
   const supabase = await createClient();
   const [{ data: profiles, error: pErr }, { data: subs, error: sErr }, { data: challenges }] = await Promise.all([
     supabase.from("profiles").select("id,full_name,email,track,show_on_leaderboard").order("full_name"),
-    supabase.from("submissions").select("user_id,challenge_slug,status,final_score"),
+    supabase.from("submissions").select("user_id,challenge_slug,status,final_score").eq("is_test", false),
     supabase.from("challenges").select("slug").neq("status", "draft").order("slug"),
   ]);
   if (pErr || sErr) return new NextResponse("Couldn't load scores", { status: 500 });

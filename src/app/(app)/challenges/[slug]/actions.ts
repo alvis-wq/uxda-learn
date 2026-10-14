@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { gradeAnswers, type AnswerKey } from "@/lib/submissions/grading";
 import { submissionInputSchema } from "@/lib/submissions/input";
 import { attemptState } from "@/lib/submissions/rules";
+import { isTestChallenge, nextTestAttempt, testingState } from "@/lib/submissions/testing";
 
 export type SubmitResult =
   | { ok: true; submissionId: string; status: string }
@@ -20,6 +21,9 @@ const slugSchema = z.string().regex(/^[a-z0-9-]{1,100}$/);
  * Create a submission for the signed-in user. Everything that matters — visibility,
  * attempts, validation, grading, status — is decided here with the service role; the
  * client only supplies answers and paths to files it uploaded to its own folder.
+ *
+ * A tester on a DRAFT challenge makes a test attempt instead: saved with `is_test`, numbered on its own (no limit),
+ * published on the spot (nobody reviews a test) and never counted anywhere.
  */
 export async function submitChallenge(slugInput: string, rawInput: unknown): Promise<SubmitResult> {
   const user = await getCurrentUser();
@@ -31,17 +35,19 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
   if (!slug.success) return { ok: false, error: "Challenge not found." };
 
   const admin = createAdminClient();
-  const row = await loadOpenChallenge(admin, slug.data, profile.track);
+  const row = await loadOpenChallenge(admin, slug.data, profile.track, profile.is_tester);
   if (!row || row.type === "acknowledge") return { ok: false, error: "This challenge isn't open for submissions." };
   const challenge = parseChallenge(row);
+  const testing = isTestChallenge(row.status);
 
   const { data: previous, error: prevError } = await admin
     .from("submissions")
     .select("attempt,status,final_score,max_score")
     .eq("user_id", user.id)
-    .eq("challenge_slug", challenge.slug);
+    .eq("challenge_slug", challenge.slug)
+    .eq("is_test", testing);
   if (prevError) return { ok: false, error: "Couldn't check your previous attempts. Please try again." };
-  const state = attemptState(previous);
+  const state = testing ? testingState(previous) : attemptState(previous);
   if (!state.canSubmit) return { ok: false, error: state.reason ?? "You can't submit right now." };
 
   const parsed = submissionInputSchema(challenge, user.id).safeParse(rawInput);
@@ -74,7 +80,8 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
   if (keyError) return { ok: false, error: "Couldn't grade your answers. Please try again." };
   const { autoScore } = gradeAnswers(challenge.questions, (keyRow?.answer_key ?? {}) as AnswerKey, input.answers);
 
-  const reviewed = challengeNeedsReview(challenge);
+  // A test attempt is never reviewed: published at once, with the auto-graded part marked.
+  const reviewed = !testing && challengeNeedsReview(challenge);
   const now = new Date().toISOString();
   const { data: inserted, error: insertError } = await admin
     .from("submissions")
@@ -82,7 +89,8 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
       user_id: user.id,
       challenge_slug: challenge.slug,
       challenge_version: challenge.version,
-      attempt: state.attemptsUsed + 1,
+      attempt: testing ? nextTestAttempt(previous) : state.attemptsUsed + 1,
+      is_test: testing,
       answers: input.answers,
       image_paths: input.imagePaths,
       figma_url: input.figmaUrl,

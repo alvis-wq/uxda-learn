@@ -71,9 +71,12 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
             submitted {new Date(sub.submitted_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
           </p>
         </div>
-        <Badge variant={reviewable ? "default" : "secondary"} data-testid="admin-status">
-          {STATUS_LABEL[sub.status]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {sub.is_test && <Badge variant="outline">Test attempt — doesn&apos;t count</Badge>}
+          <Badge variant={reviewable ? "default" : "secondary"} data-testid="admin-status">
+            {STATUS_LABEL[sub.status]}
+          </Badge>
+        </div>
       </div>
 
       {challenge && challenge.version !== sub.challenge_version && (

@@ -36,6 +36,12 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   Anything with screenshots, Figma, reflection or text questions goes:
   `submitted → ai_reviewed (via /evaluate) → published` (admin approves)
   or `→ needs_resubmission`.
+- Testers (`profiles.is_tester`, switched in Admin → Users, audited) can see and take DRAFT challenges their
+  track can see (RLS on `challenges`; archived stays hidden). Their attempts on a draft are test attempts
+  (`submissions.is_test`): published at once, numbered apart from the 3-attempt limit, shown with the answer key,
+  and never counted — not in points, leaderboard, completed, required progress or exports. Every read of
+  `submissions` must filter on `is_test` (a test enforces it). After publishing, the tester starts fresh; only
+  admins still see the old test attempts.
 - Never delete challenges that have submissions — archive them. Content changes bump `version`.
 - Content files own content (brief, questions, rubric, points, type, audiences). The admin panel
   owns `status`, `required_for`, `due_at`: files set them only on creation, content:sync never

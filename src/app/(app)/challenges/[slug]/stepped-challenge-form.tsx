@@ -45,7 +45,8 @@ type Props = {
   /** The learner's saved work, restored on the server (null: a fresh form). */
   initialDraft: FormDraft | null;
   attemptNumber: number;
-  maxAttempts: number;
+  /** null for a test attempt (no limit). */
+  maxAttempts: number | null;
 };
 
 /**
@@ -375,7 +376,7 @@ export function SteppedChallengeForm({
       </Stepper>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p className="text-muted-foreground text-sm">
-          Attempt {attemptNumber} of {maxAttempts}
+          {maxAttempts === null ? `Test attempt ${attemptNumber}` : `Attempt ${attemptNumber} of ${maxAttempts}`}
         </p>
         <SaveIndicator status={autosave.status} />
       </div>

@@ -16,7 +16,7 @@ export async function loadProgressInput(now = new Date()): Promise<ProgressInput
       .select("slug,title,category_slug,type,status,audiences,required_for,due_at")
       .eq("status", "published")
       .order("title"),
-    supabase.from("submissions").select("user_id,challenge_slug,attempt,status,final_score,max_score,published_at"),
+    supabase.from("submissions").select("user_id,challenge_slug,attempt,status,final_score,max_score,published_at").eq("is_test", false),
     supabase.from("acknowledgements").select("user_id,challenge_slug,acknowledged_at,challenge_version"),
   ]);
   for (const res of [profiles, categories, challenges, submissions, acknowledgements]) {

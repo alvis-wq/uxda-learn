@@ -18,7 +18,8 @@ export default async function ReviewQueuePage() {
     .select(
       "id,status,attempt,submitted_at,auto_score,final_score,max_score,profiles(full_name,email,track),challenges(title),evaluations(confidence,flags,created_at)",
     )
-    .in("status", [...REVIEWABLE_STATUSES]);
+    .in("status", [...REVIEWABLE_STATUSES])
+    .eq("is_test", false); // a test attempt is never reviewed
   if (error) throw new Error(`Couldn't load the review queue: ${error.message}`);
 
   const items = sortQueue(
