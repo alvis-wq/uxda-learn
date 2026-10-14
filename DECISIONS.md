@@ -254,3 +254,7 @@
 - Vertical rhythm: page padding 40 -> 32px, section gap 32 -> 24px, meta rows 12 -> 8px, stepper body 20 -> 12px, step content 20 -> 16px. Measured in a browser on a quiz-style page before starting: the first question's heading sits 158px higher (at 1280 and 375px wide), mostly from the removed repeated heading and the removed submission heading.
 - The "**Time:** about N minutes" line is removed from the wireframing briefs (wf-1..wf-6): the meta row already shows `estimated_minutes`, and it was the first paragraph, so the collapsed brief showed only the time. Their first paragraph is now the savings-goal brief sentence (a test checks it). It changes the briefs' content hash, so the next `content:sync` bumps those challenges' versions (drafts saved against the old version restore their answers as usual).
 
+## Claude at UXDA is back as a quiz (`feat/restore-claude-at-uxda`)
+
+- `claude-at-uxda` (the 5-question quiz) is restored from git as it was, but with a body that only introduces it ("A few quick questions about how we use our company Claude account. 5 questions, about 3 minutes."): the old body listed the rules, which gave away the answers. `claude-rules-at-uxda` (the acknowledge challenge from the order-question PR) is deleted again, so `content:sync` archives it. `estimated_minutes` is 3 to match the text.
+
