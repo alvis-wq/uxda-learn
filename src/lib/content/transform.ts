@@ -118,6 +118,7 @@ export type PathRow = {
   audiences: Audience[];
   sequential: boolean;
   milestones: string[];
+  requires: string[];
   before_you_start: string | null;
   before_you_submit: string[];
 };
@@ -132,6 +133,7 @@ export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; 
       audiences: p.audiences ?? categories.find((c) => c.slug === p.category)?.audiences ?? ["all"],
       sequential: p.sequential,
       milestones: p.milestones,
+      requires: p.requires,
       before_you_start: p.before_you_start ?? null,
       before_you_submit: p.before_you_submit,
     },

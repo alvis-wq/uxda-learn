@@ -1,24 +1,25 @@
 import Link from "next/link";
-import { ChevronLeft, ClipboardCheck, FlaskConical, Info, Route } from "lucide-react";
+import { ChevronLeft, ClipboardCheck, FlaskConical, Info, Lock, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
 import { Markdown } from "@/components/markdown";
 import { Roadmap } from "@/components/roadmap";
 import { SECTION_LABEL_CLASS } from "@/components/section-label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import type { MilestoneState, PathSummary } from "@/lib/paths/progress";
+import type { MilestoneState, PathLock, PathSummary } from "@/lib/paths/progress";
 import { isTestChallenge } from "@/lib/submissions/testing";
 
 /**
  * A learning path: its progress, then a vertical roadmap of milestones (each an ordinary challenge) joined by a
  * track that fills as they are done, and a short "Before you submit" checklist from the path file. Data-free so it
- * can be rendered on its own.
+ * can be rendered on its own. A locked path (`requires`) says which path comes first; every milestone is locked.
  */
 export function PathView({
   path,
   category,
   states,
   summary,
+  lockedBy = null,
 }: {
   path: {
     title: string;
@@ -31,6 +32,7 @@ export function PathView({
   category: { slug: string; title: string };
   states: MilestoneState[];
   summary: PathSummary;
+  lockedBy?: PathLock | null;
 }) {
   const testing = isTestChallenge(path.status);
   const percent = summary.total ? Math.round((summary.done / summary.total) * 100) : 0;
@@ -62,6 +64,24 @@ export function PathView({
           <AlertDescription>
             This path is a draft. Your attempts on its milestones are tests: they don&apos;t count, and they disappear when it&apos;s
             published.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {lockedBy && (
+        <Alert data-testid="path-locked-notice">
+          <Lock aria-hidden />
+          <AlertDescription>
+            <p>
+              <span className="text-foreground font-medium">
+                Unlocks after{" "}
+                <Link href={`/paths/${lockedBy.slug}`} className="underline underline-offset-4">
+                  {lockedBy.title}
+                </Link>
+                .
+              </span>{" "}
+              Send all its milestones first; waiting for a review is fine.
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -103,7 +123,7 @@ export function PathView({
         <h2 id="roadmap-heading" className={SECTION_LABEL_CLASS}>
           Milestones
         </h2>
-        <Roadmap states={states} sequential={path.sequential} showScores={!testing} />
+        <Roadmap states={states} sequential={path.sequential && !lockedBy} showScores={!testing} />
       </section>
 
       {path.before_you_submit.length > 0 && (

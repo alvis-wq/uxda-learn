@@ -4,3 +4,4 @@ category: strat-only
 summary: Every way a milestone can be wrong.
 status: published
 milestones: [missing-one, no-back-link, other-category, narrower, ack-milestone, twice, twice, in-two-paths, draft-step]
+requires: [ghost-path, bad-links, second, second]

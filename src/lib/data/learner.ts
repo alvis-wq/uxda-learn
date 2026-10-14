@@ -9,8 +9,16 @@ import { sortHomeChallenges } from "@/lib/challenges/home-order";
 import type { DraftRow } from "@/lib/submissions/draft";
 import { isTestChallenge, testingState } from "@/lib/submissions/testing";
 import { groupForTrack, isRequiredFor, isVisibleToTrack, type Track } from "@/lib/tracks";
-import { isMilestoneVisible, isPathVisible, loadMilestonePlace, loadPathProgress, progressOf, type MilestoneRow } from "@/lib/data/paths";
-import { pathCta, type MilestonePlace, type PathSummary } from "@/lib/paths/progress";
+import {
+  isMilestoneVisible,
+  isPathVisible,
+  loadMilestonePlace,
+  loadPathProgress,
+  loadRequiredPaths,
+  progressOf,
+  type MilestoneRow,
+} from "@/lib/data/paths";
+import { blockingPath, pathCta, type MilestonePlace, type MilestoneState, type PathSummary, type RequiredPath } from "@/lib/paths/progress";
 import {
   attemptState,
   rankOf,
@@ -250,6 +258,8 @@ export type CardPath = {
   savedAt: string | null;
   /** A draft path a tester can try. Never counted. */
   isDraft: boolean;
+  /** Title of the path it waits for (`requires`) while it is locked; null when it is open. */
+  lockedBy: string | null;
   required: false;
   requiredState: RequiredState;
   due_at: null;
@@ -267,9 +277,10 @@ type PathSource = {
   audiences: Challenge["audiences"];
   sequential: boolean;
   milestones: string[];
+  requires: string[];
 };
 
-/** A path's card, or null when the learner sees none of its milestones. */
+/** A path's card (not locked yet, see `withLock`) and its milestone states, or null when the learner sees none of its milestones. */
 function pathCardOf(
   path: PathSource,
   category: { title: string; archived: boolean; audiences: Challenge["audiences"] },
@@ -277,19 +288,19 @@ function pathCardOf(
   viewer: { track: Track | null; is_tester: boolean },
   subs: readonly (SubmissionLite & { is_test: boolean })[],
   drafts: Drafts,
-): CardPath | null {
+): { card: CardPath; states: MilestoneState[] } | null {
   const bySlug = new Map(rows.map((r) => [r.slug, r]));
   const milestones = path.milestones
     .map((s) => bySlug.get(s))
     .filter((r): r is MilestoneRow => !!r && isMilestoneVisible(r, path, category, viewer.track, viewer.is_tester));
   if (milestones.length === 0) return null;
-  const { summary, lastActivity } = progressOf(
+  const { states, summary, lastActivity } = progressOf(
     path,
     milestones,
     subs,
     [...drafts].map(([challenge_slug, d]) => ({ challenge_slug, updated_at: d.savedAt })),
   );
-  return {
+  const card: CardPath = {
     kind: "path",
     slug: path.slug,
     title: path.title,
@@ -303,10 +314,22 @@ function pathCardOf(
     inProgress: summary.started && !summary.complete,
     savedAt: lastActivity,
     isDraft: isTestChallenge(path.status),
+    lockedBy: null,
     required: false,
     requiredState: summary.complete ? "done" : "missing",
     due_at: null,
   };
+  return { card, states };
+}
+
+/** A path card with its lock (`requires`), given the paths that come first. */
+function withLock(
+  built: { card: CardPath; states: MilestoneState[] },
+  requires: readonly string[],
+  required: ReadonlyMap<string, RequiredPath>,
+): CardPath {
+  const lock = blockingPath(requires, required, built.states);
+  return lock ? { ...built.card, lockedBy: lock.title } : built.card;
 }
 
 /** A card without the sort-only field it was given. */
@@ -359,7 +382,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     group ? supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] }) : Promise.resolve(null),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires")
       .in("status", listedStatuses(profile)),
     profile.is_tester ? myTestAttempts(profile.id) : Promise.resolve([]),
   ]);
@@ -379,12 +402,15 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
 
   // Paths: one card each, counted as one item (done when every milestone is done).
   const pathSubs = [...subs.map((s) => ({ ...s, is_test: false })), ...testSubs];
-  const pathCards = paths.data.flatMap((p) => {
+  const builtPaths = paths.data.flatMap((p) => {
     const category = catBySlug.get(p.category_slug);
     if (!category || !isPathVisible(p, category, profile.track, profile.is_tester)) return [];
-    const card = pathCardOf(p, category, chs.data, profile, pathSubs, drafts);
-    return card ? [card] : [];
+    const built = pathCardOf(p, category, chs.data, profile, pathSubs, drafts);
+    return built ? [{ ...built, requires: p.requires }] : [];
   });
+  // Path order: every path the learner can see is loaded here, so a required one is looked up, not read again.
+  const requiredPaths = new Map(builtPaths.map(({ card, states }) => [card.slug, { slug: card.slug, title: card.title, states }]));
+  const pathCards = builtPaths.map((b) => withLock(b, b.requires, requiredPaths));
   const livePaths = pathCards.filter((p) => !p.isDraft);
 
   const categories = cats.data
@@ -471,7 +497,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     myDrafts(profile.id),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires")
       .eq("category_slug", slug)
       .eq("status", "published") // like challenges: draft paths only under the tester's filter on home
       .order("title"),
@@ -488,11 +514,14 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
       const progress = progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, drafts, now);
       return { ...cardOf(ch, category, progress), required: progress.required };
     });
-  const pathCards: HomeCard[] = paths.data.flatMap((p) => {
+  const builtPaths = paths.data.flatMap((p) => {
     if (!isPathVisible(p, category, profile.track)) return [];
-    const card = pathCardOf(p, category, chs.data, viewer, realSubs, drafts);
-    return card ? [card] : [];
+    const built = pathCardOf(p, category, chs.data, viewer, realSubs, drafts);
+    return built ? [{ ...built, requires: p.requires }] : [];
   });
+  // A required path can be in another category: read as on the path page, so the lock is the same everywhere.
+  const requiredPaths = await loadRequiredPaths(supabase, builtPaths.flatMap((b) => b.requires), profile);
+  const pathCards: HomeCard[] = builtPaths.map((b) => withLock(b, b.requires, requiredPaths));
 
   return {
     category,

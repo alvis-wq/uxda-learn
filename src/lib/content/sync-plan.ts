@@ -84,6 +84,7 @@ function samePath(a: PathRow, b: DbPath): boolean {
     a.audiences.join() === b.audiences.join() &&
     a.sequential === b.sequential &&
     a.milestones.join() === b.milestones.join() &&
+    a.requires.join() === b.requires.join() &&
     (a.before_you_start ?? null) === (b.before_you_start ?? null) &&
     a.before_you_submit.join("\n") === b.before_you_submit.join("\n")
   );

@@ -7,6 +7,9 @@ import type { AttemptSummary } from "@/lib/submissions/rules";
  * Unlocking (sequential paths): a milestone opens once the one before it has ANY attempt — awaiting review and
  * changes requested count — so nobody waits on a review to go on. A milestone the learner already has an attempt on
  * is never locked (imported progress can skip ahead). A non-sequential path has nothing locked.
+ *
+ * Path order (`requires`): a path stays locked, every milestone with it, until each path it requires has an attempt
+ * on every milestone (the same rule, one level up). See `blockingPath`.
  */
 
 export type MilestoneStatus = "locked" | "not_started" | "in_progress" | "awaiting_review" | "changes_requested" | "done";
@@ -46,6 +49,8 @@ export type MilestoneState = {
   done: boolean;
   /** Has any attempt, or saved work. */
   started: boolean;
+  /** Has any attempt (awaiting review counts): what unlocks the next milestone, and a path that requires this one. */
+  submitted: boolean;
 };
 
 function statusOf(m: MilestoneInput, bestScore: number | null): Exclude<MilestoneStatus, "locked"> {
@@ -80,8 +85,44 @@ export function milestoneStates(sequential: boolean, milestones: readonly Milest
       // Done = a score that counts (a retry awaiting review doesn't undo it); for a test, any attempt.
       done: m.testing ? m.attempts.length > 0 : bestScore !== null,
       started: m.attempts.length > 0 || m.hasDraft,
+      submitted: m.attempts.length > 0,
     };
   });
+}
+
+/** A path another one requires: its title and the learner's states on the milestones they can see. */
+export type RequiredPath = { slug: string; title: string; states: readonly MilestoneState[] };
+
+/** The path a locked path waits for. */
+export type PathLock = { slug: string; title: string };
+
+/**
+ * Path order: the first path in `requires` that still holds this one back, i.e. one with a milestone that has no
+ * attempt yet; null when nothing does. A required path the learner can't see (missing from `required`, or without a
+ * visible milestone) holds nothing back, so nobody waits on a draft or archived path. A path the learner already has
+ * an attempt in is never locked, like a milestone (imported progress can skip ahead).
+ */
+export function blockingPath(
+  requires: readonly string[],
+  required: ReadonlyMap<string, RequiredPath>,
+  own: readonly MilestoneState[],
+): PathLock | null {
+  if (own.some((s) => s.submitted)) return null;
+  for (const slug of requires) {
+    const p = required.get(slug);
+    if (p && p.states.length > 0 && !p.states.every((s) => s.submitted)) return { slug: p.slug, title: p.title };
+  }
+  return null;
+}
+
+/** A locked path's roadmap: every milestone locked. */
+export function lockAll(states: readonly MilestoneState[]): MilestoneState[] {
+  return states.map((s) => ({ ...s, status: "locked", unlocked: false }));
+}
+
+/** "Unlocks after Bring a brand into the template" */
+export function pathLockLine(lock: Pick<PathLock, "title">): string {
+  return `Unlocks after ${lock.title}`;
 }
 
 export type PathSummary = {
@@ -126,6 +167,8 @@ export type MilestonePlace = {
   position: number;
   total: number;
   locked: boolean;
+  /** Set when the whole path is locked: the path it waits for. */
+  lockedBy: PathLock | null;
   /** The next milestone, when there is one. */
   next: { slug: string; title: string } | null;
 };
@@ -134,6 +177,7 @@ export function milestonePlace(
   path: { slug: string; title: string },
   states: readonly MilestoneState[],
   slug: string,
+  lockedBy: PathLock | null = null,
 ): MilestonePlace | null {
   const i = states.findIndex((s) => s.slug === slug);
   if (i < 0) return null;
@@ -144,11 +188,13 @@ export function milestonePlace(
     position: i + 1,
     total: states.length,
     locked: !states[i].unlocked,
+    lockedBy: states[i].unlocked ? null : lockedBy,
     next: next ? { slug: next.slug, title: next.title } : null,
   };
 }
 
 /** Why a milestone can't be opened or submitted yet; null when it can. */
-export function lockReason(place: Pick<MilestonePlace, "locked" | "position"> | null): string | null {
-  return place?.locked ? `Submit milestone ${place.position - 1} first.` : null;
+export function lockReason(place: Pick<MilestonePlace, "locked" | "position" | "lockedBy"> | null): string | null {
+  if (!place?.locked) return null;
+  return place.lockedBy ? `${pathLockLine(place.lockedBy)}.` : `Submit milestone ${place.position - 1} first.`;
 }

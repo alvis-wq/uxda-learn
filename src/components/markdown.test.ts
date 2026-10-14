@@ -57,3 +57,47 @@ describe("Markdown images", () => {
     }
   });
 });
+
+describe("Markdown side images", () => {
+  const md = 'What to do:\n\n- One\n- Two\n\n![The sidebar](/challenges/claude-code-sidebar.png "side")\n\nAfter.';
+  const html = render(md);
+  const row = html.match(/<div class="[^"]*md:flex-row[^"]*" data-testid="brief-side-row">([\s\S]*?)<p>After\.<\/p>/)?.[1] ?? "";
+
+  it("puts a side image and the block before it in one row: side by side from 768 px, stacked below", () => {
+    expect(html).toContain('data-testid="brief-side-row"');
+    expect(html).toMatch(/class="my-6 flex flex-col gap-4 md:flex-row md:items-start md:gap-8"/);
+    expect(row).toContain("<li>One</li>");
+    // The text comes first, so a narrow screen shows the image under it; the image column is about 40% wide.
+    expect(row.indexOf("<ul>")).toBeLessThan(row.indexOf("<img"));
+    expect(row).toMatch(/<div class="m-0 md:w-2\/5 md:shrink-0">/);
+    expect(row.match(/<img[^>]*>/)?.[0]).toContain("data-side");
+  });
+
+  it("leaves the text before the row, and an ordinary image, as they were", () => {
+    expect(html.indexOf("<p>What to do:</p>")).toBeLessThan(html.indexOf("brief-side-row"));
+    const plain = render("Text.\n\n![The sidebar](/challenges/claude-code-sidebar.png)");
+    expect(plain).not.toContain("brief-side-row");
+    expect(plain.match(/<img[^>]*>/)?.[0]).not.toContain("data-side");
+  });
+
+  it("doesn't pass the title on to the page", () => {
+    expect(html).not.toContain('title="side"');
+  });
+});
+
+describe("Markdown image lightbox", () => {
+  const html = render("![The Claude Code sidebar](/challenges/claude-code-sidebar.png)");
+
+  it("makes every brief image a button named by its alt text that opens it larger", () => {
+    const button = html.match(/<button[^>]*data-testid="brief-image-open"[^>]*>([\s\S]*?)<\/button>/);
+    expect(button?.[0]).toContain('type="button"');
+    expect(button?.[0]).toContain('aria-haspopup="dialog"');
+    expect(button?.[0]).toContain('aria-expanded="false"');
+    expect(button?.[1]).toContain('alt="The Claude Code sidebar"');
+    expect(button?.[1]).toContain('<span class="sr-only"> (open larger)</span>');
+  });
+
+  it("renders the large view only once opened", () => {
+    expect(html).not.toContain("brief-image-dialog");
+  });
+});

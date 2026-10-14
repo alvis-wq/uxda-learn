@@ -1,0 +1,6 @@
+categories:
+  - slug: e2e-path-order
+    title: "[E2E] Path order"
+    audiences: all
+    description: Temporary path-order fixture created and removed by the E2E suite.
+    sort_order: 9997

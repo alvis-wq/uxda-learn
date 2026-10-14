@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, Route } from "lucide-react";
+import { ArrowRight, Lock, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
 import { Progress } from "@/components/ui/progress";
 import type { CardPath } from "@/lib/data/learner";
-import { pathProgressLine } from "@/lib/paths/progress";
+import { pathLockLine, pathProgressLine } from "@/lib/paths/progress";
 import { cn } from "@/lib/utils";
 
 /**
  * A learning path as one compact card: a small "Path" label, the title, one line of context, one progress line
  * ("2 of 7 · 40/160 pts") with a bar, and the CTA. Same surface as a challenge card; the whole card is the title's
- * link, so its accessible name stays the path title. The milestones themselves are only on the path page.
+ * link, so its accessible name stays the path title. The milestones themselves are only on the path page. A locked
+ * path (`requires`) says what it waits for in place of the CTA; it still opens its page, where nothing can be started.
  */
 export function PathCard({
   path: p,
@@ -58,14 +59,24 @@ export function PathCard({
         <Progress value={percent} aria-label={`${p.title}: ${p.progress.done} of ${p.progress.total} milestones done`} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span
-          aria-hidden
-          className="bg-primary text-primary-foreground inline-flex h-10 w-fit items-center gap-2 rounded-full px-5 text-sm font-medium"
-          data-testid="path-cta"
-        >
-          {p.cta}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
-        </span>
+        {p.lockedBy ? (
+          <p
+            className="text-muted-foreground bg-background inline-flex min-h-10 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
+            data-testid="path-locked"
+          >
+            <Lock className="size-4 shrink-0" aria-hidden />
+            {pathLockLine({ title: p.lockedBy })}
+          </p>
+        ) : (
+          <span
+            aria-hidden
+            className="bg-primary text-primary-foreground inline-flex h-10 w-fit items-center gap-2 rounded-full px-5 text-sm font-medium"
+            data-testid="path-cta"
+          >
+            {p.cta}
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+          </span>
+        )}
         {p.isDraft && <DraftBadge />}
       </div>
     </article>

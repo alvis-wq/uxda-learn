@@ -114,8 +114,23 @@ external-link icon. Links into the app open in the same tab, with no icon: link 
 
 **Images in a brief:** put the file in `public/challenges/` and write `![what the image shows](/challenges/file.png)`
 (`.png`, `.jpg`, `.webp` or `.avif`, lowercase, no folders). The alt text is required — say what the image shows, for
-people who can't see it. Images fit the text column and scale down on small screens. `content:validate` fails on a
-missing file, missing alt text, or an image from anywhere else (those are never shown).
+people who can't see it. Images fit the text column and scale down on small screens. Clicking any brief image opens
+it larger (Escape closes it). `content:validate` fails on a missing file, missing alt text, or an image from anywhere
+else (those are never shown).
+
+**Side images:** give the image the title `"side"` to show it to the right of the block just before it (a list, a
+paragraph), about 40% of the column wide. Under 768 px it goes below that block at full width. Put it on a line of
+its own, with an empty line before and after (otherwise markdown joins it to the text around it):
+
+```markdown
+- **Arcnine Desktop** — find the file in our Figma.
+- **Template** — the UXDA Design System Template.
+
+![Example Claude Code sidebar with a section per folder](/challenges/claude-code-sidebar.png "side")
+```
+
+`"side"` is the only title an image can have; `content:validate` fails on any other, or on a side image with no text
+before it.
 
 `tip` is a short markdown hint shown in a subtle box above the questions (on the first questions step
 of a stepped challenge). It is display-only, like `image`: changing it never bumps the `version`, and it
@@ -138,6 +153,7 @@ sequential: true                   # default true: each milestone unlocks once t
 milestones:                        # challenge slugs, in order (2 or more)
   - alh-1-edit-auto-layout-card
   - alh-2-convert-manual-layout
+requires: [auto-layout-basics]     # optional: paths that come first; this one stays locked until each is all submitted
 before_you_start: >-               # optional markdown (≤ 600 characters) in a "Before you start" box at the top of the path page
   You need the **uxda-design-systems** plugin in Claude Code. Ask Alvis if it's missing.
 before_you_submit:                 # optional, up to 8 short lines in a "Before you submit" box on the path page
@@ -155,6 +171,13 @@ path: auto-layout-homework
 - **Unlocking** (`sequential: true`): milestone 1 is open; each next one opens as soon as the one before it has any
   attempt — awaiting review, changes requested and done all count, so nobody waits for a review to go on. A locked
   milestone can't be opened or submitted (checked on the server). `sequential: false` opens them all.
+- **Path order** (`requires`): the path stays locked until every milestone of each required path has an attempt (the
+  same rule: awaiting review counts). Its card and page say "Unlocks after <path title>", and none of its milestones
+  can be opened or submitted (checked on the server). A tester trying drafts is held to the same rule with their test
+  attempts. A required path the learner can't see (a draft for a non-tester, archived, another track) holds nothing
+  back, and a path the learner already has an attempt in is never locked. `content:validate` checks that every
+  required path exists, isn't the path itself and doesn't go round in a loop. Like `milestones`, it's content: synced
+  every time.
 - **Counting:** on home and in the filter counts the path is **one item**, done when every milestone is done. Its
   card shows "2 of 7 · 40/160 pts" and Start / Continue / View.
 - **Rules** (`content:validate`): every listed slug exists, says `path: <this path>`, is listed once and in one path

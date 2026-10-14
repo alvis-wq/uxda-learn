@@ -42,14 +42,14 @@ In **Documents/UXDA-DS/**, create one folder per Figma file: **Arcnine Desktop**
 2. Inside it, create five folders: **Arcnine Desktop**, **Arcnine Mobile**, **DIB Components**, **DIB Tokens** and **Template**.
 3. Open each of the five folders in Claude Code. Each one gets its own section in the sidebar.
 
-![Example Claude Code sidebar with a separate section for each folder: Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template, each with a "DSX Connect design system" chat](/challenges/claude-code-sidebar.png)
-
 ### Our five design system files
 - **Arcnine Desktop** — find the file in our Figma.
 - **Arcnine Mobile** — find the file in our Figma.
 - **DIB Components** — find the file in our Figma.
 - **DIB Tokens** — find the file in our Figma.
 - **Template** — the UXDA Design System Template: [open it in Figma](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82)
+
+![Example Claude Code sidebar with a separate section for each folder: Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template, each with a "DSX Connect design system" chat](/challenges/claude-code-sidebar.png "side")
 
 ### What to send
 A screenshot of your Claude Code sidebar.

@@ -3,3 +3,4 @@ title: Second
 category: strat-only
 summary: Shares a milestone.
 milestones: [in-two-paths, draft-step]
+requires: [bad-links]
