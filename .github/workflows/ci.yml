@@ -39,3 +39,10 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Fails only on HIGH or CRITICAL advisories in production dependencies (devDependencies are left out on purpose:
+      # the linter and the Tailwind build never ship). Last, so a new advisory never hides a typecheck, test or build
+      # failure. A newly published advisory can turn this red without any change here: see DECISIONS.md for what to do.
+      - name: Audit production dependencies
+        run: npm run audit:prod
+
