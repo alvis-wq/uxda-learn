@@ -13,7 +13,7 @@ function challenge(over: Partial<Challenge> = {}): Challenge {
   return {
     slug: "c1", category_slug: "cat", title: "C1", summary: null, body_md: "b", type: "quiz",
     audiences: ["all"], required_for: [], difficulty: 1, points: 10, estimated_minutes: null, version: 1,
-    content_hash: "h", status: "published", due_at: null, updated_at: "", image: null, tip: null,
+    content_hash: "h", status: "published", due_at: null, updated_at: "", image: null, tip: null, path_slug: null,
     questions: [
       { id: "q1", kind: "single", prompt: "p", options: [{ id: "a", label: "A" }, { id: "b", label: "B" }], points: 4 },
       { id: "q2", kind: "multi", prompt: "p", options: [{ id: "a", label: "A" }, { id: "b", label: "B" }, { id: "c", label: "C" }], points: 6 },

@@ -1,5 +1,7 @@
 import "server-only";
 import { isChallengeVisible } from "@/lib/challenges/model";
+import { loadMilestonePlace } from "@/lib/data/paths";
+import { lockReason } from "@/lib/paths/progress";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import type { Track } from "@/lib/tracks";
 
@@ -22,4 +24,20 @@ export async function loadOpenChallenge(
     .eq("slug", row.category_slug)
     .maybeSingle();
   return isChallengeVisible(row, category, track, tester) ? row : null;
+}
+
+/**
+ * For a path milestone: why this learner can't act on it now (they can't see its path, or it is locked because the
+ * milestone before it has no attempt yet), else null. Null for a challenge that isn't a milestone. The page redirects
+ * a locked milestone to its path; this is the server-side stop for submitting and saving.
+ */
+export async function milestoneGate(
+  admin: ReturnType<typeof createAdminClient>,
+  row: { slug: string; path_slug: string | null },
+  viewer: { id: string; track: Track | null; is_tester: boolean },
+): Promise<string | null> {
+  const place = await loadMilestonePlace(admin, row, viewer);
+  if (place === "hidden") return "This challenge isn't open for submissions.";
+  const reason = lockReason(place);
+  return reason ? `This milestone is locked. ${reason}` : null;
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { challengePlaceholders, type AuditRow } from "@/lib/admin/challenge-settings";
+import { findPlaceholders } from "@/lib/content/placeholders";
 import { requireAdmin } from "@/lib/auth/admin";
 import { parseChallenge } from "@/lib/challenges/model";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -16,6 +17,8 @@ type AuditSelect = {
   changed_at: string;
   actor: { full_name: string | null; email: string } | null;
 };
+
+const PATH_AUDIT_COLUMNS = "id,path_slug,field,old_value,new_value,source,changed_at,actor:profiles!path_settings_audit_changed_by_fkey(full_name,email)";
 
 const AUDIT_COLUMNS = "id,challenge_slug,field,old_value,new_value,source,changed_at,actor:profiles!challenge_settings_audit_changed_by_fkey(full_name,email)";
 
@@ -47,12 +50,12 @@ function toFeedbackItem(r: FeedbackSelect): FeedbackItem {
 export async function getContentOverview() {
   await requireAdmin();
   const supabase = await createClient();
-  const [categories, challenges, subs, audit, keys, feedback] = await Promise.all([
+  const [categories, challenges, subs, audit, keys, feedback, paths, pathAudit] = await Promise.all([
     supabase.from("categories").select("*").order("sort_order"),
     supabase
       .from("challenges")
       .select(
-        "slug,category_slug,title,summary,body_md,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric",
+        "slug,category_slug,title,summary,body_md,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric,path_slug",
       )
       .order("title"),
     supabase.from("submissions").select("challenge_slug").eq("is_test", false),
@@ -60,8 +63,10 @@ export async function getContentOverview() {
     createAdminClient().from("challenge_keys").select("challenge_slug,grader_notes"),
     // Admin RLS lets the admin's own client read every note.
     supabase.from("challenge_feedback").select(FEEDBACK_COLUMNS).order("created_at", { ascending: false }),
+    supabase.from("paths").select("*").order("title"),
+    supabase.from("path_settings_audit").select(PATH_AUDIT_COLUMNS).order("changed_at", { ascending: false }),
   ]);
-  for (const res of [categories, challenges, subs, audit, keys, feedback]) {
+  for (const res of [categories, challenges, subs, audit, keys, feedback, paths, pathAudit]) {
     if (res.error) throw new Error(`Couldn't load content: ${res.error.message}`);
   }
 
@@ -77,6 +82,12 @@ export async function getContentOverview() {
     feedbackBySlug.set(r.challenge_slug, [...(feedbackBySlug.get(r.challenge_slug) ?? []), toFeedbackItem(r)]); // newest first
   }
   const cats = categories.data ?? [];
+  const pathHistory = new Map<string, AuditRow[]>();
+  for (const r of (pathAudit.data ?? []) as unknown as (AuditSelect & { path_slug: string })[]) {
+    pathHistory.set(r.path_slug, [...(pathHistory.get(r.path_slug) ?? []), toAuditRow(r)]);
+  }
+  const challengeBySlug = new Map((challenges.data ?? []).map((c) => [c.slug, c]));
+  const pathBySlug = new Map((paths.data ?? []).map((p) => [p.slug, p]));
 
   return cats.map((cat) => ({
     category: cat,
@@ -102,8 +113,39 @@ export async function getContentOverview() {
         }),
         history: history.get(c.slug) ?? [],
         feedback: feedbackBySlug.get(c.slug) ?? [],
+        path: milestoneOf(c, pathBySlug),
       })),
+    paths: (paths.data ?? [])
+      .filter((p) => p.category_slug === cat.slug)
+      .map((p) => {
+        const milestones = p.milestones.flatMap((s) => {
+          const c = challengeBySlug.get(s);
+          return c ? [{ slug: c.slug, title: c.title, status: c.status, points: c.points }] : [];
+        });
+        return {
+          slug: p.slug,
+          title: p.title,
+          summary: p.summary,
+          status: p.status,
+          audiences: p.audiences,
+          sequential: p.sequential,
+          milestones,
+          points: milestones.reduce((sum, m) => sum + m.points, 0),
+          placeholders: findPlaceholders({ title: p.title, summary: p.summary, "before you submit": p.before_you_submit }),
+          history: pathHistory.get(p.slug) ?? [],
+        };
+      }),
   }));
+}
+
+/** "Milestone 2 of 7 · Auto Layout homework" for a challenge in a path. */
+function milestoneOf(
+  c: { slug: string; path_slug: string | null },
+  paths: Map<string, { slug: string; title: string; milestones: string[] }>,
+): { slug: string; title: string; position: number; total: number } | null {
+  const p = c.path_slug ? paths.get(c.path_slug) : undefined;
+  if (!p) return null;
+  return { slug: p.slug, title: p.title, position: p.milestones.indexOf(c.slug) + 1, total: p.milestones.length };
 }
 
 /**

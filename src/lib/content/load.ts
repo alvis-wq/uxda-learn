@@ -6,8 +6,10 @@ import type { z } from "zod";
 import {
   categoriesFileSchema,
   challengeFrontmatterSchema,
+  pathFileSchema,
   type Category,
   type ChallengeFrontmatter,
+  type PathFile,
 } from "./schema";
 
 export type ContentError = { file: string; message: string };
@@ -18,9 +20,15 @@ export type LoadedChallenge = {
   body: string;
 };
 
+export type LoadedPath = {
+  file: string; // relative to the content dir, e.g. paths/foo.yaml
+  data: PathFile;
+};
+
 export type LoadedContent = {
   categories: Category[];
   challenges: LoadedChallenge[];
+  paths: LoadedPath[];
   errors: ContentError[];
 };
 
@@ -80,5 +88,27 @@ export function loadContent(contentDir: string): LoadedContent {
     challenges.push({ file, data: result.data, body });
   }
 
-  return { categories, challenges, errors };
+  const paths: LoadedPath[] = [];
+  const pathDir = path.join(contentDir, "paths");
+  const pathFiles = existsSync(pathDir)
+    ? readdirSync(pathDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml")).sort()
+    : [];
+  for (const name of pathFiles) {
+    const file = `paths/${name}`;
+    let raw: unknown;
+    try {
+      raw = YAML.parse(readFileSync(path.join(pathDir, name), "utf8"));
+    } catch (err) {
+      errors.push({ file, message: `invalid YAML: ${(err as Error).message}` });
+      continue;
+    }
+    const result = pathFileSchema.safeParse(raw);
+    if (!result.success) {
+      for (const m of formatZodIssues(result.error)) errors.push({ file, message: m });
+      continue;
+    }
+    paths.push({ file, data: result.data });
+  }
+
+  return { categories, challenges, paths, errors };
 }

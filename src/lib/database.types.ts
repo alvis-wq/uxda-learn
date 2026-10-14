@@ -227,6 +227,7 @@ export type Database = {
           due_at: string | null
           estimated_minutes: number | null
           image: string | null
+          path_slug: string | null
           points: number
           questions: Json
           required_for: Database["public"]["Enums"]["audience"][]
@@ -250,6 +251,7 @@ export type Database = {
           due_at?: string | null
           estimated_minutes?: number | null
           image?: string | null
+          path_slug?: string | null
           points: number
           questions?: Json
           required_for?: Database["public"]["Enums"]["audience"][]
@@ -273,6 +275,7 @@ export type Database = {
           due_at?: string | null
           estimated_minutes?: number | null
           image?: string | null
+          path_slug?: string | null
           points?: number
           questions?: Json
           required_for?: Database["public"]["Enums"]["audience"][]
@@ -293,6 +296,13 @@ export type Database = {
             columns: ["category_slug"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "challenges_path_slug_fkey"
+            columns: ["path_slug"]
+            isOneToOne: false
+            referencedRelation: "paths"
             referencedColumns: ["slug"]
           },
         ]
@@ -354,6 +364,104 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "submissions"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      path_settings_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          field: string
+          id: number
+          new_value: Json | null
+          old_value: Json | null
+          path_slug: string
+          source: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          field: string
+          id?: never
+          new_value?: Json | null
+          old_value?: Json | null
+          path_slug: string
+          source: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          field?: string
+          id?: never
+          new_value?: Json | null
+          old_value?: Json | null
+          path_slug?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "path_settings_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "path_settings_audit_path_slug_fkey"
+            columns: ["path_slug"]
+            isOneToOne: false
+            referencedRelation: "paths"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      paths: {
+        Row: {
+          audiences: Database["public"]["Enums"]["audience"][]
+          before_you_submit: string[]
+          category_slug: string
+          created_at: string
+          milestones: string[]
+          sequential: boolean
+          slug: string
+          status: string
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audiences: Database["public"]["Enums"]["audience"][]
+          before_you_submit?: string[]
+          category_slug: string
+          created_at?: string
+          milestones: string[]
+          sequential?: boolean
+          slug: string
+          status?: string
+          summary: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audiences?: Database["public"]["Enums"]["audience"][]
+          before_you_submit?: string[]
+          category_slug?: string
+          created_at?: string
+          milestones?: string[]
+          sequential?: boolean
+          slug?: string
+          status?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paths_category_slug_fkey"
+            columns: ["category_slug"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["slug"]
           },
         ]
       }
@@ -489,6 +597,73 @@ export type Database = {
           },
         ]
       }
+      submission_import_audit: {
+        Row: {
+          action: string
+          challenge_slug: string
+          changed_at: string
+          changed_by: string | null
+          feedback: string | null
+          final_score: number
+          id: number
+          max_score: number
+          source: string
+          status: Database["public"]["Enums"]["submission_status"]
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          challenge_slug: string
+          changed_at?: string
+          changed_by?: string | null
+          feedback?: string | null
+          final_score: number
+          id?: never
+          max_score: number
+          source: string
+          status: Database["public"]["Enums"]["submission_status"]
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          challenge_slug?: string
+          changed_at?: string
+          changed_by?: string | null
+          feedback?: string | null
+          final_score?: number
+          id?: never
+          max_score?: number
+          source?: string
+          status?: Database["public"]["Enums"]["submission_status"]
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_import_audit_challenge_slug_fkey"
+            columns: ["challenge_slug"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "submission_import_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_import_audit_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submissions: {
         Row: {
           answers: Json
@@ -501,6 +676,9 @@ export type Database = {
           final_score: number | null
           id: string
           image_paths: string[]
+          imported_at: string | null
+          imported_by: string | null
+          is_imported: boolean
           is_test: boolean
           max_score: number
           published_at: string | null
@@ -520,6 +698,9 @@ export type Database = {
           final_score?: number | null
           id?: string
           image_paths?: string[]
+          imported_at?: string | null
+          imported_by?: string | null
+          is_imported?: boolean
           is_test?: boolean
           max_score: number
           published_at?: string | null
@@ -539,6 +720,9 @@ export type Database = {
           final_score?: number | null
           id?: string
           image_paths?: string[]
+          imported_at?: string | null
+          imported_by?: string | null
+          is_imported?: boolean
           is_test?: boolean
           max_score?: number
           published_at?: string | null
@@ -554,6 +738,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "challenges"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "submissions_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "submissions_user_id_fkey"
@@ -580,6 +771,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      import_submission: {
+        Args: {
+          p_actor: string
+          p_challenge: string
+          p_feedback: string
+          p_score: number
+          p_source: string
+          p_status: Database["public"]["Enums"]["submission_status"]
+          p_user: string
+        }
+        Returns: string
+      }
       is_admin: { Args: never; Returns: boolean }
       is_tester: { Args: never; Returns: boolean }
       my_track_sees: {
@@ -596,9 +799,23 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_path_status: {
+        Args: {
+          p_actor?: string
+          p_publish_milestones?: boolean
+          p_slug: string
+          p_source: string
+          p_value: string
+        }
+        Returns: boolean
+      }
       set_user_tester: {
         Args: { p_actor: string; p_user: string; p_value: boolean }
         Returns: boolean
+      }
+      undo_import: {
+        Args: { p_actor: string; p_source: string; p_submission: string }
+        Returns: undefined
       }
       valid_audiences: {
         Args: { a: Database["public"]["Enums"]["audience"][] }

@@ -152,6 +152,20 @@ export const challengeFrontmatterSchema = z.strictObject({
   submission: submissionSpecSchema.optional(),
   rubric: z.array(rubricCriterionSchema).default([]),
   grader_notes: z.string().optional(),
+  path: slug.optional(), // a milestone of this learning path (content/paths/<slug>.yaml); listed only inside it
+});
+
+/** A learning path: one card that opens a roadmap of milestone challenges (content/paths/<slug>.yaml). */
+export const pathFileSchema = z.strictObject({
+  slug,
+  title: nonEmpty,
+  category: slug,
+  audiences: audiencesSchema.optional(), // defaults to the category's audiences
+  summary: nonEmpty.max(160, "keep the summary to one short sentence (at most 160 characters)"),
+  sequential: z.boolean().default(true),
+  milestones: z.array(slug).min(2, "a path needs at least 2 milestones"),
+  before_you_submit: z.array(nonEmpty.max(200, "keep each line short (at most 200 characters)")).max(8, "at most 8 lines").default([]),
+  status: challengeStatusSchema.default("draft"), // initial value only, like a challenge's
 });
 
 export type Category = z.infer<typeof categorySchema>;
@@ -159,6 +173,7 @@ export type Question = z.infer<typeof questionSchema>;
 export type SubmissionSpec = z.infer<typeof submissionSpecSchema>;
 export type RubricCriterion = z.infer<typeof rubricCriterionSchema>;
 export type ChallengeFrontmatter = z.infer<typeof challengeFrontmatterSchema>;
+export type PathFile = z.infer<typeof pathFileSchema>;
 
 /** A question as shown to users: never includes the answer. */
 export type PublicQuestion =

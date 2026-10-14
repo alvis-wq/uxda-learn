@@ -119,6 +119,50 @@ can't contain a `TODO…` placeholder in a published challenge.
 \* Used only when the challenge is first synced; afterwards these are managed in Admin → Content
 (see "Who owns what").
 
+## Learning paths (`content/paths/<slug>.yaml`)
+A path is **one card** on the home page and in its category that opens a roadmap of **milestones**. Each milestone is
+an ordinary challenge (same submit, review and scoring), but it is never listed on its own: only inside its path.
+
+```yaml
+slug: auto-layout-homework         # must match the filename
+title: Auto Layout homework
+category: wireframing              # must exist in categories.yaml
+audiences: [strategist]            # optional, defaults to the category's; may narrow it, never widen it
+summary: Seven Figma tasks to make your layouts easy to edit and resize.   # one sentence (≤ 160 characters)
+sequential: true                   # default true: each milestone unlocks once the one before it is SUBMITTED
+milestones:                        # challenge slugs, in order (2 or more)
+  - alh-1-edit-auto-layout-card
+  - alh-2-convert-manual-layout
+before_you_submit:                 # optional, up to 8 short lines in a "Before you submit" box on the path page
+  - Make every frame 360 px wide.
+status: draft                      # initial value* — draft | published | archived
+```
+
+Each milestone challenge says which path it belongs to:
+
+```yaml
+path: auto-layout-homework
+```
+
+- **Points:** a path has none of its own; its total is the sum of its milestones.
+- **Unlocking** (`sequential: true`): milestone 1 is open; each next one opens as soon as the one before it has any
+  attempt — awaiting review, changes requested and done all count, so nobody waits for a review to go on. A locked
+  milestone can't be opened or submitted (checked on the server). `sequential: false` opens them all.
+- **Counting:** on home and in the filter counts the path is **one item**, done when every milestone is done. Its
+  card shows "2 of 7 · 40/160 pts" and Start / Continue / View.
+- **Rules** (`content:validate`): every listed slug exists, says `path: <this path>`, is listed once and in one path
+  only; every challenge with `path:` is listed in that path; a milestone has the same category and audiences as its
+  path; it can't be `acknowledge`, and it has no `required_for` or `due_at` of its own. A path that says
+  `status: published` can't list a milestone that isn't published or contain a `TODO…` placeholder.
+- **Status** works like a challenge's: the file sets it on creation, then Admin → Content owns it (audited).
+  Publishing a path there also publishes its draft milestones, after checking none has placeholders. Removing the
+  file archives the path. `path:`, like `image`, is display-only: moving a challenge into a path never bumps its version.
+- **Testers** see a draft path (and its draft milestones) under "Drafts — testing"; their attempts are test attempts.
+- **Imported progress:** work done before UXDA Learn is recorded per milestone in Admin → Users → a user → Path
+  progress (done with a score and a note, or changes requested with feedback), or in bulk with
+  `npx tsx scripts/import-path-progress.ts <file.json> --as <admin email> [--apply]` (dry run without `--apply`; see
+  `data/auto-layout-import.json`). Imports need a published path; each is a normal attempt flagged "imported", audited.
+
 ## Drafts and testers
 A challenge synced as `status: draft` is invisible to learners. An admin can mark any user a **tester**
 (Admin → Users → Tester); testers also see drafts that their track can see (the challenge's and its

@@ -2,7 +2,7 @@ import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../src/lib/database.types";
 import { loadAndValidate } from "../../src/lib/content";
-import { toCategoryRow, toChallengeRows } from "../../src/lib/content/transform";
+import { toCategoryRow, toChallengeRows, toPathRow } from "../../src/lib/content/transform";
 import { testUser } from "../../src/lib/auth/test-login";
 
 type Db = SupabaseClient<Database>;
@@ -60,6 +60,12 @@ export async function installFixtures(db: Db, dir: string = FIXTURE_DIR) {
   if (errors.length) throw new Error(`Test fixtures invalid: ${JSON.stringify(errors)}`);
   const { error: catErr } = await db.from("categories").upsert(content.categories.map(toCategoryRow));
   if (catErr) throw new Error(`fixture categories: ${catErr.message}`);
+  // Paths before challenges: a milestone's path_slug references its path.
+  for (const p of content.paths) {
+    const { row, status } = toPathRow(p.data, content.categories);
+    const { error } = await db.from("paths").upsert({ ...row, status });
+    if (error) throw new Error(`fixture path ${row.slug}: ${error.message}`);
+  }
   for (const ch of content.challenges) {
     const { challenge, settings, key } = toChallengeRows(ch, content.categories);
     const { error } = await db.from("challenges").upsert({
@@ -111,4 +117,15 @@ export async function ensureTestUser(db: Db, email: string, fullName: string): P
   });
   if (error || !data.user) throw new Error(`test user ${email}: ${error?.message}`);
   return data.user.id;
+}
+
+/** Remove a fixture path, its milestones (and what hangs off them) and their category. */
+export async function removePathFixture(db: Db, dir: string) {
+  const { content } = loadAndValidate(dir);
+  const slugs = content.challenges.map((c) => c.data.slug);
+  await db.from("submission_import_audit").delete().in("challenge_slug", slugs);
+  await db.from("challenges").update({ path_slug: null }).in("slug", slugs);
+  await db.from("paths").delete().in("slug", content.paths.map((p) => p.data.slug)); // audit rows cascade
+  await removeChallenges(db, slugs);
+  await db.from("categories").delete().in("slug", content.categories.map((c) => c.slug));
 }

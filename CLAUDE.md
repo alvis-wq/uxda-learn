@@ -38,6 +38,11 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   Anything with screenshots, Figma, reflection or text questions goes:
   `submitted → ai_reviewed (via /evaluate) → published` (admin approves)
   or `→ needs_resubmission`.
+- Learning paths (`content/paths/*.yaml`): one card that opens a roadmap of milestone challenges (`path:` on the
+  challenge). Milestones are listed only inside their path; a path counts as one item, done when every milestone is
+  done; in a sequential path a milestone unlocks once the previous one has any attempt (checked on the server).
+  Admins can import earlier progress (Admin → Users → a user, or `scripts/import-path-progress.ts`): a normal attempt
+  flagged `is_imported`, only on a published path, written by `import_submission()` and audited.
 - Testers (`profiles.is_tester`, switched in Admin → Users, audited) can see and take DRAFT challenges their
   track can see (RLS on `challenges`; archived stays hidden). Their attempts on a draft are test attempts
   (`submissions.is_test`): published at once, numbered apart from the 3-attempt limit, shown with the answer key,

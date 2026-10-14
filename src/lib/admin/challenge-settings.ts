@@ -43,6 +43,8 @@ export type SettingContext = {
     questions: unknown;
     submission_spec: unknown;
     rubric: unknown;
+    /** Set for a learning path's milestone: it is never required or due on its own. */
+    path_slug?: string | null;
   };
   category: { audiences: Audience[] } | null;
   graderNotes: string | null;
@@ -67,6 +69,10 @@ export function challengePlaceholders(ctx: SettingContext) {
 
 /** Why a (schema-valid) change isn't allowed for this challenge, or null when it is. */
 export function settingChangeError(change: SettingChange, ctx: SettingContext): string | null {
+  if (ctx.challenge.path_slug) {
+    if (change.field === "required_for" && change.value.length > 0) return "A path milestone can't be required on its own.";
+    if (change.field === "due_at" && change.value !== null) return "A path milestone can't have its own due date.";
+  }
   if (change.field === "required_for" && change.value.length > 0) {
     if (!ctx.category) return "This challenge's category is missing.";
     const visible = visibleTracks(ctx.category.audiences, ctx.challenge.audiences);
@@ -131,4 +137,30 @@ export function describeAudit(row: AuditRow): { change: string; who: string } {
     : `${row.field} changed`;
   const who = row.source === "content:sync" ? "content:sync (file removed)" : (row.actor ?? "Former admin");
   return { change, who };
+}
+
+/** A learning path's status change (Admin → Content). Publishing also publishes its draft milestones. */
+export const pathStatusChangeSchema = z.strictObject({ slug, value: challengeStatusSchema });
+
+/**
+ * Why a path can't be published, or null: placeholders in the path itself or in any milestone that publishing would
+ * publish (its drafts), and at least one milestone that isn't archived.
+ */
+export function pathPublishError(
+  path: { slug: string; title: string; summary: string; before_you_submit: string[] },
+  milestones: (SettingContext & { status: string })[],
+): string | null {
+  const own = findPlaceholders({ title: path.title, summary: path.summary, "before you submit": path.before_you_submit });
+  if (own.length) {
+    return `Can't publish: the path still has placeholders — ${describePlaceholders(own)}. Fill them in in content/paths/${path.slug}.yaml and run content:sync.`;
+  }
+  if (!milestones.some((m) => m.status !== "archived")) return "Can't publish: the path has no milestones to show.";
+  for (const m of milestones) {
+    if (m.status !== "draft") continue;
+    const hits = challengePlaceholders(m);
+    if (hits.length) {
+      return `Can't publish: milestone “${m.challenge.title}” still has placeholders — ${describePlaceholders(hits)}.`;
+    }
+  }
+  return null;
 }

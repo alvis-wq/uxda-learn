@@ -31,7 +31,7 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
   const supabase = await createClient();
   const { data: sub } = await supabase
     .from("submissions")
-    .select("*, profiles!submissions_user_id_fkey(full_name,email,track)")
+    .select("*, profiles!submissions_user_id_fkey(full_name,email,track), importer:profiles!submissions_imported_by_fkey(full_name,email)")
     .eq("id", id)
     .maybeSingle();
   if (!sub) notFound();
@@ -73,6 +73,12 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {sub.is_test && <Badge variant="outline">Test attempt — doesn&apos;t count</Badge>}
+          {sub.is_imported && (
+            <Badge variant="outline" data-testid="admin-imported">
+              Imported by {sub.importer?.full_name ?? sub.importer?.email ?? "a former admin"}
+              {sub.imported_at && ` · ${new Date(sub.imported_at).toLocaleDateString("en-GB", { dateStyle: "medium" })}`}
+            </Badge>
+          )}
           <Badge variant={reviewable ? "default" : "secondary"} data-testid="admin-status">
             {STATUS_LABEL[sub.status]}
           </Badge>

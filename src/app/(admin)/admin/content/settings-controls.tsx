@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatSettingValue } from "@/lib/admin/challenge-settings";
 import { TRACKS, TRACK_VALUES, type Audience, type Track } from "@/lib/tracks";
-import { updateChallengeSetting } from "./actions";
+import { updateChallengeSetting, updatePathStatus } from "./actions";
 
 type Props = {
   slug: string;
@@ -18,6 +18,8 @@ type Props = {
   requiredFor: Audience[];
   dueAt: string | null;
   visibleTracks: Track[];
+  /** A path milestone: only its status is set here (never required or due on its own). */
+  milestone?: boolean;
 };
 
 const STATUSES = [
@@ -28,6 +30,7 @@ const STATUSES = [
 
 /** Status, required-for and due date for one challenge. Every change saves immediately. */
 export function ChallengeSettingsControls(props: Props) {
+  if (props.milestone) return <StatusSelect {...props} />;
   return (
     <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start lg:grid-cols-[auto_1fr_auto]">
       <StatusSelect {...props} />
@@ -218,6 +221,50 @@ function DueDateInput({ slug, title, dueAt }: Props) {
       </div>
       <p id={`${id}-tz`} className="text-muted-foreground text-meta">
         {hydrated ? `Your time zone (${Intl.DateTimeFormat().resolvedOptions().timeZone}). Saves when you leave the field.` : " "}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * A learning path's status. Publishing also publishes its draft milestones (the server checks for placeholders
+ * first); every change is in the path's history, and each milestone's in its own.
+ */
+export function PathStatusSelect({ slug, title, status, draftMilestones }: { slug: string; title: string; status: string; draftMilestones: number }) {
+  const [pending, start] = useTransition();
+  const [value, setValue] = useOptimistic(status);
+  const id = `path-status-${slug}`;
+  const change = (next: string) =>
+    start(async () => {
+      setValue(next);
+      const res = await updatePathStatus({ slug, value: next });
+      if (!res.ok) toast.error(res.error);
+      else {
+        const extra = next === "published" && draftMilestones > 0 ? ` and its ${draftMilestones} draft ${draftMilestones === 1 ? "milestone" : "milestones"}` : "";
+        toast.success(`Status saved for “${title}”${extra}: ${formatSettingValue("status", next)}.`);
+      }
+    });
+  return (
+    <div className="grid gap-1.5">
+      <Label htmlFor={id} className="text-meta">
+        Path status
+      </Label>
+      <Select value={value} disabled={pending} onValueChange={change}>
+        <SelectTrigger id={id} size="sm" className="w-36" aria-label={`Status of the path ${title}`} aria-describedby={`${id}-hint`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUSES.map((s) => (
+            <SelectItem key={s.value} value={s.value}>
+              {s.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p id={`${id}-hint`} className="text-muted-foreground text-meta">
+        {draftMilestones > 0
+          ? `Publishing also publishes its ${draftMilestones} draft ${draftMilestones === 1 ? "milestone" : "milestones"}.`
+          : "All its milestones are already published or archived."}
       </p>
     </div>
   );

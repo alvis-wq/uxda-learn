@@ -16,11 +16,13 @@ function fakeDb(tables: Record<string, Row[]>) {
   const writes: { table: string; row: Row; options: unknown }[] = [];
   const client = {
     from(table: string) {
-      const filters: [string, unknown][] = [];
-      const rows = () => (tables[table] ?? []).filter((r) => filters.every(([k, v]) => r[k] === v));
+      const filters: ((r: Row) => boolean)[] = [];
+      const rows = () => (tables[table] ?? []).filter((r) => filters.every((f) => f(r)));
       const builder = {
         select: () => builder,
-        eq: (k: string, v: unknown) => (filters.push([k, v]), builder),
+        eq: (k: string, v: unknown) => (filters.push((r) => r[k] === v), builder),
+        in: (k: string, vs: unknown[]) => (filters.push((r) => vs.includes(r[k])), builder),
+        then: (resolve: (v: { data: Row[]; error: null }) => unknown) => resolve({ data: rows(), error: null }),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
         single: async () => ({ data: rows()[0] ?? null, error: rows()[0] ? null : { message: "none" } }),
         upsert: async (row: Row, options: unknown) => {
@@ -148,5 +150,66 @@ describe("submitChallenge", () => {
       submitChallenge("safety-rules", { answers: {}, imagePaths: [], figmaUrl: null, reflection: null }),
     ).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
     expect(db.writes).toEqual([]);
+  });
+});
+
+describe("submitChallenge on a path milestone", () => {
+  const milestone = (slug: string, over: Row = {}): Row => ({
+    slug, title: slug, category_slug: "wf", path_slug: "alh", type: "figma", status: "published", audiences: ["strategist"],
+    difficulty: 2, points: 20, version: 1, questions: [], rubric: [],
+    submission_spec: { figma_url: { required: true, label: "Link" } }, ...over,
+  });
+  const path = (over: Row = {}): Row => ({
+    slug: "alh", title: "Auto Layout", category_slug: "wf", status: "published", audiences: ["strategist"],
+    sequential: true, milestones: ["m1", "m2", "m3"], ...over,
+  });
+  function setupPath(submissions: Row[], pathOver: Row = {}) {
+    const db = fakeDb({
+      challenges: [milestone("m1"), milestone("m2"), milestone("m3")],
+      categories: [{ slug: "wf", title: "WF", archived: false, audiences: ["strategist"] }],
+      paths: [path(pathOver)],
+      submissions,
+      submission_drafts: [],
+    });
+    createAdminClient.mockReturnValue(db.client);
+    return db;
+  }
+  const input = { answers: {}, imagePaths: [], figmaUrl: null, reflection: null };
+  const sub = (slug: string, status: string): Row => ({
+    user_id: USER.id, challenge_slug: slug, attempt: 1, status, final_score: null, max_score: 20, is_test: false,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(USER);
+    getCurrentProfile.mockResolvedValue(profile("strategist"));
+  });
+
+  it("refuses a locked milestone (the one before has no attempt)", async () => {
+    const db = setupPath([]);
+    await expect(submitChallenge("m2", input)).resolves.toEqual({
+      ok: false,
+      error: "This milestone is locked. Submit milestone 1 first.",
+    });
+    expect(db.writes).toEqual([]);
+  });
+
+  it("opens the next milestone as soon as the previous one is awaiting review", async () => {
+    setupPath([sub("m1", "submitted")]);
+    // Past the lock: it gets as far as checking the form (no Figma link given).
+    await expect(submitChallenge("m2", input)).resolves.toMatchObject({ ok: false, error: "Please fix the highlighted fields." });
+    await expect(submitChallenge("m3", input)).resolves.toMatchObject({ error: "This milestone is locked. Submit milestone 2 first." });
+  });
+
+  it("never locks the first milestone", async () => {
+    setupPath([]);
+    await expect(submitChallenge("m1", input)).resolves.toMatchObject({ error: "Please fix the highlighted fields." });
+  });
+
+  it("refuses every milestone of a path the learner can't see", async () => {
+    setupPath([], { status: "draft" });
+    await expect(submitChallenge("m1", input)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
+    setupPath([], { status: "archived" });
+    await expect(submitChallenge("m1", input)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
   });
 });

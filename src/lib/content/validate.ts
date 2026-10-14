@@ -147,5 +147,81 @@ export function validateContent(
     }
   }
 
+  validatePaths(content, categoriesBySlug, err);
   return errors;
+}
+
+/** Same audience list, ignoring order ("all" only equals "all"). */
+function sameAudiences(a: readonly Audience[], b: readonly Audience[]): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x));
+}
+
+/**
+ * Learning paths (content/paths/*.yaml) and their milestones: every listed slug exists, points back at the path with
+ * `path:`, is listed once and in one path only; every challenge with `path:` is listed there; a milestone shares its
+ * path's category and audiences; it is never `acknowledge` and is never required or due on its own.
+ */
+function validatePaths(
+  content: LoadedContent,
+  categoriesBySlug: Map<string, LoadedContent["categories"][number]>,
+  err: (file: string, message: string) => void,
+) {
+  for (const slug of duplicates(content.paths.map((p) => p.data.slug))) {
+    const files = content.paths.filter((p) => p.data.slug === slug).map((p) => p.file);
+    err(files.join(", "), `duplicate path slug "${slug}"`);
+  }
+  const challengesBySlug = new Map(content.challenges.map((c) => [c.data.slug, c]));
+  const pathsBySlug = new Map(content.paths.map((p) => [p.data.slug, p]));
+  const resolved = (own: Audience[] | undefined, categorySlug: string): Audience[] =>
+    own ?? categoriesBySlug.get(categorySlug)?.audiences ?? [];
+  const listedIn = new Map<string, string[]>();
+
+  for (const { file, data: p } of content.paths) {
+    if (file !== `paths/${p.slug}.yaml`) err(file, `slug "${p.slug}" must match the filename (paths/${p.slug}.yaml)`);
+    const category = categoriesBySlug.get(p.category);
+    if (!category) err(file, `unknown category "${p.category}"`);
+    if (category && p.audiences && !p.audiences.includes("all")) {
+      const categoryTracks = audienceTracks(category.audiences) as Audience[];
+      for (const t of p.audiences) {
+        if (!categoryTracks.includes(t)) err(file, `audiences: ${TRACK_LABEL[t as Track]} can't see category "${category.slug}"`);
+      }
+    }
+    for (const slug of duplicates(p.milestones)) err(file, `milestones: "${slug}" is listed twice`);
+
+    if (p.status === "published") {
+      const hits = findPlaceholders({ title: p.title, summary: p.summary, "before you submit": p.before_you_submit });
+      if (hits.length) err(file, `status: published, but the path still has placeholders: ${describePlaceholders(hits)}`);
+    }
+
+    const pathAudiences = resolved(p.audiences, p.category);
+    for (const slug of new Set(p.milestones)) {
+      listedIn.set(slug, [...(listedIn.get(slug) ?? []), p.slug]);
+      const ch = challengesBySlug.get(slug);
+      if (!ch) {
+        err(file, `milestones: no challenge "${slug}"`);
+        continue;
+      }
+      const c = ch.data;
+      if (c.path !== p.slug) {
+        err(file, `milestones: "${slug}" must say \`path: ${p.slug}\`${c.path ? ` (it says path: ${c.path})` : ""}`);
+      }
+      if (c.category !== p.category) err(file, `milestones: "${slug}" is in category "${c.category}", the path in "${p.category}"`);
+      if (!sameAudiences(resolved(c.audiences, c.category), pathAudiences)) {
+        err(file, `milestones: "${slug}" must have the same audiences as the path`);
+      }
+      if (p.status === "published" && c.status !== "published") {
+        err(file, `status: published, but milestone "${slug}" is ${c.status}`);
+      }
+    }
+  }
+
+  for (const { file, data: c } of content.challenges) {
+    if (!c.path) continue;
+    if (!pathsBySlug.has(c.path)) err(file, `path: no path "${c.path}" (content/paths/${c.path}.yaml)`);
+    else if (!pathsBySlug.get(c.path)!.data.milestones.includes(c.slug)) err(file, `path: "${c.path}" doesn't list this challenge in its milestones`);
+    if ((listedIn.get(c.slug) ?? []).length > 1) err(file, `is a milestone of more than one path (${listedIn.get(c.slug)!.join(", ")})`);
+    if (c.type === "acknowledge") err(file, "a path milestone can't be an acknowledge challenge");
+    if (c.required_for) err(file, "required_for: a path milestone can't be required on its own");
+    if (c.due_at) err(file, "due_at: a path milestone can't have its own due date");
+  }
 }

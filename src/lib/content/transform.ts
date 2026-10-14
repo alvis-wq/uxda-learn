@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { LoadedChallenge } from "./load";
 import type { Audience } from "@/lib/tracks";
 import { shuffleItems } from "./order";
-import type { Category, PublicQuestion, Question } from "./schema";
+import type { Category, PathFile, PublicQuestion, Question } from "./schema";
 
 /** JSON with object keys sorted, so equal data always serialises identically (jsonb reorders keys). */
 export function canonicalJson(value: unknown): string {
@@ -62,6 +62,8 @@ export type ChallengeRow = {
   image: string | null;
   /** Short markdown hint shown above the questions. Display only, like `image`: it never changes content_hash. */
   tip: string | null;
+  /** The learning path this challenge is a milestone of. Display only, like `image`: it never changes content_hash. */
+  path_slug: string | null;
   content_hash: string;
 };
 
@@ -79,7 +81,7 @@ export const SETTING_FIELDS = ["status", "required_for", "due_at"] as const sati
 export type SettingField = (typeof SETTING_FIELDS)[number];
 
 /** The public fields content_hash covers (everything in ChallengeRow except the hash). */
-export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image" | "tip">;
+export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image" | "tip" | "path_slug">;
 
 const PUBLIC_KEYS = [
   "slug", "category_slug", "title", "summary", "body_md", "type", "audiences", "difficulty", "points",
@@ -105,6 +107,34 @@ export type ChallengeKeyRow = {
   answer_key: Record<string, string | string[]>;
   grader_notes: string | null;
 };
+
+/** A learning path as stored (content columns; `status` is separate, like a challenge's settings). */
+export type PathRow = {
+  slug: string;
+  category_slug: string;
+  title: string;
+  summary: string;
+  audiences: Audience[];
+  sequential: boolean;
+  milestones: string[];
+  before_you_submit: string[];
+};
+
+export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; status: ChallengeSettings["status"] } {
+  return {
+    row: {
+      slug: p.slug,
+      category_slug: p.category,
+      title: p.title,
+      summary: p.summary,
+      audiences: p.audiences ?? categories.find((c) => c.slug === p.category)?.audiences ?? ["all"],
+      sequential: p.sequential,
+      milestones: p.milestones,
+      before_you_submit: p.before_you_submit,
+    },
+    status: p.status,
+  };
+}
 
 export type CategoryRow = {
   slug: string;
@@ -168,7 +198,7 @@ export function toChallengeRows(
   }
 
   return {
-    challenge: { ...publicContent, image: c.image ?? null, tip: c.tip ?? null, content_hash },
+    challenge: { ...publicContent, image: c.image ?? null, tip: c.tip ?? null, path_slug: c.path ?? null, content_hash },
     settings: { status: c.status, required_for: c.required_for ?? [], due_at: normalizeTimestamp(c.due_at) },
     key: { challenge_slug: c.slug, answer_key, grader_notes: c.grader_notes?.trim() || null },
   };
