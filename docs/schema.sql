@@ -48,6 +48,23 @@ create table categories (
   image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$')
 );
 
+-- A learning path: one card that opens a roadmap of milestone challenges (content/paths/<slug>.yaml). Content columns
+-- come from the file; status is owned by the admin panel after creation (set_path_status, audited).
+create table paths (
+  slug text primary key,
+  category_slug text not null references categories(slug),
+  title text not null,
+  summary text not null,
+  audiences audience[] not null check (public.valid_audiences(audiences)),
+  -- Each milestone unlocks once the one before it has any attempt (awaiting review counts).
+  sequential boolean not null default true,
+  milestones text[] not null check (cardinality(milestones) >= 2),   -- challenge slugs, in order
+  before_you_submit text[] not null default '{}',
+  status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table challenges (
   slug text primary key,
   category_slug text not null references categories(slug),
@@ -74,6 +91,8 @@ create table challenges (
   image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$'),
   -- Short markdown hint above the questions; display only, not part of content_hash.
   tip text check (tip is null or char_length(tip) <= 1000),
+  -- The path this challenge is a milestone of (listed only inside it); display only, not part of content_hash.
+  path_slug text references paths(slug),
   updated_at timestamptz not null default now()
 );
 
@@ -104,6 +123,12 @@ create table submissions (
   -- An attempt on a draft challenge by a tester: never counts (points, leaderboard, completed, required, the
   -- 3-attempt limit) and is numbered on its own. Its owner reads it only while the challenge is a draft.
   is_test boolean not null default false,
+  -- Progress made before UXDA Learn, entered by an admin (import_submission). A normal real attempt otherwise.
+  is_imported boolean not null default false,
+  imported_by uuid references profiles(id) on delete set null,
+  imported_at timestamptz,
+  constraint submissions_imported_not_test check (not (is_imported and is_test)),
+  constraint submissions_imported_at check (is_imported = (imported_at is not null)),
   constraint submissions_attempt_range check (attempt >= 1 and (is_test or attempt <= 3)),
   unique (user_id, challenge_slug, is_test, attempt)
 );
@@ -192,6 +217,35 @@ create table challenge_feedback (
 );
 create index challenge_feedback_slug_idx on challenge_feedback (challenge_slug, created_at desc);
 
+-- Who changed a path's status, and when. Written only by set_path_status().
+create table path_settings_audit (
+  id bigint generated always as identity primary key,
+  path_slug text not null references paths(slug) on delete cascade,
+  field text not null check (field in ('status')),
+  old_value jsonb,
+  new_value jsonb,
+  source text not null check (source in ('admin', 'content:sync')),
+  changed_by uuid references profiles(id) on delete set null,
+  changed_at timestamptz not null default now(),
+  check (source <> 'admin' or changed_by is not null)
+);
+
+-- Every import and undo of imported progress. Written only by import_submission() / undo_import().
+create table submission_import_audit (
+  id bigint generated always as identity primary key,
+  submission_id uuid not null,                      -- no FK: an undone import's row is gone
+  user_id uuid not null references profiles(id) on delete cascade,
+  challenge_slug text not null references challenges(slug) on delete cascade,
+  action text not null check (action in ('import', 'undo')),
+  status submission_status not null,
+  final_score numeric not null,
+  max_score numeric not null,
+  feedback text,
+  source text not null check (source in ('admin', 'script')),
+  changed_by uuid references profiles(id) on delete set null,
+  changed_at timestamptz not null default now()
+);
+
 -- Helpers ------------------------------------------------------------------
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -268,6 +322,14 @@ $$;
 -- Full body: supabase/migrations/20261014100000_testers.sql
 -- function public.set_user_tester(p_user uuid, p_value boolean, p_actor uuid) returns boolean
 
+-- Paths and imports. Full bodies: supabase/migrations/20261015090000_learning_paths.sql. All service role only.
+-- set_path_status(p_slug, p_value, p_source, p_actor, p_publish_milestones): status + audit row (none for a no-op);
+--   publishing with p_publish_milestones also publishes the path's draft milestones via set_challenge_setting.
+-- import_submission(p_user, p_challenge, p_status, p_score, p_feedback, p_source, p_actor) returns uuid: the next real
+--   attempt on a published milestone of a published path, flagged is_imported; actor must be an admin; same limits as
+--   a submit (nothing awaiting review, an attempt left, not at full points); audited.
+-- undo_import(p_submission, p_source, p_actor): deletes an imported attempt that is the user's latest; audited.
+
 -- RLS ----------------------------------------------------------------------
 alter table admin_allowlist enable row level security;   -- no policies
 alter table allowed_email_domains enable row level security;   -- no policies
@@ -340,6 +402,23 @@ create policy profile_flag_audit_select on profile_flag_audit for select to auth
 
 create policy challenge_feedback_select on challenge_feedback for select to authenticated using (public.is_admin());
 -- No write policies or grants: written by a server action (service role) for testers on a draft they can see.
+
+-- Paths: same rule as challenges_select (published; drafts for testers whose track and category can see them).
+create policy paths_select on paths for select to authenticated
+  using (
+    status = 'published'
+    or public.is_admin()
+    or (
+      status = 'draft' and public.is_tester() and public.my_track_sees(audiences)
+      and exists (select 1 from categories c
+                  where c.slug = paths.category_slug and not c.archived and public.my_track_sees(c.audiences))
+    )
+  );
+-- No write policies: content:sync and the admin panel write with the service role.
+
+create policy path_settings_audit_select on path_settings_audit for select to authenticated using (public.is_admin());
+create policy submission_import_audit_select on submission_import_audit for select to authenticated using (public.is_admin());
+-- No write policies or grants: written only by set_path_status() / import_submission() / undo_import().
 
 -- Own rows only, read and write; no is_admin() clause, so admins can't see or edit drafts either.
 create policy submission_drafts_select on submission_drafts for select to authenticated using (user_id = auth.uid());

@@ -1,0 +1,216 @@
+{
+  "path": "auto-layout-homework",
+  "note": "Completed before UXDA Learn",
+  "users": [
+    {
+      "email": "kristine@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-2-convert-manual-layout",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-3-list-from-loose-elements",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-4-chips-that-wrap",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-5-remove-auto-layout-safely",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-6-equal-size-grid",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-7-final-boss",
+          "status": "done",
+          "score": 40
+        }
+      ]
+    },
+    {
+      "email": "roberts.ceruss@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-2-convert-manual-layout",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-3-list-from-loose-elements",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-4-chips-that-wrap",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-5-remove-auto-layout-safely",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-6-equal-size-grid",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-7-final-boss",
+          "status": "done",
+          "score": 40
+        }
+      ]
+    },
+    {
+      "email": "deniss@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-2-convert-manual-layout",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-3-list-from-loose-elements",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-4-chips-that-wrap",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-5-remove-auto-layout-safely",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-6-equal-size-grid",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-7-final-boss",
+          "status": "done",
+          "score": 36,
+          "note": "Needs updates — see review in Figma."
+        }
+      ]
+    },
+    {
+      "email": "tamara@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-2-convert-manual-layout",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-3-list-from-loose-elements",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-4-chips-that-wrap",
+          "status": "done",
+          "score": 20
+        }
+      ]
+    },
+    {
+      "email": "inese@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-2-convert-manual-layout",
+          "status": "done",
+          "score": 20
+        }
+      ]
+    },
+    {
+      "email": "elina@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        }
+      ]
+    },
+    {
+      "email": "zanna@uxdesignagency.com",
+      "milestones": []
+    },
+    {
+      "email": "alvis@uxdesignagency.com",
+      "milestones": [
+        {
+          "milestone": "alh-1-edit-auto-layout-card",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-2-convert-manual-layout",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-3-list-from-loose-elements",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-4-chips-that-wrap",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-5-remove-auto-layout-safely",
+          "status": "done",
+          "score": 20
+        },
+        {
+          "milestone": "alh-6-equal-size-grid",
+          "status": "done",
+          "score": 20
+        }
+      ]
+    }
+  ]
+}

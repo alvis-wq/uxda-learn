@@ -1,0 +1,7 @@
+slug: two-steps
+title: Two steps
+category: strat-only
+summary: Two Figma tasks, one after the other.
+milestones: [step-one, step-two]
+before_you_submit:
+  - Frames are 360 px wide.

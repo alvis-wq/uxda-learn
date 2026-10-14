@@ -16,5 +16,6 @@ const byStatus = content.challenges.reduce<Record<string, number>>((acc, c) => {
 }, {});
 console.log(
   `Content OK: ${content.categories.length} categories, ${content.challenges.length} challenges ` +
-    `(${Object.entries(byStatus).map(([s, n]) => `${n} ${s}`).join(", ") || "none"}).`,
+    `(${Object.entries(byStatus).map(([s, n]) => `${n} ${s}`).join(", ") || "none"}), ` +
+    `${content.paths.length} ${content.paths.length === 1 ? "path" : "paths"}.`,
 );

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { settingChangeError, settingChangeSchema } from "@/lib/admin/challenge-settings";
+import { pathPublishError, pathStatusChangeSchema, settingChangeError, settingChangeSchema } from "@/lib/admin/challenge-settings";
 import { getAdminOrNull } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "../actions";
@@ -21,7 +21,7 @@ export async function updateChallengeSetting(raw: unknown): Promise<ActionResult
   const db = createAdminClient();
   const { data: challenge } = await db
     .from("challenges")
-    .select("slug,title,summary,body_md,audiences,questions,submission_spec,rubric,category_slug")
+    .select("slug,title,summary,body_md,audiences,questions,submission_spec,rubric,category_slug,path_slug")
     .eq("slug", change.slug)
     .maybeSingle();
   if (!challenge) return { ok: false, error: "Challenge not found." };
@@ -43,6 +43,52 @@ export async function updateChallengeSetting(raw: unknown): Promise<ActionResult
   if (error) return { ok: false, error: "Couldn't save the change. Please try again." };
 
   // Status / required / due affect learner pages, home and admin progress alike.
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Change a learning path's status, audited in path_settings_audit. Publishing also publishes every draft milestone
+ * of the path, in the same transaction (each change in that challenge's own history), after checking that neither
+ * the path nor those milestones still have placeholders.
+ */
+export async function updatePathStatus(raw: unknown): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return { ok: false, error: "Only admins can do this." };
+
+  const parsed = pathStatusChangeSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Invalid value." };
+  const { slug, value } = parsed.data;
+
+  const db = createAdminClient();
+  const { data: path } = await db.from("paths").select("slug,title,summary,before_you_submit,milestones").eq("slug", slug).maybeSingle();
+  if (!path) return { ok: false, error: "Path not found." };
+
+  if (value === "published") {
+    const [{ data: rows }, { data: keys }] = await Promise.all([
+      db
+        .from("challenges")
+        .select("slug,title,summary,body_md,tip,audiences,questions,submission_spec,rubric,status")
+        .in("slug", path.milestones),
+      db.from("challenge_keys").select("challenge_slug,grader_notes").in("challenge_slug", path.milestones),
+    ]);
+    const notes = new Map((keys ?? []).map((k) => [k.challenge_slug, k.grader_notes]));
+    const problem = pathPublishError(
+      path,
+      (rows ?? []).map((c) => ({ challenge: c, category: null, graderNotes: notes.get(c.slug) ?? null, status: c.status })),
+    );
+    if (problem) return { ok: false, error: problem };
+  }
+
+  const { error } = await db.rpc("set_path_status", {
+    p_slug: slug,
+    p_value: value,
+    p_source: "admin",
+    p_actor: admin.id,
+    p_publish_milestones: value === "published",
+  });
+  if (error) return { ok: false, error: "Couldn't save the change. Please try again." };
+
   revalidatePath("/", "layout");
   return { ok: true };
 }

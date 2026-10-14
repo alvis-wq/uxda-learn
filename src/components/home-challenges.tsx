@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { FilterMenu, type FilterOption } from "@/components/filter-menu";
 import { SectionLabel } from "@/components/section-label";
 import { ALL_CATEGORIES, DRAFTS_FILTER, filterByCategory, groupByCategory, parseHomeFilter } from "@/lib/challenges/home-order";
-import type { CardChallenge, CategoryProgress } from "@/lib/data/learner";
+import type { CategoryProgress, HomeCard } from "@/lib/data/learner";
 
 const PARAM = "category";
 
@@ -33,9 +33,9 @@ export function HomeChallenges({
   overall: { done: number; total: number };
   /** Required challenges not done, across everything (the "All" option's "required left"). */
   requiredLeft: number;
-  /** Never drafts. */
-  challenges: CardChallenge[];
-  drafts: CardChallenge[];
+  /** Challenges and paths (a path is one item); never drafts, never a path's milestones. */
+  challenges: HomeCard[];
+  drafts: HomeCard[];
   /** Testers get the "Drafts — testing" option (even with no drafts). */
   tester: boolean;
   now: Date;

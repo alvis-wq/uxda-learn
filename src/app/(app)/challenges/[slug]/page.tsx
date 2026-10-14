@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { CheckCircle2, ChevronLeft, Eye, FlaskConical, Info } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
+import { ArrowRight, CheckCircle2, ChevronLeft, Eye, FlaskConical, Info, Route } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { Markdown } from "@/components/markdown";
@@ -33,7 +33,9 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   const profile = await requireOnboardedProfile();
   const data = await getChallengePage(profile, slug);
   if (!data) notFound();
-  const { challenge, categoryTitle, progress, attempts, preview, testing, draft } = data;
+  const { challenge, categoryTitle, progress, attempts, preview, testing, draft, milestone } = data;
+  // A locked milestone can't be opened: back to its roadmap (an admin preview still shows it).
+  if (milestone?.locked && !preview) redirect(`/paths/${milestone.pathSlug}`);
   const { state } = progress;
   const isAck = challenge.type === "acknowledge";
   // A test attempt on a challenge with screenshots, Figma or written parts only has its questions marked: no total.
@@ -83,13 +85,31 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
       <BriefProvider initialStarted={initialDraft !== null}>
         <div>
-          <Link
-            href={`/categories/${challenge.category_slug}`}
-            className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-sm"
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-            {categoryTitle}
-          </Link>
+          {milestone ? (
+            <>
+              <Link
+                href={`/paths/${milestone.pathSlug}`}
+                className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-sm"
+                data-testid="back-to-path"
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+                Back to path
+              </Link>
+              <p className="text-brand-text text-meta mb-1 flex items-center gap-1.5 font-medium" data-testid="milestone-position">
+                <Route className="size-4" aria-hidden />
+                Milestone {milestone.position} of {milestone.total}
+                <span className="text-muted-foreground font-normal">· {milestone.pathTitle}</span>
+              </p>
+            </>
+          ) : (
+            <Link
+              href={`/categories/${challenge.category_slug}`}
+              className="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-sm"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+              {categoryTitle}
+            </Link>
+          )}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{challenge.title}</h1>
             <div className="flex flex-wrap items-center gap-2">
@@ -146,6 +166,11 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                           <Link href={`/submissions/${a.id}`} className="hover:underline">
                             {a.is_test ? "Test attempt" : "Attempt"} {a.attempt}
                           </Link>
+                          {a.is_imported && (
+                            <Badge variant="outline" className="ml-2 align-middle" data-testid="imported-badge">
+                              Imported
+                            </Badge>
+                          )}
                           <span className="text-muted-foreground text-meta ml-2 font-normal">
                             {new Date(a.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                           </span>
@@ -167,6 +192,21 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                 ))}
             </ul>
           </section>
+        )}
+
+        {/* Any attempt opens the next milestone: no need to wait for a review. */}
+        {!preview && milestone?.next && attempts.length > 0 && (
+          <Link
+            href={`/challenges/${milestone.next.slug}`}
+            className="hover:border-primary group flex items-center justify-between gap-3 rounded-lg border px-4 py-3"
+            data-testid="next-milestone"
+          >
+            <span className="grid min-w-0">
+              <span className="text-muted-foreground text-meta">Next: milestone {milestone.position + 1}</span>
+              <span className="truncate font-medium">{milestone.next.title}</span>
+            </span>
+            <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+          </Link>
         )}
 
         {!preview && isAck && (

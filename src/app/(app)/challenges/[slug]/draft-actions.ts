@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { parseChallenge } from "@/lib/challenges/model";
-import { loadOpenChallenge } from "@/lib/challenges/open";
+import { loadOpenChallenge, milestoneGate } from "@/lib/challenges/open";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isBlankDraft } from "@/lib/submissions/draft";
@@ -37,6 +37,8 @@ export async function saveDraft(slugInput: string, rawInput: unknown): Promise<S
   const admin = createAdminClient();
   const row = await loadOpenChallenge(admin, slug.data, profile.track, profile.is_tester);
   if (!row || row.type === "acknowledge") return { ok: false, error: "This challenge isn't open for submissions." };
+  const locked = await milestoneGate(admin, row, { id: user.id, track: profile.track, is_tester: profile.is_tester });
+  if (locked) return { ok: false, error: locked };
   const challenge = parseChallenge(row);
 
   const sent = (rawInput as { version?: unknown } | null)?.version;

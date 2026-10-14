@@ -3,11 +3,12 @@ import { ArrowRight } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
+import { PathCard } from "@/components/path-card";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { cardCta, cardSpans, showTryAgain, type CardSpan } from "@/lib/challenges/card";
-import type { CardChallenge } from "@/lib/data/learner";
+import { cardCta, cardSpans, isPathCard, showTryAgain, type CardSpan } from "@/lib/challenges/card";
+import type { CardChallenge, HomeCard } from "@/lib/data/learner";
 import { cn } from "@/lib/utils";
 
 /** Image column width per card size (see globals.css for the rest): narrower cards shrink the image instead of dropping it. */
@@ -145,14 +146,14 @@ export function ChallengeCard({
   );
 }
 
-/** The two-column (desktop) grid: alternating wide and narrow cards, one column on mobile. */
+/** The two-column (desktop) grid: alternating wide and narrow cards, one column on mobile. A path is its compact card. */
 export function ChallengeCardGrid({
   items,
   headingLevel,
   now,
   detail,
 }: {
-  items: CardChallenge[];
+  items: HomeCard[];
   headingLevel: 2 | 3 | 4;
   now: Date;
   /** What goes under the heading: the category (home) or the summary (category page). */
@@ -162,7 +163,15 @@ export function ChallengeCardGrid({
   return (
     <ul className="grid gap-4 lg:grid-cols-12">
       {items.map((ch, i) => (
-        <li key={ch.slug} className={cn("flex min-w-0", GRID_SPAN[spans[i]])}>
+        <li key={`${ch.kind ?? "challenge"}-${ch.slug}`} className={cn("flex min-w-0", GRID_SPAN[spans[i]])}>
+          {isPathCard(ch) ? (
+            <PathCard
+              path={ch}
+              headingLevel={headingLevel}
+              subheading={detail === "category" ? ch.categoryTitle : ch.summary}
+              body={detail === "category" ? ch.summary : null}
+            />
+          ) : (
           <ChallengeCard
             challenge={ch}
             span={spans[i]}
@@ -171,6 +180,7 @@ export function ChallengeCardGrid({
             subheading={detail === "category" ? ch.categoryTitle : ch.summary}
             body={detail === "category" ? ch.summary : null}
           />
+          )}
         </li>
       ))}
     </ul>

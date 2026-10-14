@@ -1,4 +1,10 @@
+import type { CardPath, HomeCard } from "@/lib/data/learner";
 import type { SubmissionStatus } from "@/lib/submissions/rules";
+
+/** A learning path's card among the challenge cards (home and category lists). */
+export function isPathCard(card: HomeCard): card is CardPath {
+  return card.kind === "path";
+}
 
 /** Label of a challenge card's call-to-action, from where the learner is with it. */
 export type CardCta = "Start" | "Continue" | "View result";

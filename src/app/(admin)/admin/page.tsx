@@ -16,7 +16,7 @@ export default async function ReviewQueuePage() {
   const { data, error } = await supabase
     .from("submissions")
     .select(
-      "id,status,attempt,submitted_at,auto_score,final_score,max_score,profiles(full_name,email,track),challenges(title),evaluations(confidence,flags,created_at)",
+      "id,status,attempt,submitted_at,auto_score,final_score,max_score,profiles!submissions_user_id_fkey(full_name,email,track),challenges(title),evaluations(confidence,flags,created_at)",
     )
     .in("status", [...REVIEWABLE_STATUSES])
     .eq("is_test", false); // a test attempt is never reviewed

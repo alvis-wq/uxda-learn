@@ -1,0 +1,13 @@
+categories:
+  - slug: basics
+    title: Basics
+    audiences: all
+    sort_order: 10
+  - slug: strat-only
+    title: Strategist only
+    audiences: [strategist]
+    sort_order: 20
+  - slug: designers
+    title: Designers
+    audiences: [designer]
+    sort_order: 30

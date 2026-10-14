@@ -27,6 +27,12 @@ Create a challenge from this description: $ARGUMENTS
    - `status`, `required_for` and `due_at` in the file are only **starting values**: content:sync
      uses them when it creates the challenge and never again. Once a challenge exists in the DB,
      don't edit these in the file — tell Alvis to change them in Admin → Content instead.
+   - **Part of a learning path?** If the description is a series of steps people do in order (or adds a step to an
+     existing path in `content/paths/`), make each step a challenge with `path: <path slug>` and list it, in order,
+     under `milestones` in `content/paths/<path slug>.yaml` (create that file for a new path: slug, title, category,
+     audiences, one-sentence summary, `sequential`, milestones, optional `before_you_submit` lines, `status: draft`).
+     A milestone has the same category and audiences as its path, is never `acknowledge`, and has no `required_for`
+     or `due_at`. See "Learning paths" in `docs/content-format.md`.
 4. **Pick the type:**
    - `acknowledge` for "read and confirm" content (new rules, policies, announcements): just the
      brief and an "I've read and understood" button. No questions, submission, rubric or
@@ -55,7 +61,7 @@ Create a challenge from this description: $ARGUMENTS
      language. Skip the rules above about rubrics, reflections and points.
 7. Run `npm run content:validate`. Fix until it passes.
 8. Reply with a short summary: title, category (+ why), audiences, required_for (+ due_at),
-   type, difficulty, points, rubric criteria, any new category, any open questions.
+   type, difficulty, points, rubric criteria, any new category, the path and milestone number (if any), any open questions.
 9. Wait for approval. On "approve": run `npm run content:sync` (creates it as a draft) and commit
    `content: add <slug>`; then Alvis reviews it under Admin → Content → "Preview with answers" and
    publishes it there. (Only if the challenge has never been synced and Alvis says to publish

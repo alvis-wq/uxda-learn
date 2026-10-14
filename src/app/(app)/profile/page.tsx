@@ -36,9 +36,19 @@ export default async function ProfilePage() {
 
   const slugs = [...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug)])];
   const { data: challenges } = slugs.length
-    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec").in("slug", slugs)
+    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec,path_slug").in("slug", slugs)
     : { data: [] };
-  const titleOf = (slug: string) => challenges?.find((c) => c.slug === slug)?.title ?? slug;
+  // A path milestone reads "Path title · 2. Milestone title" (RLS: paths the learner can see).
+  const pathSlugs = [...new Set((challenges ?? []).flatMap((c) => (c.path_slug ? [c.path_slug] : [])))];
+  const { data: paths } = pathSlugs.length
+    ? await supabase.from("paths").select("slug,title,milestones").in("slug", pathSlugs)
+    : { data: [] };
+  const titleOf = (slug: string) => {
+    const c = challenges?.find((x) => x.slug === slug);
+    const p = c?.path_slug ? paths?.find((x) => x.slug === c.path_slug) : undefined;
+    if (!c) return slug;
+    return p ? `${p.title} · ${p.milestones.indexOf(slug) + 1}. ${c.title}` : c.title;
+  };
 
   const categorySlugs = [...new Set((challenges ?? []).map((c) => c.category_slug))];
   const { data: categories } = categorySlugs.length

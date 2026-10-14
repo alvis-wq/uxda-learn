@@ -16,6 +16,9 @@
  *     one; users can't flag themselves; set_user_tester audits; test attempts are numbered apart from the 3-attempt
  *     limit, hidden from their owner once the challenge is published, and left out of the leaderboard; feedback is
  *     admin-only.
+ *  9. Paths: drafts only for testers whose track can see them; users can't write paths; set_path_status audits and can
+ *     publish the milestones with the path; import_submission needs an admin actor and a published path, numbers the
+ *     attempt, refuses past full points and is audited; undo_import removes it; users can't call either.
  */
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -39,9 +42,13 @@ const EXPECTED_TABLES = [
   "submission_drafts",
   "profile_flag_audit",
   "challenge_feedback",
+  "paths",
+  "path_settings_audit",
+  "submission_import_audit",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
+const SENTINEL_PATH = "zz-check-db-path";
 
 let failures = 0;
 function pass(msg: string) {
@@ -76,7 +83,9 @@ type PrivateTable =
   | "allowed_email_domains"
   | "challenge_settings_audit"
   | "profile_flag_audit"
-  | "challenge_feedback";
+  | "challenge_feedback"
+  | "path_settings_audit"
+  | "submission_import_audit";
 
 async function expectNoRows(client: Client, table: PrivateTable, who: string) {
   const { data, error } = await client.from(table).select("*");
@@ -318,6 +327,109 @@ async function main() {
     if (feedbackWrite.error) pass(`user cannot write feedback directly (${feedbackWrite.error.code ?? feedbackWrite.error.message})`);
     else fail("user COULD insert feedback directly");
 
+    console.log("Paths & imported progress");
+    // The temp user is a designer and a tester here, not an admin; the sentinel challenge is published, worth 1 point.
+    const { error: pathErr } = await admin.from("paths").upsert({
+      slug: SENTINEL_PATH, category_slug: SENTINEL_CATEGORY, title: "sentinel path", summary: "sentinel",
+      audiences: ["all"], milestones: [SENTINEL_CHALLENGE, SENTINEL_CHALLENGE], status: "draft",
+    });
+    if (pathErr) throw new Error(`sentinel path: ${pathErr.message}`);
+    await admin.from("challenges").update({ path_slug: SENTINEL_PATH }).eq("slug", SENTINEL_CHALLENGE);
+    const seesPath = async () => ((await authed.from("paths").select("slug").eq("slug", SENTINEL_PATH)).data ?? []).length === 1;
+    if (await seesPath()) pass("a tester sees a draft path their track can see");
+    else fail("a tester CANNOT see a draft path their track can see");
+    await admin.from("paths").update({ audiences: ["strategist"] }).eq("slug", SENTINEL_PATH);
+    if (!(await seesPath())) pass("a tester does not see a draft path their track can't see");
+    else fail("a tester SEES a draft path aimed at another track");
+    await admin.from("paths").update({ audiences: ["all"] }).eq("slug", SENTINEL_PATH);
+    await admin.from("profiles").update({ is_tester: false }).eq("id", userId);
+    if (!(await seesPath())) pass("a user who is not a tester cannot see a draft path");
+    else fail("a non-tester CAN SEE a draft path");
+    const { data: anonPaths } = await anonClient().from("paths").select("slug");
+    if (!anonPaths?.length) pass("anon reads 0 paths");
+    else fail(`anon CAN READ paths (${anonPaths.length})`);
+    const { error: pathWriteErr } = await authed.from("paths").update({ title: "hacked" }).eq("slug", SENTINEL_PATH);
+    const { data: pathTitle } = await admin.from("paths").select("title").eq("slug", SENTINEL_PATH).single();
+    if (pathTitle?.title === "sentinel path") pass(`user cannot write paths (${pathWriteErr?.code ?? "0 rows"})`);
+    else fail("user COULD update a path");
+
+    await setStatus("draft");
+    const publishPath = (actor: string | undefined) =>
+      admin.rpc("set_path_status", { p_slug: SENTINEL_PATH, p_value: "published", p_source: "admin", p_actor: actor, p_publish_milestones: true });
+    const notAdminPublish = await publishPath(userId);
+    if (notAdminPublish.error) pass("set_path_status refuses an admin-panel change by a non-admin");
+    else fail("set_path_status ACCEPTED a non-admin actor");
+    const { error: userPathRpc } = await authed.rpc("set_path_status", { p_slug: SENTINEL_PATH, p_value: "published", p_source: "admin", p_actor: userId });
+    if (userPathRpc) pass(`user cannot call set_path_status (${userPathRpc.code ?? userPathRpc.message})`);
+    else fail("user COULD call set_path_status");
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const published = await publishPath(userId);
+    const publishedAgain = await publishPath(userId);
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    const { data: pathAudit } = await admin.from("path_settings_audit").select("old_value,new_value,changed_by").eq("path_slug", SENTINEL_PATH);
+    const { data: milestoneNow } = await admin.from("challenges").select("status").eq("slug", SENTINEL_CHALLENGE).single();
+    const { data: milestoneAudit } = await admin
+      .from("challenge_settings_audit").select("new_value").eq("challenge_slug", SENTINEL_CHALLENGE).eq("field", "status");
+    if (published.data === true && publishedAgain.data === false && pathAudit?.length === 1 && pathAudit[0].changed_by === userId &&
+        milestoneNow?.status === "published" && milestoneAudit?.some((r) => r.new_value === "published")) {
+      pass("set_path_status publishes the path and its draft milestones, with audit rows (none for a no-op)");
+    } else {
+      fail(`set_path_status: ${published.error?.message ?? JSON.stringify({ pathAudit, milestoneNow, milestoneAudit })}`);
+    }
+    if (await seesPath()) pass("a published path is visible to a signed-in user");
+    else fail("a published path is NOT visible");
+
+    const importAs = (actor: string, score = 1) =>
+      admin.rpc("import_submission", {
+        p_user: userId!, p_challenge: SENTINEL_CHALLENGE, p_status: "published", p_score: score,
+        p_feedback: "Completed before UXDA Learn", p_source: "admin", p_actor: actor,
+      });
+    const { error: userImportRpc } = await authed.rpc("import_submission", {
+      p_user: userId, p_challenge: SENTINEL_CHALLENGE, p_status: "published", p_score: 1, p_feedback: "", p_source: "admin", p_actor: userId,
+    });
+    if (userImportRpc) pass(`user cannot call import_submission (${userImportRpc.code ?? userImportRpc.message})`);
+    else fail("user COULD call import_submission");
+    if ((await importAs(userId)).error) pass("import_submission refuses an actor who is not an admin");
+    else fail("import_submission ACCEPTED a non-admin actor");
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const tooHigh = await importAs(userId, 2);
+    await admin.from("paths").update({ status: "draft" }).eq("slug", SENTINEL_PATH);
+    const onDraft = await importAs(userId);
+    await admin.from("paths").update({ status: "published" }).eq("slug", SENTINEL_PATH);
+    const imported = await importAs(userId);
+    const importedAgain = await importAs(userId);
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    if (tooHigh.error && onDraft.error) pass("import_submission refuses a score above the points and a path that isn't published");
+    else fail(`import_submission checks: ${JSON.stringify({ tooHigh: tooHigh.data, onDraft: onDraft.data })}`);
+    const { data: importedRow } = await admin
+      .from("submissions").select("attempt,status,final_score,is_imported,imported_by,feedback").eq("id", imported.data ?? "").maybeSingle();
+    if (importedRow?.attempt === 1 && importedRow.status === "published" && Number(importedRow.final_score) === 1 &&
+        importedRow.is_imported && importedRow.imported_by === userId && importedRow.feedback === "Completed before UXDA Learn") {
+      pass("import_submission records a published, imported attempt with who imported it");
+    } else {
+      fail(`import_submission: ${imported.error?.message ?? JSON.stringify(importedRow)}`);
+    }
+    if (importedAgain.error) pass("import_submission refuses a milestone already at full points");
+    else fail("import_submission imported a milestone that was already at full points");
+    const { data: boardWithImport } = await authed.rpc("get_leaderboard", { p_tracks: ["designer"] });
+    if (Number(boardWithImport?.find((r) => r.user_id === userId)?.total_score) === 1) pass("imported points count on the leaderboard");
+    else fail("imported points are missing from the leaderboard");
+    await expectNoRows(authed, "submission_import_audit", "authenticated user");
+    await expectNoRows(authed, "path_settings_audit", "authenticated user");
+    const { error: userUndoRpc } = await authed.rpc("undo_import", { p_submission: imported.data ?? "", p_source: "admin", p_actor: userId });
+    if (userUndoRpc) pass(`user cannot call undo_import (${userUndoRpc.code ?? userUndoRpc.message})`);
+    else fail("user COULD call undo_import");
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const undone = await admin.rpc("undo_import", { p_submission: imported.data ?? "", p_source: "admin", p_actor: userId });
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    const { data: importAudit } = await admin.from("submission_import_audit").select("action").eq("user_id", userId).order("id");
+    const { data: gone } = await admin.from("submissions").select("id").eq("id", imported.data ?? "");
+    if (!undone.error && !gone?.length && importAudit?.map((r) => r.action).join() === "import,undo") {
+      pass("undo_import removes the imported attempt and both steps are audited");
+    } else {
+      fail(`undo_import: ${undone.error?.message ?? JSON.stringify({ gone, importAudit })}`);
+    }
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -328,6 +440,9 @@ async function main() {
       if (outsider.user) await admin.auth.admin.deleteUser(outsider.user.id);
     }
   } finally {
+    await admin.from("submission_import_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
+    await admin.from("challenges").update({ path_slug: null }).eq("slug", SENTINEL_CHALLENGE);
+    await admin.from("paths").delete().eq("slug", SENTINEL_PATH); // its audit rows cascade
     await admin.from("challenge_settings_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenge_feedback").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("submissions").delete().eq("challenge_slug", SENTINEL_CHALLENGE);

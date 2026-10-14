@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,7 +48,9 @@ export default async function AdminUsersPage() {
                 return (
                   <TableRow key={p.id} data-testid={`user-row-${p.email}`}>
                     <TableCell>
-                      <div className="font-medium">{name}</div>
+                      <Link href={`/admin/users/${p.id}`} className="font-medium hover:underline" data-testid="user-link">
+                        {name}
+                      </Link>
                       <div className="text-muted-foreground text-xs">{p.email}</div>
                     </TableCell>
                     <TableCell>

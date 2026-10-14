@@ -66,7 +66,9 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
         {sub.is_test ? <Badge variant="outline">Test</Badge> : <StatusBadge status={sub.status} />}
       </div>
       <p className="text-muted-foreground -mt-4 text-sm">
-        Submitted {new Date(sub.submitted_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+        {sub.is_imported ? "Imported" : "Submitted"}{" "}
+        {new Date(sub.submitted_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+        {sub.is_imported && " · work you did before UXDA Learn, added by an admin"}
       </p>
 
       {sub.is_test && (

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth/session";
 import { challengeNeedsReview, parseChallenge } from "@/lib/challenges/model";
-import { loadOpenChallenge } from "@/lib/challenges/open";
+import { loadOpenChallenge, milestoneGate } from "@/lib/challenges/open";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gradeAnswers, type AnswerKey } from "@/lib/submissions/grading";
 import { submissionInputSchema } from "@/lib/submissions/input";
@@ -37,6 +37,8 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
   const admin = createAdminClient();
   const row = await loadOpenChallenge(admin, slug.data, profile.track, profile.is_tester);
   if (!row || row.type === "acknowledge") return { ok: false, error: "This challenge isn't open for submissions." };
+  const locked = await milestoneGate(admin, row, { id: user.id, track: profile.track, is_tester: profile.is_tester });
+  if (locked) return { ok: false, error: locked };
   const challenge = parseChallenge(row);
   const testing = isTestChallenge(row.status);
 

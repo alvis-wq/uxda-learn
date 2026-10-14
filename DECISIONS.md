@@ -275,3 +275,21 @@
 - Drafts never appear under All or in a category, nor in any count, and the category page lists published challenges only again (testers reached drafts there since the testers PR): they live under the tester's Drafts filter and by direct link. They are separate from `challenges` in `HomeData` so a draft can't leak into a group, and draft cards are dashed with a muted surface and the "Draft — testing" badge.
 - Leaderboard: people with 0 points have no rank (a dash, "No rank yet" for screen readers) and are listed after everyone else under a small "Not started yet" label, by name; the others keep competition ranking (1, 2, 2, 4). The home hero's "#N of M" counts only people with points, and a user with none sees "Not ranked yet" (only a user who chose to be hidden sees the "hidden from the leaderboard" link).
 
+
+## Learning paths (`feat/learning-paths`)
+
+- A path is its own file (`content/paths/<slug>.yaml`) plus `path:` on each milestone, and the order lives only in the path's `milestones` list — the path reads top to bottom in one place; validation checks the two sides agree.
+- `challenges.path_slug` is display-only (not in content_hash), like `image` and `tip` — joining or leaving a path doesn't change what is graded, so it must not bump `version`.
+- A milestone unlocks once the previous one has ANY real attempt (awaiting review and changes requested count), and a milestone with its own attempt is never locked — learners never wait for a review, and imported progress can skip ahead.
+- Locking is checked in the page (redirect to the path) and in submit + draft save (`milestoneGate`), not in RLS — it's a progression rule, not a secret: the brief is one sentence and a Figma link.
+- A milestone is visible only with its path; a draft milestone in a published path stays hidden, even from testers — a live path's "x of y" must never include something nobody can do yet.
+- A path counts as ONE item in home/category/filter counts and Overall progress (done = every milestone done); its points are the sum of its milestones' best scores. The leaderboard's "completed" still counts challenges (milestones individually) — unchanged, it's per challenge by design.
+- Milestones can't be required or have a due date (validation + Admin → Content shows only Status for them) — required counts are per challenge, and a milestone isn't listed on its own; required paths can come later as a path-level setting.
+- Publishing a path in Admin → Content publishes its draft milestones in the same transaction (`set_path_status(..., p_publish_milestones)`), each change in that challenge's own history — eight clicks would invite a half-published path.
+- Imported progress is a normal REAL attempt (`is_imported`, `imported_by`, `imported_at`) written only by `import_submission()` — points, leaderboard, profile and exports work unchanged, and the function re-checks admin actor, published path, track visibility and the attempt rules.
+- Imports only into a published path — published submissions count on the leaderboard regardless of the challenge's status, so importing into a draft would show points for something nobody can see, and testers would see real and test attempts mixed.
+- An import uses one of the 3 attempts — it is an attempt; Deniss's Final Boss is imported as published 36/40 (not changes requested), so it counts now and "Try again" reaches full points.
+- "Undo import" deletes the attempt only when it's the user's latest on that milestone, and both steps stay in `submission_import_audit` (no FK to submissions) — attempt numbers stay 1..3 without gaps, and the history survives the undo.
+- The import script is a dry run unless `--apply`, needs `--as <admin email>` (recorded as `imported_by`), skips people who haven't signed in and milestones already imported — so it can be re-run after more people sign in.
+- `submissions.imported_by` is a second FK to profiles, so embeds name theirs (`profiles!submissions_user_id_fkey`) — PostgREST can't pick one otherwise.
+- The path page's markup lives in a data-free `PathView` (like `HomeView`) — it can be rendered with sample data for browser checks.

@@ -1,0 +1,21 @@
+slug: auto-layout-homework
+title: Auto Layout homework
+category: tool-proficiency
+audiences: [strategist]
+summary: Seven Figma tasks to make your layouts easy to edit and resize.
+sequential: true
+milestones:
+  - alh-1-edit-auto-layout-card
+  - alh-2-convert-manual-layout
+  - alh-3-list-from-loose-elements
+  - alh-4-chips-that-wrap
+  - alh-5-remove-auto-layout-safely
+  - alh-6-equal-size-grid
+  - alh-7-final-boss
+before_you_submit:
+  - Put your frames inside PLACE FINAL RESULT HERE.
+  - Make every frame 360 px wide.
+  - Write a short answer under each frame.
+  - Name your layers.
+  - Don't fix anything by dragging it into place.
+status: draft

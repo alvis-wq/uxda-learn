@@ -13,3 +13,6 @@ export const installTesterFixture = () => shared.installFixtures(adminDb(), TEST
 export const removeTesterFixture = () => shared.removeChallenges(adminDb(), ["e2e-draft-quiz"]);
 export const installOrderFixture = () => shared.installFixtures(adminDb(), ORDER_FIXTURE_DIR);
 export const removeOrderFixture = () => shared.removeChallenges(adminDb(), ["e2e-order"]);
+const PATH_FIXTURE_DIR = path.join(__dirname, "fixtures", "path-content");
+export const installPathFixture = () => shared.installFixtures(adminDb(), PATH_FIXTURE_DIR);
+export const removePathFixture = () => shared.removePathFixture(adminDb(), PATH_FIXTURE_DIR);

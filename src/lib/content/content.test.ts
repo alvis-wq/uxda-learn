@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { categorySchema, challengeFrontmatterSchema, loadAndValidate } from "./index";
 import { planSync, countChanges } from "./sync-plan";
 import { validateContent } from "./validate";
-import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows } from "./transform";
+import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows, toPathRow } from "./transform";
 
 const FIXTURES = path.resolve(__dirname, "../../../tests/fixtures/content");
 
@@ -106,6 +106,53 @@ describe("content validation", () => {
       expect(msgs).toContain("challenges that need review must have a rubric");
       expect(msgs).toContain("challenges that need review must have grader_notes");
     });
+  });
+});
+
+describe("learning paths", () => {
+  it("accepts a valid path and its milestones", () => {
+    const { content, errors } = loadAndValidate(path.join(FIXTURES, "paths"));
+    expect(errors).toEqual([]);
+    expect(content.paths).toHaveLength(1);
+    expect(content.paths[0].data).toMatchObject({
+      slug: "two-steps",
+      sequential: true, // the default
+      milestones: ["step-one", "step-two"],
+      before_you_submit: ["Frames are 360 px wide."],
+      status: "draft",
+    });
+  });
+
+  const { errors } = loadAndValidate(path.join(FIXTURES, "paths-invalid"));
+  const messagesFor = (file: string) => errors.filter((e) => e.file === file).map((e) => e.message);
+
+  it("checks the path file itself", () => {
+    const msgs = messagesFor("paths/misnamed.yaml");
+    expect(msgs).toContain('slug "named-else" must match the filename (paths/named-else.yaml)');
+    expect(msgs).toContain('unknown category "nope"');
+  });
+
+  it("checks every listed milestone", () => {
+    const msgs = messagesFor("paths/bad-links.yaml");
+    expect(msgs).toContain('milestones: "twice" is listed twice');
+    expect(msgs).toContain('milestones: no challenge "missing-one"');
+    expect(msgs).toContain('milestones: "no-back-link" must say `path: bad-links`');
+    expect(msgs).toContain('milestones: "draft-step" must say `path: bad-links` (it says path: second)');
+    expect(msgs).toContain('milestones: "other-category" is in category "basics", the path in "strat-only"');
+    expect(msgs).toContain('milestones: "other-category" must have the same audiences as the path');
+    expect(msgs).toContain('status: published, but milestone "no-back-link" is draft');
+    expect(msgs).not.toContain('status: published, but milestone "twice" is draft');
+  });
+
+  it("checks challenges that say `path:`", () => {
+    expect(messagesFor("challenges/orphan.md")).toEqual(['path: no path "ghost" (content/paths/ghost.yaml)']);
+    expect(messagesFor("challenges/unlisted.md")).toEqual([
+      'path: "bad-links" doesn\'t list this challenge in its milestones',
+      "required_for: a path milestone can't be required on its own",
+      "due_at: a path milestone can't have its own due date",
+    ]);
+    expect(messagesFor("challenges/in-two-paths.md")).toEqual(["is a milestone of more than one path (bad-links, second)"]);
+    expect(messagesFor("challenges/ack-milestone.md")).toEqual(["a path milestone can't be an acknowledge challenge"]);
   });
 });
 
@@ -394,14 +441,14 @@ describe("card images", () => {
       const plan = planSync(rowsFor("new.webp"), dbFrom(rowsFor("old.webp")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null, path_slug: null }]);
       expect(countChanges(plan)).toBe(1);
     });
 
     it("adding and removing an image are both detected", () => {
       expect(planSync(rowsFor("a.webp"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
       expect(planSync(rowsFor(), dbFrom(rowsFor("a.webp"))).challengeDisplayUpdates).toEqual([
-        { slug: content.challenges[0].data.slug, image: null, tip: null },
+        { slug: content.challenges[0].data.slug, image: null, tip: null, path_slug: null },
       ]);
     });
 
@@ -418,9 +465,9 @@ describe("card images", () => {
       const plan = planSync(rowsFor(undefined, "new"), dbFrom(rowsFor(undefined, "old")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new" }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new", path_slug: null }]);
       expect(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
-      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null }]);
+      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null, path_slug: null }]);
       expect(countChanges(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor(undefined, "t"))))).toBe(0);
     });
 
@@ -451,5 +498,63 @@ describe("card images", () => {
       const plan = planSync(disk, db);
       expect(plan.categoryUpserts).toEqual([{ row: disk.categories[0], action: "update" }]);
     });
+  });
+});
+
+describe("planSync for learning paths", () => {
+  const { content } = loadAndValidate(path.join(FIXTURES, "paths"));
+  const disk = {
+    categories: content.categories.map(toCategoryRow),
+    challenges: content.challenges.map((c) => toChallengeRows(c, content.categories)),
+    paths: content.paths.map((p) => toPathRow(p.data, content.categories)),
+  };
+  const synced = () => ({
+    categories: disk.categories.map((c) => ({ ...c })),
+    challenges: disk.challenges.map(({ challenge, settings }) => ({
+      ...challenge,
+      version: 1,
+      status: settings.status as string,
+      required_for: [...settings.required_for] as string[],
+      due_at: settings.due_at,
+    })),
+    keys: disk.challenges.map(({ key }) => ({ ...key })),
+    paths: disk.paths.map(({ row, status }) => ({ ...row, status: status as string })),
+  });
+
+  it("creates the path with the file's status and its milestones with path_slug", () => {
+    const plan = planSync(disk, { categories: [], challenges: [], keys: [], paths: [] });
+    expect(plan.pathWrites).toEqual([{ action: "create", row: disk.paths[0].row, status: "draft" }]);
+    expect(disk.paths[0].row).toMatchObject({ audiences: ["strategist"], milestones: ["step-one", "step-two"], sequential: true });
+    expect(plan.challengeWrites.map((w) => w.row.path_slug)).toEqual(["two-steps", "two-steps"]);
+  });
+
+  it("does nothing when the DB matches", () => {
+    expect(countChanges(planSync(disk, synced()))).toBe(0);
+  });
+
+  it("updates path content but never its status (reported as drift)", () => {
+    const db = synced();
+    db.paths[0] = { ...db.paths[0], title: "Old", status: "published" };
+    const plan = planSync(disk, db);
+    expect(plan.pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
+    expect(plan.pathWrites[0]).not.toHaveProperty("status");
+    expect(plan.pathStatusDrift).toEqual([{ slug: "two-steps", file: "draft", db: "published" }]);
+  });
+
+  it("writes a changed path_slug without bumping the version, and keeps it out of the content hash", () => {
+    const db = synced();
+    db.challenges[0] = { ...db.challenges[0], path_slug: null };
+    const plan = planSync(disk, db);
+    expect(plan.challengeWrites).toEqual([]);
+    expect(plan.challengeDisplayUpdates).toEqual([{ slug: "step-one", image: null, tip: null, path_slug: "two-steps" }]);
+    const ch = content.challenges[0];
+    const moved = { ...ch, data: { ...ch.data, path: undefined } };
+    expect(toChallengeRows(moved, content.categories).challenge.content_hash).toBe(disk.challenges[0].challenge.content_hash);
+  });
+
+  it("archives a path whose file is gone", () => {
+    const db = synced();
+    db.paths.push({ ...db.paths[0], slug: "old-path", status: "published" });
+    expect(planSync(disk, db).pathArchives).toEqual(["old-path"]);
   });
 });

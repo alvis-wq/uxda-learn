@@ -2,7 +2,7 @@ import { loadContent, type LoadedContent, type ContentError } from "./load";
 import { validateContent } from "./validate";
 
 export * from "./schema";
-export type { ContentError, LoadedContent, LoadedChallenge } from "./load";
+export type { ContentError, LoadedContent, LoadedChallenge, LoadedPath } from "./load";
 
 /** Load + validate a content directory. */
 export function loadAndValidate(contentDir: string): { content: LoadedContent; errors: ContentError[] } {
