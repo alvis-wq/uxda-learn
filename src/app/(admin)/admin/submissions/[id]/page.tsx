@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { REVIEWABLE_STATUSES } from "@/lib/admin/review";
 import { parseChallenge } from "@/lib/challenges/model";
+import { getAdminAttemptResults } from "@/lib/data/attempt-results";
 import { createClient } from "@/lib/supabase/server";
 import { ReviewForm } from "./review-form";
 
@@ -42,6 +43,8 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
   const challenge = row ? parseChallenge(row) : null;
   const evaluation = evals?.[0] ?? null;
   const criteria = (evaluation?.criteria ?? []) as Criterion[];
+
+  const attemptResults = await getAdminAttemptResults(sub, challenge);
 
   // Admin Storage policy allows signing any submission image; links expire in 1 hour.
   let imageUrls: { path: string; url: string | null }[] = [];
@@ -97,6 +100,8 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
               imageUrls={imageUrls}
               figmaUrl={sub.figma_url}
               reflection={sub.reflection}
+              results={attemptResults.state === "ready" ? attemptResults.results : undefined}
+              reveal={attemptResults.state === "ready" ? attemptResults.reveal : undefined}
             />
           </CardContent>
         </Card>

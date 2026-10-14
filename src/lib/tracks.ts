@@ -15,6 +15,7 @@ export const TRACKS = [
   { value: "motion_designer", label: "Motion Designer", description: "Animation, transitions and motion systems." },
   { value: "account_manager", label: "Account Manager", description: "Clients, projects, scope and delivery." },
   { value: "assistant", label: "Assistant", description: "Operations, coordination and team support." },
+  { value: "management", label: "Management", description: "CEO and COO." },
 ] as const satisfies readonly { value: Track; label: string; description: string }[];
 
 export const TRACK_VALUES = TRACKS.map((t) => t.value) as [Track, ...Track[]];
@@ -29,7 +30,7 @@ export function isTrack(value: unknown): value is Track {
 export const LEADERBOARD_GROUPS = [
   { id: "strategists", label: "Strategists", tracks: ["strategist"] },
   { id: "designers", label: "Designers", tracks: ["designer", "motion_designer"] },
-  { id: "team", label: "Team", tracks: ["account_manager", "assistant"] },
+  { id: "team", label: "Team", tracks: ["account_manager", "assistant", "management"] },
 ] as const satisfies readonly { id: string; label: string; tracks: readonly Track[] }[];
 
 export type LeaderboardGroup = (typeof LEADERBOARD_GROUPS)[number];

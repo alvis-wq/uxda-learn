@@ -514,6 +514,7 @@ export type Database = {
         | "account_manager"
         | "assistant"
         | "motion_designer"
+        | "management"
       challenge_type: "quiz" | "screenshot" | "figma" | "mixed" | "acknowledge"
       submission_status:
         | "submitted"
@@ -526,6 +527,7 @@ export type Database = {
         | "account_manager"
         | "assistant"
         | "motion_designer"
+        | "management"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -660,6 +662,7 @@ export const Constants = {
         "account_manager",
         "assistant",
         "motion_designer",
+        "management",
       ],
       challenge_type: ["quiz", "screenshot", "figma", "mixed", "acknowledge"],
       submission_status: [
@@ -674,6 +677,7 @@ export const Constants = {
         "account_manager",
         "assistant",
         "motion_designer",
+        "management",
       ],
     },
   },

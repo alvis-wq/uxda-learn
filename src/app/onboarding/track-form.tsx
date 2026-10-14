@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { AlertCircle, Briefcase, Clapperboard, ClipboardList, Compass, PenTool, type LucideIcon } from "lucide-react";
+import { AlertCircle, Briefcase, Clapperboard, ClipboardList, Compass, Crown, PenTool, type LucideIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/submit-button";
 import { TRACKS, type Track } from "@/lib/tracks";
@@ -14,6 +14,7 @@ const ICONS: Record<Track, LucideIcon> = {
   motion_designer: Clapperboard,
   account_manager: Briefcase,
   assistant: ClipboardList,
+  management: Crown,
 };
 
 export function TrackForm() {

@@ -41,7 +41,7 @@
 - shadcn CLI used again for new components; its stray `cn` npm package removed and imports pointed at `@/lib/utils` — unknown third-party dependency.
 - Markdown via `react-markdown` + `remark-gfm` + Tailwind typography — conventional, no raw HTML rendering.
 - Multi-select questions are all-or-nothing — no partial-credit rule exists in the docs; simplest unambiguous grading.
-- Learners see only their total quiz score, not per-question correctness — with 3 attempts, per-question marks would reveal the key.
+- Learners see per-question ✓/✗ after every attempt, but the right answers only once they have full marks on the challenge or have used all 3 attempts (replaces "only the total", 2026-10-14) — a wrong/right mark alone gives away little; the key itself would let them copy it into the next attempt. The check runs on the server (`answerReveal`) and the key is not even put in the page before then.
 - AI score/feedback hidden in the UI until published/needs_resubmission — admin approval is the gate; the row itself is the user's own (RLS) so this is presentation, not a secret.
 - New attempt allowed after `needs_resubmission` or a non-perfect published score, up to 3 — "best published attempt counts" implies retakes; blocked while awaiting review.
 - Screenshot paths are re-validated and checked for existence server-side — the client chooses paths, so it must not be trusted.
@@ -210,3 +210,11 @@
 - Without a "Required for you" section a required challenge is no longer singled out by position alone: it is second in the order (after in-progress work), and its Required badge and the dots on the pills carry the rest.
 - "Learn" is baseline-aligned to the logo (`align-items: baseline` + a zero line-height word) instead of centred plus a pixel or em nudge: the browser derives the baseline from the font itself, so it holds when the logo height, the font size or even the font changes; a nudge tuned for Urbanist's descender would not.
 - The logo shifts down 0.906% of its own height (a percentage `translateY`) so the flat feet of X, D, A, not the SVG's bottom edge (where the U's overshoot reaches), sit on the baseline; the shift scales with the logo, which a pixel value would not.
+
+## Management track and per-question results (`feat/management-track-results`)
+
+- New track `management` ("CEO and COO") in the Team leaderboard group with account manager and assistant: every track belongs to exactly one group, and audience `all` covers it with no content change. Enum values go in their own migration (`20261014090000_management_track.sql`) because a new value can't be used in the transaction that adds it.
+- Per-question marks are computed when the attempt page is rendered (answers vs today's `challenge_keys`), not stored: no schema change, and old attempts get them too. The cost is that they're unavailable once the challenge's `version` has moved on (the page says so) — the key only exists for the current version, so grading an old attempt against it would mislabel answers.
+- "Full marks" means a published attempt with final score ≥ max score (> 0); "all attempts used" counts every attempt, including ones awaiting review or sent back, like `attemptState`. The state is judged when the page is viewed, so opening attempt 1 after a later perfect attempt shows its right answers. If the attempts can't be read the key stays hidden.
+- Correct answers are read with the service role inside `getLearnerAttemptResults` and handed to the component only as option ids for wrong answers once allowed; the component is a server component, so nothing but the rendered HTML reaches the browser. Admins reviewing a submission always get the key.
+- "Correct" uses a new `--success` token (text colour, AA on background/card/muted/accent, both themes) and "Incorrect" the existing destructive one; both always come with an icon and the word, never colour alone.

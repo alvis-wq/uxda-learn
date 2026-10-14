@@ -9,7 +9,7 @@ Create a challenge from this description: $ARGUMENTS
 1. Read `docs/content-format.md`, `content/categories.yaml`, and the frontmatter of every
    file in `content/challenges/` (to avoid duplicates and match tone).
 2. **Pick the category and audiences.** Tracks: `strategist`, `designer`, `motion_designer`,
-   `account_manager`, `assistant` (see `src/lib/tracks.ts`).
+   `account_manager`, `assistant`, `management` (see `src/lib/tracks.ts`).
    - Choose the single best-fitting existing category.
    - `audiences`: omit it to inherit the category's audiences. Set it only to **narrow** them
      (e.g. `[motion_designer]` inside UI & Motion) — a challenge can never widen its
