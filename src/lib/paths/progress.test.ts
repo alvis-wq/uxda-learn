@@ -57,6 +57,29 @@ describe("milestoneStates", () => {
     expect(milestoneStates(false, [m("a"), m("b"), m("c")]).every((s) => s.unlocked)).toBe(true);
   });
 
+  it("opens every draft milestone to a tester, still showing learners' lock", () => {
+    const testing = { testing: true };
+    const states = milestoneStates(true, [m("a", [], testing), m("b", [], testing), m("c", [], testing)]);
+    expect(states.map((s) => s.unlocked)).toEqual([true, true, true]);
+    expect(states.map((s) => s.status)).toEqual(["not_started", "locked", "locked"]);
+    expect(states.map((s) => s.testerOverride)).toEqual([false, true, true]);
+  });
+
+  it("keeps a published milestone locked for a tester (no skipping ahead for real points)", () => {
+    // A draft path a tester sees can hold a published milestone: real attempts, so the normal lock.
+    const states = milestoneStates(true, [m("a", [], { testing: true }), m("b"), m("c", [], { testing: true })]);
+    expect(states.map((s) => [s.unlocked, s.testerOverride])).toEqual([
+      [true, false],
+      [false, false],
+      [true, true],
+    ]);
+  });
+
+  it("drops the tester override once the learner rule opens it anyway", () => {
+    const states = milestoneStates(true, [m("a", [attempt(1, "published")], { testing: true }), m("b", [], { testing: true })]);
+    expect(states[1]).toMatchObject({ status: "not_started", unlocked: true, testerOverride: false });
+  });
+
   it("labels each status from the attempts", () => {
     const states = milestoneStates(false, [
       m("done", [attempt(1, "published", 15)]),
@@ -187,6 +210,21 @@ describe("blockingPath (path order)", () => {
 
   it("never locks a path the learner already has an attempt in", () => {
     expect(blockingPath(["first"], new Map([required("first", states(false))]), states(false, true))).toBeNull();
+  });
+
+  it("on a locked path, a tester can still open its draft milestones (the lock note stays), never published ones", () => {
+    const own = milestoneStates(true, [m("a", [], { testing: true }), m("b", [], { testing: true }), m("c")]);
+    const locked = lockAll(own);
+    expect(locked.map((s) => [s.status, s.unlocked, s.testerOverride])).toEqual([
+      ["locked", true, true],
+      ["locked", true, true],
+      ["locked", false, false],
+    ]);
+    const lock = { slug: "first", title: "Connect our design systems" };
+    const open = milestonePlace({ slug: "p", title: "P" }, locked, "a", lock);
+    expect(open).toMatchObject({ locked: false, lockedBy: null });
+    expect(lockReason(open)).toBeNull();
+    expect(lockReason(milestonePlace({ slug: "p", title: "P" }, locked, "c", lock))).toBe("Unlocks after Connect our design systems.");
   });
 
   it("locks every milestone of a locked path, and the gate says what it waits for", () => {

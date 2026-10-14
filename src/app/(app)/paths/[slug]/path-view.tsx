@@ -6,7 +6,7 @@ import { Roadmap } from "@/components/roadmap";
 import { SECTION_LABEL_CLASS } from "@/components/section-label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import type { MilestoneState, PathLock, PathSummary } from "@/lib/paths/progress";
+import { TESTER_OPEN_HINT, type MilestoneState, type PathLock, type PathSummary } from "@/lib/paths/progress";
 import { isTestChallenge } from "@/lib/submissions/testing";
 
 /**
@@ -36,6 +36,7 @@ export function PathView({
 }) {
   const testing = isTestChallenge(path.status);
   const percent = summary.total ? Math.round((summary.done / summary.total) * 100) : 0;
+  const testerOpen = states.some((s) => s.testerOverride);
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-8 px-4 py-8">
@@ -82,6 +83,15 @@ export function PathView({
               </span>{" "}
               Send all its milestones first; waiting for a review is fine.
             </p>
+            {testerOpen && (
+              <p className="mt-1 inline-flex items-center gap-1.5" data-testid="tester-open-hint">
+                <FlaskConical className="size-4 shrink-0" aria-hidden />
+                <span>
+                  <span className="text-foreground font-medium">{TESTER_OPEN_HINT}:</span> this is what learners see. You can
+                  open every draft step anyway.
+                </span>
+              </p>
+            )}
           </AlertDescription>
         </Alert>
       )}

@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, Lock, Route } from "lucide-react";
+import { ArrowRight, FlaskConical, Lock, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
 import { Progress } from "@/components/ui/progress";
 import type { CardPath } from "@/lib/data/learner";
-import { pathLockLine, pathProgressLine } from "@/lib/paths/progress";
+import { pathLockLine, pathProgressLine, TESTER_OPEN_HINT } from "@/lib/paths/progress";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
  * ("2 of 7 · 40/160 pts") with a bar, and the CTA. Same surface as a challenge card; the whole card is the title's
  * link, so its accessible name stays the path title. The milestones themselves are only on the path page. A locked
  * path (`requires`) says what it waits for in place of the CTA; it still opens its page, where nothing can be started.
- * A path in a chain (paths linked by `requires`) says which step it is ("Step 1 of 3").
+ * A path in a chain (paths linked by `requires`) says which step it is ("Step 1 of 3"). A tester on a draft sees the
+ * same lock, plus "Open as tester": its page lets them open every draft milestone.
  */
 export function PathCard({
   path: p,
@@ -68,13 +69,24 @@ export function PathCard({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {p.lockedBy ? (
-          <p
-            className="text-muted-foreground bg-background inline-flex min-h-10 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-            data-testid="path-locked"
-          >
-            <Lock className="size-4 shrink-0" aria-hidden />
-            {pathLockLine({ title: p.lockedBy })}
-          </p>
+          <>
+            <p
+              className="text-muted-foreground bg-background inline-flex min-h-10 w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
+              data-testid="path-locked"
+            >
+              <Lock className="size-4 shrink-0" aria-hidden />
+              {pathLockLine({ title: p.lockedBy })}
+            </p>
+            {p.testerOpen && (
+              <span
+                className="text-foreground inline-flex min-h-10 w-fit items-center gap-1.5 rounded-full border border-dashed px-4 py-2 text-sm font-medium"
+                data-testid="tester-open-hint"
+              >
+                <FlaskConical className="size-4 shrink-0" aria-hidden />
+                {TESTER_OPEN_HINT}
+              </span>
+            )}
+          </>
         ) : (
           <span
             aria-hidden

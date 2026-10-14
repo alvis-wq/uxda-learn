@@ -317,3 +317,8 @@
 
 - A chain sits where the step the learner is on sorts (the first path that isn't done; step 1 once all are), so a chain whose first step is done moves up with the step in progress instead of dropping to the completed cards. Inside the chain the order is always the unlock order.
 - Steps are numbered over the paths the learner can see (drafts too, for a tester), the same on home and the category page, so a card says the same "Step N of M" everywhere.
+
+## Testers open every draft step (`feat/tester-open-all`)
+
+- The bypass is per milestone, on draft milestones only (the ones a tester's attempts are tests on): a published milestone inside a draft path still follows the locks, so a tester can never skip ahead for real points.
+- A bypassed milestone keeps the "locked" status (what learners see) with a separate `testerOverride` flag, so testers can still check the lock wording, and every server gate reads the same `unlocked` value.

@@ -188,6 +188,9 @@ path: auto-layout-homework
   Publishing a path there also publishes its draft milestones, after checking none has placeholders. Removing the
   file archives the path. `path:`, like `image`, is display-only: moving a challenge into a path never bumps its version.
 - **Testers** see a draft path (and its draft milestones) under "Drafts — testing"; their attempts are test attempts.
+  On draft milestones they ignore every lock (the milestone order and `requires`), so any step can be opened, saved and
+  submitted (checked on the server). Locked steps still show learners' lock note, plus "Open as tester". A published
+  milestone follows the locks for testers too (real points).
 - **Imported progress:** work done before UXDA Learn is recorded per milestone in Admin → Users → a user → Path
   progress (done with a score and a note, or changes requested with feedback), or in bulk with
   `npx tsx scripts/import-path-progress.ts <file.json> --as <admin email> [--apply]` (dry run without `--apply`; see
