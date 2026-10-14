@@ -10,6 +10,10 @@ import type { AttemptSummary } from "@/lib/submissions/rules";
  *
  * Path order (`requires`): a path stays locked, every milestone with it, until each path it requires has an attempt
  * on every milestone (the same rule, one level up). See `blockingPath`.
+ *
+ * Testers on drafts: a DRAFT milestone a tester is trying (`testing`) ignores both locks, so every step of a draft path
+ * can be tried. It still shows as "locked" (what learners will see) but is open (`unlocked`, `testerOverride`). A
+ * published milestone follows the locks for everyone, testers included: no skipping ahead for real points.
  */
 
 export type MilestoneStatus = "locked" | "not_started" | "in_progress" | "awaiting_review" | "changes_requested" | "done";
@@ -41,8 +45,14 @@ export type MilestoneState = {
   points: number;
   /** 1-based place in the path. */
   position: number;
+  /** What a learner sees: "locked" while the locks hold, even when a tester may open it anyway. */
   status: MilestoneStatus;
+  /** Whether this viewer can open, save and submit it (checked on the server). */
   unlocked: boolean;
+  /** Locked for learners, but open to this tester because it is a draft they are trying. */
+  testerOverride: boolean;
+  /** Tried as a test (a tester on a draft). */
+  testing: boolean;
   /** Best published score (what counts); null when there is none, and always for a test. */
   bestScore: number | null;
   /** Counts as done for the path's "x of y done". */
@@ -73,14 +83,16 @@ export function milestoneStates(sequential: boolean, milestones: readonly Milest
     const bestScore = bestOf(m);
     const status = statusOf(m, bestScore);
     const previous = milestones[i - 1];
-    const unlocked = !sequential || i === 0 || m.attempts.length > 0 || previous.attempts.length > 0;
+    const open = !sequential || i === 0 || m.attempts.length > 0 || previous.attempts.length > 0;
     return {
       slug: m.slug,
       title: m.title,
       points: m.points,
       position: i + 1,
-      status: unlocked ? status : "locked",
-      unlocked,
+      status: open ? status : "locked",
+      unlocked: open || m.testing,
+      testerOverride: !open && m.testing,
+      testing: m.testing,
       bestScore,
       // Done = a score that counts (a retry awaiting review doesn't undo it); for a test, any attempt.
       done: m.testing ? m.attempts.length > 0 : bestScore !== null,
@@ -115,10 +127,13 @@ export function blockingPath(
   return null;
 }
 
-/** A locked path's roadmap: every milestone locked. */
+/** A locked path's roadmap: every milestone locked (a draft one a tester is trying stays open to them). */
 export function lockAll(states: readonly MilestoneState[]): MilestoneState[] {
-  return states.map((s) => ({ ...s, status: "locked", unlocked: false }));
+  return states.map((s) => ({ ...s, status: "locked", unlocked: s.testing, testerOverride: s.testing }));
 }
+
+/** The hint next to a lock a tester may open anyway. */
+export const TESTER_OPEN_HINT = "Open as tester";
 
 /** "Unlocks after Bring a brand into the template" */
 export function pathLockLine(lock: Pick<PathLock, "title">): string {

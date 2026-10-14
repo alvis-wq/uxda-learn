@@ -262,6 +262,8 @@ export type CardPath = {
   lockedBy: string | null;
   /** Its step in a chain of paths linked by `requires`; lists show a chain's cards together (groupChains). */
   chain: ChainPlace | null;
+  /** Locked for learners, but a tester can open its draft milestones anyway ("Open as tester"). */
+  testerOpen: boolean;
   required: false;
   requiredState: RequiredState;
   due_at: null;
@@ -318,6 +320,7 @@ function pathCardOf(
     isDraft: isTestChallenge(path.status),
     lockedBy: null,
     chain: null,
+    testerOpen: false,
     required: false,
     requiredState: summary.complete ? "done" : "missing",
     due_at: null,
@@ -336,7 +339,12 @@ function withOrder(
   chains: ReadonlyMap<string, ChainPlace>,
 ): CardPath {
   const lock = blockingPath(requires, required, built.states);
-  return { ...built.card, lockedBy: lock?.title ?? null, chain: chains.get(built.card.slug) ?? null };
+  return {
+    ...built.card,
+    lockedBy: lock?.title ?? null,
+    chain: chains.get(built.card.slug) ?? null,
+    testerOpen: !!lock && built.states.some((s) => s.testing),
+  };
 }
 
 /** A card without the sort-only field it was given. */

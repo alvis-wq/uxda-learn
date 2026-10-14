@@ -163,9 +163,14 @@ describe("submitChallenge on a path milestone", () => {
     slug: "alh", title: "Auto Layout", category_slug: "wf", status: "published", audiences: ["strategist"],
     sequential: true, milestones: ["m1", "m2", "m3"], requires: [], ...over,
   });
-  function setupPath(submissions: Row[], pathOver: Row = {}, extra: { paths?: Row[]; challenges?: Row[] } = {}) {
+  function setupPath(
+    submissions: Row[],
+    pathOver: Row = {},
+    extra: { paths?: Row[]; challenges?: Row[]; milestoneStatus?: string } = {},
+  ) {
+    const status = extra.milestoneStatus ?? "published";
     const db = fakeDb({
-      challenges: [milestone("m1"), milestone("m2"), milestone("m3"), ...(extra.challenges ?? [])],
+      challenges: [milestone("m1", { status }), milestone("m2", { status }), milestone("m3", { status }), ...(extra.challenges ?? [])],
       categories: [{ slug: "wf", title: "WF", archived: false, audiences: ["strategist"] }],
       paths: [path(pathOver), ...(extra.paths ?? [])],
       submissions,
@@ -243,6 +248,44 @@ describe("submitChallenge on a path milestone", () => {
       setupPath([testSub("f1"), testSub("f2")], { requires: ["first"], status: "draft" }, first("draft"));
       // Past the lock (m1 is a draft too, so the draft rules take over from here).
       await expect(submitChallenge("m1", input)).resolves.not.toMatchObject({ error: expect.stringContaining("locked") });
+    });
+  });
+
+  describe("testers on drafts", () => {
+    const first = (status: string) => ({
+      paths: [path({ slug: "first", title: "First path", milestones: ["f1", "f2"], status })],
+      challenges: [milestone("f1", { path_slug: "first", status }), milestone("f2", { path_slug: "first", status })],
+    });
+    const pastTheLock = { error: "Please fix the highlighted fields." }; // it gets as far as checking the form
+
+    beforeEach(() => getCurrentProfile.mockResolvedValue(profile("strategist", true)));
+
+    it("can submit any milestone of a draft path, out of order, as a test attempt", async () => {
+      setupPath([], { status: "draft" }, { milestoneStatus: "draft" });
+      for (const slug of ["m1", "m2", "m3"]) await expect(submitChallenge(slug, input), slug).resolves.toMatchObject(pastTheLock);
+    });
+
+    it("ignores the path order on a draft path too", async () => {
+      setupPath([], { status: "draft", requires: ["first"] }, { ...first("draft"), milestoneStatus: "draft" });
+      for (const slug of ["m1", "m3"]) await expect(submitChallenge(slug, input), slug).resolves.toMatchObject(pastTheLock);
+    });
+
+    it("follows the normal locks on a published path, like everyone else", async () => {
+      setupPath([]);
+      await expect(submitChallenge("m2", input)).resolves.toEqual({ ok: false, error: "This milestone is locked. Submit milestone 1 first." });
+      setupPath([sub("f1", "published")], { requires: ["first"] }, first("published"));
+      await expect(submitChallenge("m1", input)).resolves.toEqual({ ok: false, error: "This milestone is locked. Unlocks after First path." });
+    });
+
+    it("never skips ahead on a published milestone inside a draft path (real points)", async () => {
+      setupPath([], { status: "draft" });
+      await expect(submitChallenge("m2", input)).resolves.toEqual({ ok: false, error: "This milestone is locked. Submit milestone 1 first." });
+    });
+
+    it("doesn't open anything for a non-tester", async () => {
+      getCurrentProfile.mockResolvedValue(profile("strategist"));
+      setupPath([], { status: "draft" }, { milestoneStatus: "draft" });
+      await expect(submitChallenge("m2", input)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
     });
   });
 

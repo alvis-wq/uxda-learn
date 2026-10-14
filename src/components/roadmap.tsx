@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { CheckCircle2, Circle, Clock, Lock, PencilLine, RotateCcw, type LucideIcon } from "lucide-react";
-import { MILESTONE_STATUS_LABEL, type MilestoneState, type MilestoneStatus } from "@/lib/paths/progress";
+import { CheckCircle2, Circle, Clock, FlaskConical, Lock, PencilLine, RotateCcw, type LucideIcon } from "lucide-react";
+import { MILESTONE_STATUS_LABEL, TESTER_OPEN_HINT, type MilestoneState, type MilestoneStatus } from "@/lib/paths/progress";
 import { cn } from "@/lib/utils";
 
 const STATUS_ICON: Record<MilestoneStatus, LucideIcon> = {
@@ -25,7 +25,8 @@ const STATUS_TONE: Record<MilestoneStatus, string> = {
  * The path's milestones as a vertical roadmap: one node per milestone (its number), joined by a track. The segment
  * below a node is filled once that milestone is done, so the track fills from the top as the learner goes. An
  * unlocked node is a link to its challenge (the whole row is clickable); a locked one is plain text that says what
- * opens it. Nothing animates.
+ * opens it. A tester on a draft sees the lock as learners will, but the node is a link with an "Open as tester" hint.
+ * Nothing animates.
  */
 export function Roadmap({
   states,
@@ -38,7 +39,7 @@ export function Roadmap({
   showScores: boolean;
 }) {
   // The learner's next step: the first unlocked milestone they can act on (not done, not waiting for a review).
-  const current = states.find((s) => s.unlocked && !s.done && s.status !== "awaiting_review")?.slug;
+  const current = states.find((s) => s.status !== "locked" && !s.done && s.status !== "awaiting_review")?.slug;
 
   return (
     <ol className="grid" data-testid="roadmap">
@@ -46,6 +47,8 @@ export function Roadmap({
         const Icon = STATUS_ICON[s.status];
         const last = i === states.length - 1;
         const isCurrent = s.slug === current;
+        // What learners see: a tester's override keeps the locked look.
+        const lockedLook = s.status === "locked";
         return (
           <li
             key={s.slug}
@@ -75,7 +78,7 @@ export function Roadmap({
                 "relative z-[1] grid size-10 place-items-center rounded-full border-2 text-sm font-semibold tabular-nums",
                 s.done
                   ? "bg-primary border-primary text-primary-foreground"
-                  : s.unlocked
+                  : !lockedLook
                     ? cn("bg-background", isCurrent ? "border-primary text-foreground" : "border-border text-foreground")
                     : "bg-background border-border text-muted-foreground border-dashed",
               )}
@@ -83,7 +86,7 @@ export function Roadmap({
               {s.position}
             </span>
             <div className="grid min-w-0 gap-1 pt-1.5">
-              <h3 className={cn("leading-snug font-medium", !s.unlocked && "text-muted-foreground")}>
+              <h3 className={cn("leading-snug font-medium", lockedLook && "text-muted-foreground")}>
                 {s.unlocked ? (
                   <Link
                     href={`/challenges/${s.slug}`}
@@ -106,8 +109,17 @@ export function Roadmap({
                   </span>
                 )}
                 {showScores && s.bestScore === null && <span className="text-muted-foreground tabular-nums">{s.points} pts</span>}
-                {!s.unlocked && sequential && i > 0 && (
+                {lockedLook && sequential && i > 0 && (
                   <span className="text-muted-foreground">Submit milestone {i} first</span>
+                )}
+                {s.testerOverride && (
+                  <span
+                    className="text-foreground inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-0.5"
+                    data-testid="tester-open-hint"
+                  >
+                    <FlaskConical className="size-3.5" aria-hidden />
+                    {TESTER_OPEN_HINT}
+                  </span>
                 )}
               </p>
             </div>

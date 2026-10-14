@@ -21,11 +21,14 @@ function fakeDb(tables: Record<string, Row[]>, ops: Op[] = []) {
   const client = {
     from(table: string) {
       const filters: [string, unknown][] = [];
-      const rows = () => (tables[table] ?? []).filter((r) => filters.every(([k, v]) => r[k] === v));
+      const inFilters: [string, unknown[]][] = [];
+      const rows = () =>
+        (tables[table] ?? []).filter((r) => filters.every(([k, v]) => r[k] === v) && inFilters.every(([k, vs]) => vs.includes(r[k])));
       let pending: Op | null = null;
       const builder = {
         select: () => builder,
         eq: (k: string, v: unknown) => (filters.push([k, v]), builder),
+        in: (k: string, vs: unknown[]) => (inFilters.push([k, vs]), builder),
         maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
         single: async () => ({ data: pending?.op === "insert" ? { id: "sub-1", status: "published" } : (rows()[0] ?? null), error: null }),
         upsert: async (row: Row, options: unknown) => (ops.push({ table, op: "upsert", row, options }), { error: null }),
@@ -320,3 +323,44 @@ describe("submitChallenge: test attempts", () => {
   });
 });
 
+
+describe("saveDraft on a path milestone", () => {
+  const step = (slug: string, status: string): Row => ({
+    ...quiz({ slug, status, path_slug: "p", difficulty: 1, title: slug, category_slug: "cat" }),
+  });
+  function setupPath(status: string) {
+    ops = [];
+    userOps = [];
+    createAdminClient.mockReturnValue(
+      fakeDb(
+        {
+          challenges: [step("s1", status), step("s2", status)],
+          categories: [{ slug: "cat", title: "Cat", archived: false, audiences: ["all"] }],
+          paths: [{ slug: "p", title: "P", category_slug: "cat", status, audiences: ["all"], sequential: true, milestones: ["s1", "s2"], requires: [] }],
+          submissions: [],
+          submission_drafts: [],
+        },
+        ops,
+      ),
+    );
+    createClient.mockResolvedValue(fakeDb({}, userOps));
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(USER);
+  });
+
+  it("a tester can save work on a later milestone of a draft path", async () => {
+    getCurrentProfile.mockResolvedValue(profile("designer", true));
+    setupPath("draft");
+    await expect(saveDraft("s2", input())).resolves.toMatchObject({ ok: true });
+  });
+
+  it("on a published path a tester is held to the lock like everyone", async () => {
+    getCurrentProfile.mockResolvedValue(profile("designer", true));
+    setupPath("published");
+    await expect(saveDraft("s2", input())).resolves.toEqual({ ok: false, error: "This milestone is locked. Submit milestone 1 first." });
+    expect(userOps).toEqual([]);
+  });
+});
