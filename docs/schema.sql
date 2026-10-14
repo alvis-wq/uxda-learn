@@ -1,8 +1,8 @@
 -- UXDA Learn — database spec (current state). Migrations in supabase/migrations are the
 -- source of truth for how the live DB got here; keep this file in step with them.
 
-create type track as enum ('strategist', 'designer', 'account_manager', 'assistant', 'motion_designer');
-create type audience as enum ('all', 'strategist', 'designer', 'account_manager', 'assistant', 'motion_designer');
+create type track as enum ('strategist', 'designer', 'account_manager', 'assistant', 'motion_designer', 'management');
+create type audience as enum ('all', 'strategist', 'designer', 'account_manager', 'assistant', 'motion_designer', 'management');
 create type challenge_type as enum ('quiz', 'screenshot', 'figma', 'mixed', 'acknowledge');
 create type submission_status as enum
   ('submitted', 'ai_reviewed', 'published', 'needs_resubmission');

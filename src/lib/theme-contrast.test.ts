@@ -58,6 +58,13 @@ const PAIRS: [string, string][] = [
   ["warning", "card"],
   ["warning", "muted"],
   ["warning", "accent"],
+  // "Correct" marks on the attempt page (the "Incorrect" marks use destructive, above).
+  ["success", "background"],
+  ["success", "card"],
+  ["success", "muted"],
+  ["success", "accent"],
+  ["destructive", "muted"],
+  ["destructive", "accent"],
 ];
 
 describe.each([

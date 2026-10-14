@@ -48,6 +48,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
   --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -85,6 +86,7 @@
   --accent-foreground: #18181b;
   --destructive: #c8102e;
   --destructive-foreground: #ffffff;
+  --success: #0b6b34; /* correct answers — text colour, AA on every surface */
   --warning: #a14a00; /* low scores, unfinished content — text colour, AA on every surface */
   --border: #e4e4e7;
   --input: #d4d4d8;
@@ -120,6 +122,7 @@
   --accent-foreground: #e8e8e8;
   --destructive: #f27474;
   --destructive-foreground: #101010;
+  --success: #6fd08c;
   --warning: #f0b44c;
   --border: #303030;
   --input: #3d3d3d;

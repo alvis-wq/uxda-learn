@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmissionAnswers } from "@/components/submission-answers";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { parseChallenge } from "@/lib/challenges/model";
+import { getLearnerAttemptResults } from "@/lib/data/attempt-results";
 import { createClient } from "@/lib/supabase/server";
 import { isResultVisible } from "@/lib/submissions/rules";
 
@@ -32,6 +35,10 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
 
   const { data: row } = await supabase.from("challenges").select("*").eq("slug", sub.challenge_slug).maybeSingle();
   const challenge = row ? parseChallenge(row) : null;
+
+  // Per-question marks. The right answers come back only when this learner is entitled to them (full marks or all
+  // attempts used), so nothing else can leak into the page.
+  const attemptResults = await getLearnerAttemptResults(profile.id, sub, challenge);
 
   // Signed URLs via the user's own client — Storage RLS limits them to their own folder.
   let imageUrls: { path: string; url: string | null }[] = [];
@@ -63,7 +70,7 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
             <CardTitle>
               {sub.status === "published" ? "Result" : "Changes requested"}
               {sub.final_score !== null && (
-                <span className="ml-2 font-normal">
+                <span className="ml-2 font-normal" data-testid="attempt-result-score">
                   {sub.final_score} / {sub.max_score} pts
                 </span>
               )}
@@ -73,13 +80,32 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
         </Card>
       )}
 
+      {attemptResults.state === "outdated" && (
+        <Alert>
+          <Info aria-hidden />
+          <AlertDescription>
+            This challenge was updated after your attempt, so the question-by-question marks aren&apos;t available for it.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <SubmissionAnswers
         questions={challenge?.questions ?? []}
         answers={(sub.answers ?? {}) as Record<string, unknown>}
         imageUrls={imageUrls}
         figmaUrl={sub.figma_url}
         reflection={sub.reflection}
+        results={attemptResults.state === "ready" ? attemptResults.results : undefined}
+        reveal={attemptResults.state === "ready" ? attemptResults.reveal : undefined}
       />
+
+      {attemptResults.state === "ready" && !attemptResults.reveal.reveal && isResultVisible(sub.status) && (
+        <div>
+          <Link href={`/challenges/${sub.challenge_slug}`} className={buttonVariants()} data-testid="try-again-link">
+            Try again
+          </Link>
+        </div>
+      )}
     </main>
   );
 }

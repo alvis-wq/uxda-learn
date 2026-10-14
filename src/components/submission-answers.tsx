@@ -1,5 +1,20 @@
-import { ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import type { PublicQuestion } from "@/lib/content/schema";
+import { tryAgainMessage, type AnswerReveal, type QuestionResult } from "@/lib/submissions/results";
+
+/** Correct / incorrect: colour, icon and text together, never colour alone. */
+function ResultMark({ correct }: { correct: boolean }) {
+  const Icon = correct ? CheckCircle2 : XCircle;
+  return (
+    <span
+      data-testid="question-mark"
+      className={`inline-flex shrink-0 items-center gap-1 text-sm font-medium ${correct ? "text-success" : "text-destructive"}`}
+    >
+      <Icon className="size-4" aria-hidden />
+      {correct ? "Correct" : "Incorrect"}
+    </span>
+  );
+}
 
 /** Read-only view of a submission's answers, screenshots, Figma link and reflection. */
 export function SubmissionAnswers({
@@ -8,13 +23,19 @@ export function SubmissionAnswers({
   imageUrls,
   figmaUrl,
   reflection,
+  results,
+  reveal,
 }: {
   questions: PublicQuestion[];
   answers: Record<string, unknown>;
   imageUrls: { path: string; url: string | null }[];
   figmaUrl: string | null;
   reflection: string | null;
+  /** Marks for the auto-graded questions. The right answers inside are already limited by the server. */
+  results?: QuestionResult[];
+  reveal?: AnswerReveal;
 }) {
+  const resultFor = new Map(results?.map((r) => [r.questionId, r]));
   return (
     <div className="grid gap-6">
       {questions.length > 0 && (
@@ -27,12 +48,30 @@ export function SubmissionAnswers({
               const ids = Array.isArray(a) ? a : typeof a === "string" ? [a] : [];
               shown = ids.map((id) => q.options.find((o) => o.id === id)?.label ?? id).join("; ") || "—";
             }
+            const result = q.kind === "text" ? undefined : resultFor.get(q.id);
+            const rightAnswer = result?.correctOptionIds
+              ?.map((id) => (q.kind === "text" ? id : (q.options.find((o) => o.id === id)?.label ?? id)))
+              .join("; ");
             return (
-              <div key={q.id} className="grid gap-1">
+              <div key={q.id} className="grid gap-1" data-testid="answer" data-result={result ? (result.correct ? "correct" : "incorrect") : undefined}>
                 <p className="text-sm font-medium">
                   {i + 1}. {q.prompt}
                 </p>
-                <p className="text-muted-foreground text-sm whitespace-pre-line">{shown}</p>
+                <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
+                  <p className="text-muted-foreground min-w-0 flex-1 basis-48 text-sm whitespace-pre-line">{shown}</p>
+                  {result && <ResultMark correct={result.correct} />}
+                </div>
+                {result && !result.correct && rightAnswer && (
+                  <p className="text-sm" data-testid="right-answer">
+                    <span className="font-medium">{result.correctOptionIds!.length > 1 ? "Correct answers:" : "Correct answer:"}</span>{" "}
+                    {rightAnswer}
+                  </p>
+                )}
+                {result && !result.correct && !rightAnswer && reveal && !reveal.reveal && (
+                  <p className="text-muted-foreground text-sm" data-testid="try-again">
+                    {tryAgainMessage(reveal.attemptsLeft)}
+                  </p>
+                )}
               </div>
             );
           })}

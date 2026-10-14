@@ -19,9 +19,9 @@ describe("tracks", () => {
     expect([...Constants.public.Enums.audience].sort()).toEqual(["all", ...TRACK_VALUES].sort());
   });
 
-  it("include all five tracks", () => {
+  it("include all six tracks", () => {
     expect([...TRACK_VALUES].sort()).toEqual(
-      ["account_manager", "assistant", "designer", "motion_designer", "strategist"].sort(),
+      ["account_manager", "assistant", "designer", "management", "motion_designer", "strategist"].sort(),
     );
   });
 
@@ -40,17 +40,18 @@ describe("leaderboard groups", () => {
     }
   });
 
-  it("are Strategists / Designers (+ motion) / Team (AM + assistant)", () => {
+  it("are Strategists / Designers (+ motion) / Team (AM + assistant + management)", () => {
     expect(LEADERBOARD_GROUPS.map((g) => [g.id, g.label, [...g.tracks]])).toEqual([
       ["strategists", "Strategists", ["strategist"]],
       ["designers", "Designers", ["designer", "motion_designer"]],
-      ["team", "Team", ["account_manager", "assistant"]],
+      ["team", "Team", ["account_manager", "assistant", "management"]],
     ]);
   });
 
   it("look up by track and by id", () => {
     expect(groupForTrack("motion_designer")?.id).toBe("designers");
     expect(groupForTrack("assistant")?.id).toBe("team");
+    expect(groupForTrack("management")?.id).toBe("team");
     expect(groupForTrack(null)).toBeUndefined();
     expect(groupById("team")?.label).toBe("Team");
     expect(groupById("nope")).toBeUndefined();
@@ -65,6 +66,8 @@ describe("audiences", () => {
 
   it("visibility", () => {
     expect(isVisibleToTrack(["all"], "assistant")).toBe(true);
+    expect(isVisibleToTrack(["all"], "management")).toBe(true);
+    expect(isVisibleToTrack(["designer"], "management")).toBe(false);
     expect(isVisibleToTrack(["designer", "motion_designer"], "motion_designer")).toBe(true);
     expect(isVisibleToTrack(["designer", "motion_designer"], "strategist")).toBe(false);
     expect(isVisibleToTrack(["designer"], null)).toBe(false);

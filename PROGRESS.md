@@ -769,3 +769,11 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Measured by scanning screenshots at 8x for the lowest ink row of the logo's flat letters against the lowest row of the "L": before, "Learn" stood 3.9 CSS px above the logo's bottom in the header and 6.75 px above it on the login card
   (centre alignment); after, 0 device px of difference at DPR 1, 2, 3 and 8 for header desktop (dark and light), login card desktop and mobile (the header hides "Learn" below 640px). A sweep of 7 logo/text size pairs
   (12-64px logo, 12-48px text) is 0 px at 8x in every case, and an in-page probe on the word's baseline equals the letters' line to 0.00002px. `e2e/logo-baseline.spec.ts` asserts the same (not run: no test project).
+
+## Management track and per-question results (`feat/management-track-results`)
+
+- Track `management` ("CEO and COO"): `tracks.ts` (Team group), onboarding icon, admin Users select (both read `TRACKS`), `docs/schema.sql`, `database.types.ts` (edited by hand until `db:types` is re-run), content docs and `/new-challenge`. Migration `20261014090000_management_track.sql`; not applied yet, waiting for `db:push`.
+- Attempt page (`/submissions/[id]`) and the admin review page mark each single/multi question Correct (✓) or Incorrect (✗); wrong answers show the right answer when `answerReveal` allows it (full marks or 3 attempts used), otherwise "Try again to find the right answer — N attempts left." New `results.ts` (+ tests), `attempt-results.ts` (server-only), `--success` token with contrast tests.
+
+
+- After submitting an auto-graded quiz both forms go straight to `/submissions/[id]` (score, ✓/✗ per question, reveal rules, "Try again" while attempts remain). Review-bound submissions are unchanged. E2E learner and dashboard specs updated for the new landing page (not run: no test project).

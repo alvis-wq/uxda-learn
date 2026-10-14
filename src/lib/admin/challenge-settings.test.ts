@@ -76,7 +76,7 @@ describe("settingChangeError", () => {
 
   it("only allows required for everyone when every track can see it", () => {
     expect(settingChangeError({ slug: "x", field: "required_for", value: ["all"] }, ctx())).toMatch(
-      /^Can't require it for everyone: Strategist, Account Manager, Assistant can't see this challenge/,
+      /^Can't require it for everyone: Strategist, Account Manager, Assistant, Management can't see this challenge/,
     );
     expect(settingChangeError({ slug: "x", field: "required_for", value: ["all"] }, ctx({ audiences: ["all"] }))).toBeNull();
   });

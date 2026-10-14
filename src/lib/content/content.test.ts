@@ -81,7 +81,7 @@ describe("content validation", () => {
       expect(messagesFor("required-invisible").join("\n")).toMatch(/required_for: Designer can't see this challenge/);
       // required_for: all = every track, so a strategist-only challenge can't be required for all.
       const all = messagesFor("required-all-narrow");
-      expect(all).toHaveLength(4);
+      expect(all).toHaveLength(5); // one per track that can't see it: designer, motion designer, AM, assistant, management
       expect(all.join("\n")).not.toMatch(/Strategist/);
     });
 

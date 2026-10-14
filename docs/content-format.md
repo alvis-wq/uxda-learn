@@ -21,7 +21,7 @@
   `status: published`. Keep such challenges `draft` until the placeholder is filled in.
 
 ## Tracks and audiences
-Tracks: `strategist`, `designer`, `motion_designer`, `account_manager`, `assistant`
+Tracks: `strategist`, `designer`, `motion_designer`, `account_manager`, `assistant`, `management`
 (labels and leaderboard groups live in `src/lib/tracks.ts`).
 
 An **audience list** is either `all` (everyone, including tracks added later) or a list of
