@@ -797,3 +797,7 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 - Brief: leading title heading skipped, collapsed to its first paragraph (toggle) once started (`src/lib/challenges/brief.ts` + tests, `collapsible-brief.tsx`); "Your submission" heading screen-reader only with a stepper; compact restore notice; tighter spacing. A temporary page in a browser: question heading 158px higher, toggle by Enter and Space, notice 20px high, axe clean and no overflow at 1280/375/320 in both themes. E2E (`drafts.spec.ts`, the quiz fixture now has a repeated heading and two paragraphs) updated, not run.- wf-1..wf-6: "Time" line removed so the first paragraph is the task (`wf-brief.test.ts`). `content:validate` OK. **Needs `npm run content:sync`** (not run).
 
+## Claude at UXDA is back as a quiz (`feat/restore-claude-at-uxda`)
+
+- Restored `content/challenges/claude-at-uxda.md` (same 5 questions and answers, draft) with a spoiler-free description; removed `claude-rules-at-uxda.md`. `content:validate` OK (14 challenges). **Needs `npm run content:sync`** (not run): it creates/updates the quiz and archives the acknowledge challenge.
+
