@@ -108,8 +108,9 @@ challenge `version`.
 `submission.screenshots.min: 0` makes the screenshots optional (the Stepper shows "Optional"); use it when the
 Figma link alone shows the work, and write the rubric so the link can earn full marks.
 
-Links in a brief (`[text](https://…)`) open in a new tab with an external-link icon, except `#anchor`
-links. Link to another challenge with `/challenges/<slug>`.
+Links in a brief (`[text](https://…)`) to other sites (Drive, Figma, …) open in a new tab with an
+external-link icon. Links into the app open in the same tab, with no icon: link to another challenge with
+`/challenges/<slug>`, to a category with `/categories/<slug>`, or use `#anchor`.
 
 `tip` is a short markdown hint shown in a subtle box above the questions (on the first questions step
 of a stepped challenge). It is display-only, like `image`: changing it never bumps the `version`, and it

@@ -23,9 +23,20 @@ describe("Markdown links", () => {
     expect(html).toContain("the doc");
   });
 
-  it("leaves in-page links alone", () => {
-    const local = render("[Jump](#rubric)");
-    expect(local).toContain('<a href="#rubric">Jump</a>');
-    expect(local).not.toContain("target=");
+  it("keeps links into the app in the same tab, with no icon", () => {
+    for (const href of ["/challenges/wf-1-make-kit-quick-draft", "/categories/wireframing", "#rubric", "?category=ai-workflow"]) {
+      const local = render(`[Go](${href})`);
+      expect(local, href).toContain(`href="${href}"`);
+      expect(local, href).not.toContain("target=");
+      expect(local, href).not.toContain("rel=");
+      expect(local, href).not.toContain("<svg");
+      expect(local, href).not.toContain("opens in a new tab");
+    }
+  });
+
+  it("treats other hosts as external, including a protocol-relative link", () => {
+    for (const href of ["//evil.example/x", "https://www.figma.com/file/1", "http://example.com", "mailto:a@b.co"]) {
+      expect(render(`[Go](${href})`), href).toContain('target="_blank"');
+    }
   });
 });
