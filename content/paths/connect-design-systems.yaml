@@ -2,7 +2,7 @@ slug: connect-design-systems
 title: Connect our design systems
 category: design-systems
 audiences: [designer]
-summary: Set up our design systems in Claude Code and check their health in Figma.
+summary: Set up our five design system files in Claude Code and check their health in Figma.
 sequential: true
 milestones:
   - cds-1-project-folders
