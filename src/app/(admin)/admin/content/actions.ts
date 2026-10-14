@@ -61,7 +61,7 @@ export async function updatePathStatus(raw: unknown): Promise<ActionResult> {
   const { slug, value } = parsed.data;
 
   const db = createAdminClient();
-  const { data: path } = await db.from("paths").select("slug,title,summary,before_you_submit,milestones").eq("slug", slug).maybeSingle();
+  const { data: path } = await db.from("paths").select("slug,title,summary,before_you_start,before_you_submit,milestones").eq("slug", slug).maybeSingle();
   if (!path) return { ok: false, error: "Path not found." };
 
   if (value === "published") {

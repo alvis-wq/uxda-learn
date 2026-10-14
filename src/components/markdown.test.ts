@@ -40,3 +40,20 @@ describe("Markdown links", () => {
     }
   });
 });
+
+describe("Markdown images", () => {
+  it("shows an image from public/challenges/ with its alt text, responsive and lazy", () => {
+    const html = render("Like this:\n\n![The Claude Code sidebar with three folders](/challenges/claude-code-sidebar.png)");
+    const img = html.match(/<img[^>]*>/)?.[0] ?? "";
+    expect(img).toContain('src="/challenges/claude-code-sidebar.png"');
+    expect(img).toContain('alt="The Claude Code sidebar with three folders"');
+    expect(img).toContain('loading="lazy"');
+    expect(img).toMatch(/class="[^"]*max-w-full[^"]*h-auto|class="[^"]*h-auto[^"]*max-w-full/);
+  });
+
+  it("shows nothing for an image from anywhere else", () => {
+    for (const src of ["https://evil.example/x.png", "/other/x.png", "/challenges/../x.png", "/challenges/x.svg"]) {
+      expect(render(`![x](${src})`), src).not.toContain("<img");
+    }
+  });
+});

@@ -1,0 +1,14 @@
+slug: connect-design-systems
+title: Connect our design systems
+category: design-systems
+audiences: [designer]
+summary: Set up our five design system files in Claude Code and check their health in Figma.
+sequential: true
+milestones:
+  - cds-1-project-folders
+  - cds-2-connect-and-harvest
+  - cds-3-health-in-figma
+before_you_start: >-
+  You need the **uxda-design-systems** plugin in Claude Code, and your Figma access token set up once with
+  **/dsx-setup**. Ask Alvis if either is missing.
+status: draft

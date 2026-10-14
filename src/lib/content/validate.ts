@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import type { ContentError, LoadedContent } from "./load";
 import { audienceTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
+import { briefImageErrors } from "./images";
 import { challengeParts, describePlaceholders, findPlaceholders } from "./placeholders";
 import { needsReview } from "./schema";
 
@@ -63,6 +64,7 @@ export function validateContent(
 
     if (missingImage(c.image)) err(file, `image: "${c.image}" not found in public/challenges/`);
     if (!body) err(file, "brief (markdown body) is empty");
+    for (const m of briefImageErrors(body, (name) => existsSync(path.join(imageDir, name)))) err(file, m);
 
     // A file can only publish a challenge when it's first created; never with placeholders in it.
     if (c.status === "published") {
@@ -189,7 +191,12 @@ function validatePaths(
     for (const slug of duplicates(p.milestones)) err(file, `milestones: "${slug}" is listed twice`);
 
     if (p.status === "published") {
-      const hits = findPlaceholders({ title: p.title, summary: p.summary, "before you submit": p.before_you_submit });
+      const hits = findPlaceholders({
+        title: p.title,
+        summary: p.summary,
+        "before you start": p.before_you_start,
+        "before you submit": p.before_you_submit,
+      });
       if (hits.length) err(file, `status: published, but the path still has placeholders: ${describePlaceholders(hits)}`);
     }
 

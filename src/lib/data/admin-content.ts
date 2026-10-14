@@ -131,7 +131,12 @@ export async function getContentOverview() {
           sequential: p.sequential,
           milestones,
           points: milestones.reduce((sum, m) => sum + m.points, 0),
-          placeholders: findPlaceholders({ title: p.title, summary: p.summary, "before you submit": p.before_you_submit }),
+          placeholders: findPlaceholders({
+            title: p.title,
+            summary: p.summary,
+            "before you start": p.before_you_start,
+            "before you submit": p.before_you_submit,
+          }),
           history: pathHistory.get(p.slug) ?? [],
         };
       }),

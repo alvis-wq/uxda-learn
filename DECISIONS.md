@@ -293,3 +293,11 @@
 - The import script is a dry run unless `--apply`, needs `--as <admin email>` (recorded as `imported_by`), skips people who haven't signed in and milestones already imported — so it can be re-run after more people sign in.
 - `submissions.imported_by` is a second FK to profiles, so embeds name theirs (`profiles!submissions_user_id_fkey`) — PostgREST can't pick one otherwise.
 - The path page's markup lives in a data-free `PathView` (like `HomeView`) — it can be rendered with sample data for browser checks.
+
+## Designer paths (`feat/designer-paths`)
+
+- "Before you start" is its own optional path field (`before_you_start`, markdown ≤ 600 chars, new column) shown at the top of the path page — it's what to set up before milestone 1, unlike "Before you submit", which is a checklist for each submission.
+- Brief images: markdown `![alt](/challenges/file.png)` from `public/challenges/` only (same folder and file rule as card artwork), alt text required by `content:validate`; anything else isn't rendered — no remote images in the app, and every image has a text alternative.
+- Images are left out of a derived summary — "!alt" in a one-line summary says nothing.
+- Commands in the new briefs are bold (**/harvest**), like the existing briefs — inline code shows literal backticks with the typography plugin.
+- Milestones that ask for "one per design system" set `screenshots.min: 3` — the form then asks for all three.

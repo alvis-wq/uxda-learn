@@ -33,6 +33,7 @@ export function deriveSummary(body: string): string | null {
     .join("\n")
     .split(/\n\s*\n/)
     .map((p) => p.trim())
+    .map((p) => p.replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim()) // images say nothing in a one-line summary
     .find((p) => p && !p.startsWith("|") && !p.startsWith("```"));
   if (!para) return null;
   const plain = para
@@ -117,6 +118,7 @@ export type PathRow = {
   audiences: Audience[];
   sequential: boolean;
   milestones: string[];
+  before_you_start: string | null;
   before_you_submit: string[];
 };
 
@@ -130,6 +132,7 @@ export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; 
       audiences: p.audiences ?? categories.find((c) => c.slug === p.category)?.audiences ?? ["all"],
       sequential: p.sequential,
       milestones: p.milestones,
+      before_you_start: p.before_you_start ?? null,
       before_you_submit: p.before_you_submit,
     },
     status: p.status,

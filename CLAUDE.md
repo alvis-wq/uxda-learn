@@ -39,7 +39,7 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   `submitted → ai_reviewed (via /evaluate) → published` (admin approves)
   or `→ needs_resubmission`.
 - Learning paths (`content/paths/*.yaml`): one card that opens a roadmap of milestone challenges (`path:` on the
-  challenge). Milestones are listed only inside their path; a path counts as one item, done when every milestone is
+  challenge). A path page can have "Before you start" (markdown) and "Before you submit" boxes. Milestones are listed only inside their path; a path counts as one item, done when every milestone is
   done; in a sequential path a milestone unlocks once the previous one has any attempt (checked on the server).
   Admins can import earlier progress (Admin → Users → a user, or `scripts/import-path-progress.ts`): a normal attempt
   flagged `is_imported`, only on a published path, written by `import_submission()` and audited.
