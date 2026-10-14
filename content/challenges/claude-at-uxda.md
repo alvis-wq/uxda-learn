@@ -5,7 +5,7 @@ category: tool-proficiency
 type: quiz
 difficulty: 1
 points: 10
-estimated_minutes: 4
+estimated_minutes: 3
 status: draft
 questions:
   - id: q1

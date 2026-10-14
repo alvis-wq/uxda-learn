@@ -256,5 +256,5 @@
 
 ## Claude at UXDA is back as a quiz (`feat/restore-claude-at-uxda`)
 
-- `claude-at-uxda` (the 5-question quiz) is restored from git as it was, but with a body that only introduces it ("A few quick questions about how we use our company Claude account. 5 questions, about 3 minutes."): the old body listed the rules, which gave away the answers. `claude-rules-at-uxda` (the acknowledge challenge from the order-question PR) is deleted again, so `content:sync` archives it. `estimated_minutes` stays 4 as before, so the meta row says ~4 min while the text says about 3.
+- `claude-at-uxda` (the 5-question quiz) is restored from git as it was, but with a body that only introduces it ("A few quick questions about how we use our company Claude account. 5 questions, about 3 minutes."): the old body listed the rules, which gave away the answers. `claude-rules-at-uxda` (the acknowledge challenge from the order-question PR) is deleted again, so `content:sync` archives it. `estimated_minutes` is 3 to match the text.
 
