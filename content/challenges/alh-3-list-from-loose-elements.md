@@ -1,7 +1,7 @@
 ---
 slug: alh-3-list-from-loose-elements
 title: Build a list from loose elements
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma

@@ -146,7 +146,7 @@ describe("data/auto-layout-import.json", () => {
 
   it("matches what was asked: Deniss's Final Boss is done at 36/40 with feedback", () => {
     const count = Object.fromEntries(parsed.users.map((u) => [u.email.split("@")[0], u.milestones.length]));
-    expect(count).toEqual({ kristine: 7, "roberts.ceruss": 7, deniss: 7, tamara: 4, inese: 2, elina: 1, zanna: 0 });
+    expect(count).toEqual({ kristine: 7, "roberts.ceruss": 7, deniss: 7, tamara: 4, inese: 2, elina: 1, zanna: 0, alvis: 6 });
     const boss = parsed.users.find((u) => u.email.startsWith("deniss"))!.milestones[6];
     expect(boss).toEqual({ milestone: "alh-7-final-boss", status: "done", score: 36, note: "Needs updates — see review in Figma." });
     const others = parsed.users.flatMap((u) => u.milestones).filter((m) => m !== boss);

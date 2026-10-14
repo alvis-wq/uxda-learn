@@ -1,7 +1,7 @@
 ---
 slug: alh-6-equal-size-grid
 title: An equal-size grid
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma

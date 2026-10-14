@@ -1,7 +1,7 @@
 ---
 slug: alh-2-convert-manual-layout
 title: Convert a manual layout
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma

@@ -1,7 +1,7 @@
 ---
 slug: alh-7-final-boss
 title: Final Boss
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma

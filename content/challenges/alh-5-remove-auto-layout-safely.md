@@ -1,7 +1,7 @@
 ---
 slug: alh-5-remove-auto-layout-safely
 title: Remove Auto Layout safely
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma

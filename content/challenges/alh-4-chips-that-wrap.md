@@ -1,7 +1,7 @@
 ---
 slug: alh-4-chips-that-wrap
 title: Chips that wrap
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma

@@ -1,7 +1,7 @@
 ---
 slug: alh-1-edit-auto-layout-card
 title: Edit an Auto Layout card
-category: wireframing
+category: tool-proficiency
 audiences: [strategist]
 path: auto-layout-homework
 type: figma
