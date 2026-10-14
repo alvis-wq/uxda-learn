@@ -94,21 +94,25 @@ export function pathChains(paths: readonly { slug: string; requires: readonly st
 }
 
 /**
- * A chain's cards together, in step order, placed where its first path (the lowest step in the list) sorts; every other
- * card keeps its place. Works on any already-sorted list (All, a category, the drafts).
+ * A chain's cards together, in step order, placed where the step the learner is on sorts: the first path in the chain
+ * (in this list) that isn't done, or its first path when all are done. Every other card keeps its place. Works on any
+ * already-sorted list (All, a category, the drafts).
  */
-export function groupChains<T>(items: readonly T[], chainOf: (item: T) => ChainPlace | null): T[] {
+export function groupChains<T>(items: readonly T[], chainOf: (item: T) => ChainPlace | null, isDone: (item: T) => boolean): T[] {
   const chains = new Map<string, T[]>();
   for (const item of items) {
     const c = chainOf(item);
     if (c) chains.set(c.id, [...(chains.get(c.id) ?? []), item]);
   }
-  for (const list of chains.values()) list.sort((a, b) => chainOf(a)!.step - chainOf(b)!.step);
+  const anchors = new Set<T>();
+  for (const list of chains.values()) {
+    list.sort((a, b) => chainOf(a)!.step - chainOf(b)!.step);
+    anchors.add(list.find((item) => !isDone(item)) ?? list[0]);
+  }
   return items.flatMap((item) => {
     const c = chainOf(item);
     if (!c) return [item];
-    const list = chains.get(c.id)!;
-    return list[0] === item ? list : [];
+    return anchors.has(item) ? chains.get(c.id)! : [];
   });
 }
 

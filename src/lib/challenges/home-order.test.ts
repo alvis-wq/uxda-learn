@@ -173,11 +173,12 @@ describe("pathChains", () => {
 });
 
 describe("groupChains", () => {
-  type Item = { slug: string; chain: ChainPlace | null };
+  type Item = { slug: string; chain: ChainPlace | null; done: boolean };
   const link = (id: string, step: number, of = 3) => ({ id, step, of });
-  const item = (slug: string, chain: ChainPlace | null = null): Item => ({ slug, chain });
+  const item = (slug: string, chain: ChainPlace | null = null, done = false): Item => ({ slug, chain, done });
+  const group = (sorted: Item[]) => groupChains(sorted, (i) => i.chain, (i) => i.done).map((i) => i.slug);
 
-  it("shows a chain's cards together in step order, where its first path sorts", () => {
+  it("shows a chain's cards together in step order, where the step the learner is on sorts", () => {
     const sorted = [
       item("in-progress"),
       item("brand", link("connect", 2)),
@@ -186,16 +187,38 @@ describe("groupChains", () => {
       item("build", link("connect", 3)),
       item("done-one"),
     ];
-    expect(groupChains(sorted, (i) => i.chain).map((i) => i.slug)).toEqual(["in-progress", "quiz", "connect", "brand", "build", "done-one"]);
+    // Nothing done: the learner is on step 1.
+    expect(group(sorted)).toEqual(["in-progress", "quiz", "connect", "brand", "build", "done-one"]);
   });
 
-  it("anchors on the lowest step in the list when step 1 isn't in it", () => {
+  it("moves up with the first step that isn't done, even when step 1 sorts with the completed cards", () => {
+    const sorted = [
+      item("brand", link("connect", 2)), // in progress, sorted first
+      item("quiz"),
+      item("build", link("connect", 3)),
+      item("done-one", null, true),
+      item("connect", link("connect", 1), true), // done, sorted with the completed ones
+    ];
+    expect(group(sorted)).toEqual(["connect", "brand", "build", "quiz", "done-one"]);
+  });
+
+  it("sits where step 1 sorts once every step is done", () => {
+    const sorted = [
+      item("quiz"),
+      item("done-one", null, true),
+      item("build", link("connect", 3), true),
+      item("connect", link("connect", 1), true),
+      item("brand", link("connect", 2), true),
+    ];
+    expect(group(sorted)).toEqual(["quiz", "done-one", "connect", "brand", "build"]);
+  });
+
+  it("anchors on the first step in the list that isn't done when step 1 isn't in it", () => {
     const sorted = [item("build", link("connect", 3)), item("quiz"), item("brand", link("connect", 2))];
-    expect(groupChains(sorted, (i) => i.chain).map((i) => i.slug)).toEqual(["quiz", "brand", "build"]);
+    expect(group(sorted)).toEqual(["quiz", "brand", "build"]);
   });
 
   it("leaves a list without chains as it is", () => {
-    const sorted = [item("a"), item("b"), item("c")];
-    expect(groupChains(sorted, (i) => i.chain)).toEqual(sorted);
+    expect(group([item("a"), item("b"), item("c")])).toEqual(["a", "b", "c"]);
   });
 });

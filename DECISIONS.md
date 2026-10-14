@@ -315,5 +315,5 @@
 
 ## Path chains (`feat/path-chains`)
 
-- A chain sits where its step 1 sorts (as asked), even if a later step is in progress — the order inside the chain is the unlock order, so the cards never jump around as steps are done.
+- A chain sits where the step the learner is on sorts (the first path that isn't done; step 1 once all are), so a chain whose first step is done moves up with the step in progress instead of dropping to the completed cards. Inside the chain the order is always the unlock order.
 - Steps are numbered over the paths the learner can see (drafts too, for a tester), the same on home and the category page, so a card says the same "Step N of M" everywhere.

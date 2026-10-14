@@ -444,7 +444,8 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
 
   const required = visible.filter((ch) => ch.required);
   const categoryOrder = new Map(cats.data.map((c, i) => [c.slug, i]));
-  // Sorted, then each chain of paths gathered where its first path sorts (every list: All, a category, the drafts).
+  // Sorted, then each chain of paths gathered where the step the learner is on sorts (every list: All, a category, the
+  // drafts).
   const toCards = (items: typeof listed, pathItems: CardPath[]) =>
     groupChains(sortHomeChallenges<HomeCard & { categoryOrder: number }>([
       ...items.map((ch) => {
@@ -453,7 +454,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
         return { ...card, categoryOrder: categoryOrder.get(ch.category_slug) ?? 0 };
       }),
       ...pathItems.map((p) => ({ ...p, categoryOrder: categoryOrder.get(p.categorySlug) ?? 0 })),
-    ]), chainOf).map((item) => cardWithout<HomeCard>(item));
+    ]), chainOf, (card) => card.done).map((item) => cardWithout<HomeCard>(item));
   // Drafts are kept apart: the page shows them only under the tester's "Drafts — testing" filter.
   const challenges = toCards(visible, livePaths);
   const draftCards = toCards(
@@ -541,10 +542,11 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   return {
     category,
     // Required first, then paths with the other challenges in difficulty order (a stable sort keeps it); then each
-    // chain of paths gathered where its first path sorts.
+    // chain of paths gathered where the step the learner is on sorts.
     challenges: groupChains(
       requiredFirst([...challengeCards, ...pathCards].sort((a, b) => a.difficulty - b.difficulty || a.title.localeCompare(b.title))),
       chainOf,
+      (card) => card.done,
     ),
   };
 }
