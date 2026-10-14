@@ -52,11 +52,39 @@ export function sortHomeChallenges<T extends HomeSortable>(items: readonly T[]):
 /** The URL param of the "All" filter being absent. */
 export const ALL_CATEGORIES = "all";
 
-/** The category a `?category=` value selects: a known slug, else "all" (missing, unknown or repeated values). */
-export function parseCategoryFilter(value: string | null | undefined, slugs: readonly string[]): string {
+/** The tester-only filter that lists draft challenges (`?category=drafts`). */
+export const DRAFTS_FILTER = "drafts";
+
+/**
+ * The filter a `?category=` value selects: a known category slug, the drafts filter (testers only), else "all"
+ * (missing, unknown or repeated values, or `drafts` for someone who isn't a tester).
+ */
+export function parseHomeFilter(
+  value: string | null | undefined,
+  slugs: readonly string[],
+  options: { tester: boolean },
+): string {
+  if (value === DRAFTS_FILTER && options.tester) return DRAFTS_FILTER;
   return value && slugs.includes(value) ? value : ALL_CATEGORIES;
 }
 
 export function filterByCategory<T extends { categorySlug: string }>(items: readonly T[], category: string): T[] {
   return category === ALL_CATEGORIES ? [...items] : items.filter((c) => c.categorySlug === category);
+}
+
+export type CategoryGroup<T> = { slug: string; title: string; completed: number; total: number; items: T[] };
+
+/**
+ * The "All" view: one group per category, in the order the categories come in (their sort order), each holding that
+ * category's challenges in the order they arrived (sortHomeChallenges: in progress, required not done, other not
+ * started, completed). Categories with nothing to show are left out.
+ */
+export function groupByCategory<T extends { categorySlug: string }>(
+  items: readonly T[],
+  categories: readonly { slug: string; title: string; completed: number; total: number }[],
+): CategoryGroup<T>[] {
+  return categories
+    .map((c) => ({ ...c, items: items.filter((i) => i.categorySlug === c.slug) }))
+    .filter((g) => g.items.length > 0)
+    .map(({ slug, title, completed, total, items: list }) => ({ slug, title, completed, total, items: list }));
 }

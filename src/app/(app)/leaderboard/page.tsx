@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EyeOff, Trophy } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { LeaderboardTable } from "@/components/leaderboard-table";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { rankRows } from "@/lib/submissions/rules";
-import { groupById, groupForTrack, LEADERBOARD_GROUPS, TRACK_LABEL } from "@/lib/tracks";
+import { splitLeaderboard } from "@/lib/submissions/rules";
+import { groupById, groupForTrack, LEADERBOARD_GROUPS } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Leaderboard · UXDA Learn" };
@@ -23,7 +22,8 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] });
   if (error) throw new Error(`Couldn't load the leaderboard: ${error.message}`);
-  const rows = rankRows(data);
+  // Everyone with points is ranked; people with none have no rank and come last, under "Not started yet".
+  const { ranked, notStarted } = splitLeaderboard(data);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10">
@@ -56,45 +56,10 @@ export default async function LeaderboardPage({ searchParams }: PageProps<"/lead
         </Alert>
       )}
 
-      {rows.length === 0 ? (
+      {ranked.length + notStarted.length === 0 ? (
         <EmptyState icon={Trophy} title="No one here yet" description="Complete a challenge to get on the board." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-14">#</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">Completed</TableHead>
-              <TableHead className="text-right">Score</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => {
-              const me = r.user_id === profile.id;
-              return (
-                <TableRow
-                  key={r.user_id}
-                  aria-current={me ? "true" : undefined}
-                  data-testid={me ? "leaderboard-me" : undefined}
-                  className={cn(me && "bg-accent hover:bg-accent font-medium")}
-                >
-                  <TableCell className="tabular-nums">{r.rank}</TableCell>
-                  <TableCell>
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      {r.full_name ?? "Unnamed"}
-                      {me && <Badge>You</Badge>}
-                      {mixedTracks && (
-                        <span className="text-muted-foreground text-meta">{TRACK_LABEL[r.track]}</span>
-                      )}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{r.completed}</TableCell>
-                  <TableCell className="text-right tabular-nums">{Number(r.total_score)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <LeaderboardTable ranked={ranked} notStarted={notStarted} meId={profile.id} mixedTracks={mixedTracks} />
       )}
     </main>
   );
