@@ -801,3 +801,8 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 - Restored `content/challenges/claude-at-uxda.md` (same 5 questions and answers, draft) with a spoiler-free description; removed `claude-rules-at-uxda.md`. `content:validate` OK (14 challenges). **Needs `npm run content:sync`** (not run): it creates/updates the quiz and archives the acknowledge challenge.
 
+## Security headers and dependency audit (`chore/security-hardening`)
+
+- Security headers on every route (`src/lib/security-headers.ts`, `next.config.ts`); checked with curl on `next dev` and `next start` (pages, static chunks, the glb and mp3, redirects) and in a browser: login renders, the glass X's WebGL context is created, the intro sound loads, the Google button redirects to Supabase's authorize endpoint, no CSP or permissions messages in the console, and the login page does not render in another site's iframe. Uploads were not exercised (no signed-in session / test project here): the headers don't touch fetches to Supabase Storage.
+- `npm audit`: 11 issues, nothing fixable without a breaking change (see DECISIONS.md); none in the production bundle. `npm audit fix` changes nothing, so `package-lock.json` is unchanged. `npm run check` (609 tests) and `npm run build` pass under Node 22.
+
