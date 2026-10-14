@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
  * ("2 of 7 · 40/160 pts") with a bar, and the CTA. Same surface as a challenge card; the whole card is the title's
  * link, so its accessible name stays the path title. The milestones themselves are only on the path page. A locked
  * path (`requires`) says what it waits for in place of the CTA; it still opens its page, where nothing can be started.
+ * A path in a chain (paths linked by `requires`) says which step it is ("Step 1 of 3").
  */
 export function PathCard({
   path: p,
@@ -38,9 +39,16 @@ export function PathCard({
         p.isDraft ? "bg-muted border-muted-foreground/50 border-dashed" : "bg-tile",
       )}
     >
-      <p className="text-muted-foreground text-meta inline-flex items-center gap-1.5 font-medium">
-        <Route className="size-4" aria-hidden />
-        Path · {p.progress.total} {p.progress.total === 1 ? "milestone" : "milestones"}
+      <p className="text-muted-foreground text-meta flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+        <span className="inline-flex items-center gap-1.5">
+          <Route className="size-4" aria-hidden />
+          Path · {p.progress.total} {p.progress.total === 1 ? "milestone" : "milestones"}
+        </span>
+        {p.chain && (
+          <span className="text-foreground bg-background rounded-full border px-2 py-0.5 tabular-nums" data-testid="path-step">
+            Step {p.chain.step} of {p.chain.of}
+          </span>
+        )}
       </p>
       <div className="grid gap-2">
         <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">

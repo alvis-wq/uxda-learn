@@ -7,7 +7,7 @@ import { PathCard } from "@/components/path-card";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { buttonVariants } from "@/components/ui/button";
-import { cardCta, cardSpans, isPathCard, showTryAgain, type CardSpan } from "@/lib/challenges/card";
+import { cardCta, isPathCard, listSpans, showTryAgain, type CardSpan } from "@/lib/challenges/card";
 import type { CardChallenge, HomeCard } from "@/lib/data/learner";
 import { cn } from "@/lib/utils";
 
@@ -159,7 +159,8 @@ export function ChallengeCardGrid({
   /** What goes under the heading: the category (home) or the summary (category page). */
   detail: "category" | "summary";
 }) {
-  const spans = cardSpans(items.length);
+  // A chain of paths (grouped by the server, groupChains) runs full width, one card under the other.
+  const spans = listSpans(items.map((ch) => isPathCard(ch) && ch.chain !== null));
   return (
     <ul className="grid gap-4 lg:grid-cols-12">
       {items.map((ch, i) => (

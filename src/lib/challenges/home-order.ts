@@ -49,6 +49,69 @@ export function sortHomeChallenges<T extends HomeSortable>(items: readonly T[]):
   });
 }
 
+/** A path's place in its chain: paths linked by `requires` (either way), in unlock order. */
+export type ChainPlace = {
+  /** The chain's first path (step 1). */
+  id: string;
+  /** 1-based. */
+  step: number;
+  of: number;
+};
+
+/**
+ * Chains of paths: paths linked by `requires` (directly or through others) form one chain, ordered so that every path
+ * comes after the paths it requires (ties keep the input order). Only links between the given paths count, so pass the
+ * paths the learner can see. A path on its own is in no chain.
+ */
+export function pathChains(paths: readonly { slug: string; requires: readonly string[] }[]): Map<string, ChainPlace> {
+  const index = new Map(paths.map((p, i) => [p.slug, i]));
+  const root = paths.map((_, i) => i);
+  const find = (i: number): number => (root[i] === i ? i : (root[i] = find(root[i])));
+  const edges = paths.flatMap((p, i) =>
+    p.requires.filter((r) => r !== p.slug && index.has(r)).map((r) => [index.get(r)!, i] as const),
+  );
+  for (const [a, b] of edges) root[find(a)] = find(b);
+
+  const members = new Map<number, number[]>();
+  paths.forEach((_, i) => members.set(find(i), [...(members.get(find(i)) ?? []), i]));
+  const places = new Map<string, ChainPlace>();
+  for (const group of members.values()) {
+    if (group.length < 2) continue;
+    // Kahn's order, always taking the earliest path whose required paths are all placed (a loop, which content:validate
+    // rules out, would end up in input order).
+    const pending = new Set(group);
+    const order: number[] = [];
+    while (pending.size) {
+      const next =
+        [...pending].find((i) => !edges.some(([a, b]) => b === i && pending.has(a))) ?? Math.min(...pending);
+      order.push(next);
+      pending.delete(next);
+    }
+    const id = paths[order[0]].slug;
+    order.forEach((i, n) => places.set(paths[i].slug, { id, step: n + 1, of: order.length }));
+  }
+  return places;
+}
+
+/**
+ * A chain's cards together, in step order, placed where its first path (the lowest step in the list) sorts; every other
+ * card keeps its place. Works on any already-sorted list (All, a category, the drafts).
+ */
+export function groupChains<T>(items: readonly T[], chainOf: (item: T) => ChainPlace | null): T[] {
+  const chains = new Map<string, T[]>();
+  for (const item of items) {
+    const c = chainOf(item);
+    if (c) chains.set(c.id, [...(chains.get(c.id) ?? []), item]);
+  }
+  for (const list of chains.values()) list.sort((a, b) => chainOf(a)!.step - chainOf(b)!.step);
+  return items.flatMap((item) => {
+    const c = chainOf(item);
+    if (!c) return [item];
+    const list = chains.get(c.id)!;
+    return list[0] === item ? list : [];
+  });
+}
+
 /** The URL param of the "All" filter being absent. */
 export const ALL_CATEGORIES = "all";
 

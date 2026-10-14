@@ -5,7 +5,7 @@ import { isChallengeVisible, parseChallenge, type Challenge } from "@/lib/challe
 import { requiredFirst, requiredState, type RequiredState } from "@/lib/challenges/required";
 import { resolveCardImage } from "@/lib/challenges/card";
 import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
-import { sortHomeChallenges } from "@/lib/challenges/home-order";
+import { groupChains, pathChains, sortHomeChallenges, type ChainPlace } from "@/lib/challenges/home-order";
 import type { DraftRow } from "@/lib/submissions/draft";
 import { isTestChallenge, testingState } from "@/lib/submissions/testing";
 import { groupForTrack, isRequiredFor, isVisibleToTrack, type Track } from "@/lib/tracks";
@@ -260,6 +260,8 @@ export type CardPath = {
   isDraft: boolean;
   /** Title of the path it waits for (`requires`) while it is locked; null when it is open. */
   lockedBy: string | null;
+  /** Its step in a chain of paths linked by `requires`; lists show a chain's cards together (groupChains). */
+  chain: ChainPlace | null;
   required: false;
   requiredState: RequiredState;
   due_at: null;
@@ -315,6 +317,7 @@ function pathCardOf(
     savedAt: lastActivity,
     isDraft: isTestChallenge(path.status),
     lockedBy: null,
+    chain: null,
     required: false,
     requiredState: summary.complete ? "done" : "missing",
     due_at: null,
@@ -322,14 +325,18 @@ function pathCardOf(
   return { card, states };
 }
 
-/** A path card with its lock (`requires`), given the paths that come first. */
-function withLock(
+/** A card's place in a chain of paths; null for a challenge or a path on its own. */
+const chainOf = (card: HomeCard): ChainPlace | null => (card.kind === "path" ? card.chain : null);
+
+/** A path card with its lock (`requires`, given the paths that come first) and its place in a chain of paths. */
+function withOrder(
   built: { card: CardPath; states: MilestoneState[] },
   requires: readonly string[],
   required: ReadonlyMap<string, RequiredPath>,
+  chains: ReadonlyMap<string, ChainPlace>,
 ): CardPath {
   const lock = blockingPath(requires, required, built.states);
-  return lock ? { ...built.card, lockedBy: lock.title } : built.card;
+  return { ...built.card, lockedBy: lock?.title ?? null, chain: chains.get(built.card.slug) ?? null };
 }
 
 /** A card without the sort-only field it was given. */
@@ -402,15 +409,18 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
 
   // Paths: one card each, counted as one item (done when every milestone is done).
   const pathSubs = [...subs.map((s) => ({ ...s, is_test: false })), ...testSubs];
-  const builtPaths = paths.data.flatMap((p) => {
+  const visiblePaths = paths.data.filter((p) => {
     const category = catBySlug.get(p.category_slug);
-    if (!category || !isPathVisible(p, category, profile.track, profile.is_tester)) return [];
-    const built = pathCardOf(p, category, chs.data, profile, pathSubs, drafts);
+    return !!category && isPathVisible(p, category, profile.track, profile.is_tester);
+  });
+  const builtPaths = visiblePaths.flatMap((p) => {
+    const built = pathCardOf(p, catBySlug.get(p.category_slug)!, chs.data, profile, pathSubs, drafts);
     return built ? [{ ...built, requires: p.requires }] : [];
   });
   // Path order: every path the learner can see is loaded here, so a required one is looked up, not read again.
   const requiredPaths = new Map(builtPaths.map(({ card, states }) => [card.slug, { slug: card.slug, title: card.title, states }]));
-  const pathCards = builtPaths.map((b) => withLock(b, b.requires, requiredPaths));
+  const chains = pathChains(visiblePaths);
+  const pathCards = builtPaths.map((b) => withOrder(b, b.requires, requiredPaths, chains));
   const livePaths = pathCards.filter((p) => !p.isDraft);
 
   const categories = cats.data
@@ -434,15 +444,16 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
 
   const required = visible.filter((ch) => ch.required);
   const categoryOrder = new Map(cats.data.map((c, i) => [c.slug, i]));
+  // Sorted, then each chain of paths gathered where its first path sorts (every list: All, a category, the drafts).
   const toCards = (items: typeof listed, pathItems: CardPath[]) =>
-    sortHomeChallenges<HomeCard & { categoryOrder: number }>([
+    groupChains(sortHomeChallenges<HomeCard & { categoryOrder: number }>([
       ...items.map((ch) => {
         const category = catBySlug.get(ch.category_slug);
         const card = cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
         return { ...card, categoryOrder: categoryOrder.get(ch.category_slug) ?? 0 };
       }),
       ...pathItems.map((p) => ({ ...p, categoryOrder: categoryOrder.get(p.categorySlug) ?? 0 })),
-    ]).map((item) => cardWithout<HomeCard>(item));
+    ]), chainOf).map((item) => cardWithout<HomeCard>(item));
   // Drafts are kept apart: the page shows them only under the tester's "Drafts — testing" filter.
   const challenges = toCards(visible, livePaths);
   const draftCards = toCards(
@@ -484,7 +495,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     .maybeSingle();
   if (!category || category.archived || !isVisibleToTrack(category.audiences, profile.track)) return null;
 
-  const [chs, subs, acks, drafts, paths] = await Promise.all([
+  const [chs, subs, acks, drafts, paths, chainPaths] = await Promise.all([
     supabase
       .from("challenges")
       .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image,questions,submission_spec,path_slug")
@@ -501,9 +512,12 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
       .eq("category_slug", slug)
       .eq("status", "published") // like challenges: draft paths only under the tester's filter on home
       .order("title"),
+    // Chains of paths are numbered over every path the learner can see (RLS), as on the home page.
+    supabase.from("paths").select("slug,requires,category_slug,status,audiences").in("status", listedStatuses(profile)),
   ]);
   if (chs.error) throw new Error(`Couldn't load challenges: ${chs.error.message}`);
   if (paths.error) throw new Error(`Couldn't load paths: ${paths.error.message}`);
+  if (chainPaths.error) throw new Error(`Couldn't load paths: ${chainPaths.error.message}`);
   const bySlug = groupBySlug(subs);
   const viewer = { track: profile.track, is_tester: false }; // published only here
   const realSubs = subs.map((s) => ({ ...s, is_test: false }));
@@ -521,13 +535,16 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   });
   // A required path can be in another category: read as on the path page, so the lock is the same everywhere.
   const requiredPaths = await loadRequiredPaths(supabase, builtPaths.flatMap((b) => b.requires), profile);
-  const pathCards: HomeCard[] = builtPaths.map((b) => withLock(b, b.requires, requiredPaths));
+  const chains = pathChains(chainPaths.data);
+  const pathCards: HomeCard[] = builtPaths.map((b) => withOrder(b, b.requires, requiredPaths, chains));
 
   return {
     category,
-    // Required first, then paths with the other challenges in difficulty order (a stable sort keeps it).
-    challenges: requiredFirst(
-      [...challengeCards, ...pathCards].sort((a, b) => a.difficulty - b.difficulty || a.title.localeCompare(b.title)),
+    // Required first, then paths with the other challenges in difficulty order (a stable sort keeps it); then each
+    // chain of paths gathered where its first path sorts.
+    challenges: groupChains(
+      requiredFirst([...challengeCards, ...pathCards].sort((a, b) => a.difficulty - b.difficulty || a.title.localeCompare(b.title))),
+      chainOf,
     ),
   };
 }

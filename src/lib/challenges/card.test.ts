@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardCta, cardSpans, resolveCardImage, showTryAgain } from "./card";
+import { cardCta, cardSpans, listSpans, resolveCardImage, showTryAgain } from "./card";
 
 describe("cardCta", () => {
   it("Start when there is no attempt yet", () => {
@@ -47,6 +47,19 @@ describe("cardSpans", () => {
   });
   it("is empty for no cards", () => {
     expect(cardSpans(0)).toEqual([]);
+  });
+});
+
+describe("listSpans", () => {
+  it("gives chained path cards the full width and restarts the alternation around them", () => {
+    expect(listSpans([false, false, true, true, true, false, false, false])).toEqual([
+      "wide", "narrow", "full", "full", "full", "wide", "narrow", "full",
+    ]);
+    expect(listSpans([false, true, false])).toEqual(["full", "full", "full"]);
+  });
+  it("is cardSpans for a list without chains", () => {
+    expect(listSpans([false, false, false, false, false])).toEqual(cardSpans(5));
+    expect(listSpans([])).toEqual([]);
   });
 });
 
