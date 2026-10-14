@@ -161,13 +161,13 @@ describe("submitChallenge on a path milestone", () => {
   });
   const path = (over: Row = {}): Row => ({
     slug: "alh", title: "Auto Layout", category_slug: "wf", status: "published", audiences: ["strategist"],
-    sequential: true, milestones: ["m1", "m2", "m3"], ...over,
+    sequential: true, milestones: ["m1", "m2", "m3"], requires: [], ...over,
   });
-  function setupPath(submissions: Row[], pathOver: Row = {}) {
+  function setupPath(submissions: Row[], pathOver: Row = {}, extra: { paths?: Row[]; challenges?: Row[] } = {}) {
     const db = fakeDb({
-      challenges: [milestone("m1"), milestone("m2"), milestone("m3")],
+      challenges: [milestone("m1"), milestone("m2"), milestone("m3"), ...(extra.challenges ?? [])],
       categories: [{ slug: "wf", title: "WF", archived: false, audiences: ["strategist"] }],
-      paths: [path(pathOver)],
+      paths: [path(pathOver), ...(extra.paths ?? [])],
       submissions,
       submission_drafts: [],
     });
@@ -204,6 +204,46 @@ describe("submitChallenge on a path milestone", () => {
   it("never locks the first milestone", async () => {
     setupPath([]);
     await expect(submitChallenge("m1", input)).resolves.toMatchObject({ error: "Please fix the highlighted fields." });
+  });
+
+  describe("a path that requires another (path order)", () => {
+    const first = (status = "published") => ({
+      paths: [path({ slug: "first", title: "First path", milestones: ["f1", "f2"], status })],
+      challenges: [milestone("f1", { path_slug: "first", status }), milestone("f2", { path_slug: "first", status })],
+    });
+
+    it("refuses every milestone until each milestone of the required path has an attempt", async () => {
+      const db = setupPath([sub("f1", "published")], { requires: ["first"] }, first());
+      for (const slug of ["m1", "m2"]) {
+        await expect(submitChallenge(slug, input)).resolves.toEqual({
+          ok: false,
+          error: "This milestone is locked. Unlocks after First path.",
+        });
+      }
+      expect(db.writes).toEqual([]);
+    });
+
+    it("opens once the required path is all submitted, awaiting review included", async () => {
+      setupPath([sub("f1", "published"), sub("f2", "submitted")], { requires: ["first"] }, first());
+      await expect(submitChallenge("m1", input)).resolves.toMatchObject({ error: "Please fix the highlighted fields." });
+      // The milestone order inside the path still applies.
+      await expect(submitChallenge("m2", input)).resolves.toMatchObject({ error: "This milestone is locked. Submit milestone 1 first." });
+    });
+
+    it("isn't held back by a required path the learner can't see", async () => {
+      setupPath([], { requires: ["first"] }, first("archived"));
+      await expect(submitChallenge("m1", input)).resolves.toMatchObject({ error: "Please fix the highlighted fields." });
+    });
+
+    it("counts a tester's test attempts on a draft required path, and only those", async () => {
+      getCurrentProfile.mockResolvedValue(profile("strategist", true));
+      const testSub = (slug: string) => ({ ...sub(slug, "published"), is_test: true });
+      setupPath([sub("f1", "published"), sub("f2", "published")], { requires: ["first"], status: "draft" }, first("draft"));
+      await expect(submitChallenge("m1", input)).resolves.toMatchObject({ error: "This milestone is locked. Unlocks after First path." });
+      setupPath([testSub("f1"), testSub("f2")], { requires: ["first"], status: "draft" }, first("draft"));
+      // Past the lock (m1 is a draft too, so the draft rules take over from here).
+      await expect(submitChallenge("m1", input)).resolves.not.toMatchObject({ error: expect.stringContaining("locked") });
+    });
   });
 
   it("refuses every milestone of a path the learner can't see", async () => {

@@ -3,12 +3,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { isChallengeVisible } from "@/lib/challenges/model";
 import {
+  blockingPath,
+  lockAll,
   milestonePlace,
   milestoneStates,
   summarizePath,
   type MilestoneState,
   type MilestonePlace,
+  type PathLock,
   type PathSummary,
+  type RequiredPath,
 } from "@/lib/paths/progress";
 import { isTestChallenge } from "@/lib/submissions/testing";
 import type { Track } from "@/lib/tracks";
@@ -55,12 +59,15 @@ export type PathProgress = {
   summary: PathSummary;
   /** Most recent activity on any milestone (attempt or saved work), ISO; null without any. */
   lastActivity: string | null;
+  /** The path it waits for (`requires`), when it is locked; then every milestone in `states` is locked too. */
+  lockedBy: PathLock | null;
 };
 
 /**
  * A path and the learner's progress through it, or null when they can't see it. Works with the learner's own client
  * (RLS) and with the service role (server actions): every visibility rule is also applied here. Attempts are real
- * ones, or test ones for a milestone that is a draft (a tester trying a draft path).
+ * ones, or test ones for a milestone that is a draft (a tester trying a draft path). A path whose `requires` aren't
+ * all submitted yet comes back locked (`lockedBy`, every milestone locked).
  */
 export async function loadPathProgress(
   client: Client,
@@ -94,7 +101,53 @@ export async function loadPathProgress(
   const milestones = path.milestones
     .map((s) => bySlug.get(s))
     .filter((r): r is MilestoneRow => !!r && isMilestoneVisible(r, path, category, viewer.track, viewer.is_tester));
-  return { path, category, ...progressOf(path, milestones, subs, drafts) };
+  const progress = progressOf(path, milestones, subs, drafts);
+  const lockedBy = blockingPath(path.requires, await loadRequiredPaths(client, path.requires, viewer), progress.states);
+  return { path, category, ...progress, states: lockedBy ? lockAll(progress.states) : progress.states, lockedBy };
+}
+
+/**
+ * The paths a path requires, each with the learner's milestone states, keyed by slug; only the ones the learner can
+ * see (a hidden one holds nothing back, see `blockingPath`). Only attempts matter here, so saved work isn't read.
+ */
+export async function loadRequiredPaths(
+  client: Client,
+  slugs: readonly string[],
+  viewer: { id: string; track: Track | null; is_tester: boolean },
+): Promise<Map<string, RequiredPath>> {
+  const out = new Map<string, RequiredPath>();
+  if (slugs.length === 0) return out;
+  const { data: paths, error } = await client
+    .from("paths")
+    .select("slug,title,category_slug,status,audiences,sequential,milestones")
+    .in("slug", [...new Set(slugs)]);
+  if (error) throw new Error(`Couldn't load the paths that come first: ${error.message}`);
+  if (paths.length === 0) return out;
+  const milestoneSlugs = paths.flatMap((p) => p.milestones);
+  const [{ data: cats, error: catsError }, { data: rows, error: rowsError }, { data: subs, error: subsError }] = await Promise.all([
+    client.from("categories").select("slug,archived,audiences").in("slug", [...new Set(paths.map((p) => p.category_slug))]),
+    client.from("challenges").select("slug,title,points,status,audiences,difficulty").in("slug", milestoneSlugs),
+    client
+      .from("submissions")
+      // is_test: as in loadPathProgress, each milestone keeps the kind that applies to it.
+      .select("challenge_slug,attempt,status,final_score,max_score,is_test")
+      .eq("user_id", viewer.id)
+      .in("challenge_slug", milestoneSlugs),
+  ]);
+  if (catsError || rowsError || subsError) {
+    throw new Error(`Couldn't load the paths that come first: ${(catsError ?? rowsError ?? subsError)!.message}`);
+  }
+  const catBySlug = new Map(cats.map((c) => [c.slug, c]));
+  const bySlug = new Map(rows.map((r) => [r.slug, r]));
+  for (const p of paths) {
+    const category = catBySlug.get(p.category_slug);
+    if (!category || !isPathVisible(p, category, viewer.track, viewer.is_tester)) continue;
+    const milestones = p.milestones
+      .map((s) => bySlug.get(s))
+      .filter((r): r is MilestoneRow => !!r && isMilestoneVisible(r, p, category, viewer.track, viewer.is_tester));
+    out.set(p.slug, { slug: p.slug, title: p.title, states: progressOf(p, milestones, subs, []).states });
+  }
+  return out;
 }
 
 type SubRow = { challenge_slug: string; attempt: number; status: Database["public"]["Enums"]["submission_status"]; final_score: number | null; max_score: number; submitted_at?: string; is_test: boolean };
@@ -145,5 +198,5 @@ export async function loadMilestonePlace(
   if (!challenge.path_slug) return null;
   const progress = await loadPathProgress(client, challenge.path_slug, viewer);
   if (!progress) return "hidden";
-  return milestonePlace(progress.path, progress.states, challenge.slug) ?? "hidden";
+  return milestonePlace(progress.path, progress.states, challenge.slug, progress.lockedBy) ?? "hidden";
 }

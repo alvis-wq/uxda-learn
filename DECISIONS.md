@@ -301,3 +301,14 @@
 - Images are left out of a derived summary — "!alt" in a one-line summary says nothing.
 - Commands in the new briefs are bold (**/harvest**), like the existing briefs — inline code shows literal backticks with the typography plugin.
 - Milestones that ask for "one per design system" set `screenshots.min: 3` — the form then asks for all three.
+
+## Designer path order (`feat/designer-path-order`)
+
+- Side images are grouped with the block before them by a small remark step (text first in the DOM), not floated — so on a phone the image lands below its text, and nothing wraps oddly around it.
+- `"side"` is the only image title, and a side image needs an empty line before and after — otherwise markdown joins it to the list or paragraph above and it silently renders inline.
+- Brief images open in a Radix dialog (focus trap, Escape, focus return, alt text as its name) rather than a new tab — it stays in the brief and works with the keyboard.
+- `requires` is content (synced every time, like `milestones`): the order of paths is part of the curriculum, not an admin setting.
+- A required path counts as done when every milestone has an attempt — the same "any attempt" rule as milestones, so nobody waits for a review.
+- A required path the learner can't see (draft for a non-tester, archived) holds nothing back — otherwise a path could be locked forever by something nobody can do.
+- A path the learner already has an attempt in is never locked (as for milestones), so imported progress keeps working.
+- brand-the-template now requires connect-design-systems too, so the three designer paths run in order.

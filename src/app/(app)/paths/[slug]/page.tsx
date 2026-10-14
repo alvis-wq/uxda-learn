@@ -11,5 +11,7 @@ export default async function PathPage({ params }: PageProps<"/paths/[slug]">) {
   const profile = await requireOnboardedProfile();
   const data = await getPathPage(profile, slug);
   if (!data) notFound();
-  return <PathView path={data.path} category={data.category} states={data.states} summary={data.summary} />;
+  return (
+    <PathView path={data.path} category={data.category} states={data.states} summary={data.summary} lockedBy={data.lockedBy} />
+  );
 }

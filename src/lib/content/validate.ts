@@ -153,6 +153,23 @@ export function validateContent(
   return errors;
 }
 
+/** A chain of `requires` that leads from a path back to itself (e.g. [a, b, a]), or null. Self-requires are reported apart. */
+function requiresLoop(start: string, pathsBySlug: Map<string, LoadedContent["paths"][number]>): string[] | null {
+  const seen = new Set<string>();
+  const walk = (slug: string, chain: string[]): string[] | null => {
+    for (const next of pathsBySlug.get(slug)?.data.requires ?? []) {
+      if (next === slug) continue;
+      if (next === start) return [...chain, next];
+      if (seen.has(next)) continue;
+      seen.add(next);
+      const found = walk(next, [...chain, next]);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(start, [start]);
+}
+
 /** Same audience list, ignoring order ("all" only equals "all"). */
 function sameAudiences(a: readonly Audience[], b: readonly Audience[]): boolean {
   return a.length === b.length && a.every((x) => b.includes(x));
@@ -161,7 +178,8 @@ function sameAudiences(a: readonly Audience[], b: readonly Audience[]): boolean 
 /**
  * Learning paths (content/paths/*.yaml) and their milestones: every listed slug exists, points back at the path with
  * `path:`, is listed once and in one path only; every challenge with `path:` is listed there; a milestone shares its
- * path's category and audiences; it is never `acknowledge` and is never required or due on its own.
+ * path's category and audiences; it is never `acknowledge` and is never required or due on its own. `requires` names
+ * other existing paths, never itself, and never goes round in a loop.
  */
 function validatePaths(
   content: LoadedContent,
@@ -189,6 +207,13 @@ function validatePaths(
       }
     }
     for (const slug of duplicates(p.milestones)) err(file, `milestones: "${slug}" is listed twice`);
+    for (const slug of duplicates(p.requires)) err(file, `requires: "${slug}" is listed twice`);
+    for (const slug of new Set(p.requires)) {
+      if (slug === p.slug) err(file, "requires: a path can't require itself");
+      else if (!pathsBySlug.has(slug)) err(file, `requires: no path "${slug}" (content/paths/${slug}.yaml)`);
+    }
+    const loop = requiresLoop(p.slug, pathsBySlug);
+    if (loop) err(file, `requires: goes round in a loop (${loop.join(" → ")}), so none of these paths could ever unlock`);
 
     if (p.status === "published") {
       const hits = findPlaceholders({

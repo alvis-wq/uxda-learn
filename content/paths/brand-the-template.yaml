@@ -4,6 +4,7 @@ category: design-systems
 audiences: [designer]
 summary: Copy our design system template and fill it with a real brand's colours.
 sequential: true
+requires: [connect-design-systems]
 milestones:
   - btt-1-make-your-copy
   - btt-2-connect-and-check-health

@@ -423,6 +423,7 @@ export type Database = {
           category_slug: string
           created_at: string
           milestones: string[]
+          requires: string[]
           sequential: boolean
           slug: string
           status: string
@@ -437,6 +438,7 @@ export type Database = {
           category_slug: string
           created_at?: string
           milestones: string[]
+          requires?: string[]
           sequential?: boolean
           slug: string
           status?: string
@@ -451,6 +453,7 @@ export type Database = {
           category_slug?: string
           created_at?: string
           milestones?: string[]
+          requires?: string[]
           sequential?: boolean
           slug?: string
           status?: string

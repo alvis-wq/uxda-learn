@@ -1,0 +1,8 @@
+slug: e2e-order-second
+title: "[E2E] Second path"
+category: e2e-path-order
+summary: Opens once the first path is all submitted.
+sequential: true
+milestones: [e2e-order-3, e2e-order-4]
+requires: [e2e-order-first]
+status: published

@@ -120,6 +120,7 @@ describe("learning paths", () => {
       milestones: ["step-one", "step-two"],
       before_you_start: "You need **Figma** open.",
       before_you_submit: ["Frames are 360 px wide."],
+      requires: [], // the default
       status: "draft",
     });
   });
@@ -143,6 +144,17 @@ describe("learning paths", () => {
     expect(msgs).toContain('milestones: "other-category" must have the same audiences as the path');
     expect(msgs).toContain('status: published, but milestone "no-back-link" is draft');
     expect(msgs).not.toContain('status: published, but milestone "twice" is draft');
+  });
+
+  it("checks the paths a path requires", () => {
+    const msgs = messagesFor("paths/bad-links.yaml");
+    expect(msgs).toContain('requires: no path "ghost-path" (content/paths/ghost-path.yaml)');
+    expect(msgs).toContain("requires: a path can't require itself");
+    expect(msgs).toContain('requires: "second" is listed twice');
+    expect(msgs).toContain("requires: goes round in a loop (bad-links → second → bad-links), so none of these paths could ever unlock");
+    expect(messagesFor("paths/second.yaml")).toContain(
+      "requires: goes round in a loop (second → bad-links → second), so none of these paths could ever unlock",
+    );
   });
 
   it("checks challenges that say `path:`", () => {
@@ -556,6 +568,12 @@ describe("planSync for learning paths", () => {
   it("writes a changed 'Before you start' box as a path content update", () => {
     const db = synced();
     db.paths[0] = { ...db.paths[0], before_you_start: null };
+    expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
+  });
+
+  it("writes a changed `requires` as a path content update", () => {
+    const db = synced();
+    db.paths[0] = { ...db.paths[0], requires: ["earlier"] };
     expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
   });
 

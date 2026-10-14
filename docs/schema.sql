@@ -61,6 +61,8 @@ create table paths (
   milestones text[] not null check (cardinality(milestones) >= 2),   -- challenge slugs, in order
   before_you_start text check (before_you_start is null or char_length(before_you_start) <= 600),  -- markdown box at the top
   before_you_submit text[] not null default '{}',
+  -- Path slugs that come first: this path stays locked until each has every milestone submitted (any attempt counts).
+  requires text[] not null default '{}',
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

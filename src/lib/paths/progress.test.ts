@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AttemptSummary } from "@/lib/submissions/rules";
 import {
+  blockingPath,
+  lockAll,
   lockReason,
   milestonePlace,
   milestoneStates,
@@ -131,6 +133,7 @@ describe("milestonePlace", () => {
       position: 2,
       total: 3,
       locked: false,
+      lockedBy: null,
       next: { slug: "c", title: "C" },
     });
     expect(milestonePlace(path, states, "c")).toMatchObject({ locked: true, next: null });
@@ -141,5 +144,59 @@ describe("milestonePlace", () => {
     expect(lockReason(milestonePlace(path, states, "c"))).toBe("Submit milestone 2 first.");
     expect(lockReason(milestonePlace(path, states, "b"))).toBeNull();
     expect(lockReason(null)).toBeNull();
+  });
+});
+
+describe("blockingPath (path order)", () => {
+  const states = (...attempted: boolean[]) =>
+    milestoneStates(true, attempted.map((a, i) => m(`m${i}`, a ? [attempt(1, "submitted")] : [])));
+  const required = (slug: string, s: ReturnType<typeof states>) => [slug, { slug, title: slug.toUpperCase(), states: s }] as const;
+
+  it("holds a path back until every milestone of the required path has an attempt", () => {
+    const own = states(false, false);
+    expect(blockingPath(["first"], new Map([required("first", states(true, false))]), own)).toEqual({ slug: "first", title: "FIRST" });
+    expect(blockingPath(["first"], new Map([required("first", states(true, true))]), own)).toBeNull();
+  });
+
+  it("counts any attempt, reviewed or not", () => {
+    for (const status of ["submitted", "ai_reviewed", "needs_resubmission", "published"] as const) {
+      const done = milestoneStates(true, [m("x", [attempt(1, status, status === "published" ? 20 : null)])]);
+      expect(blockingPath(["first"], new Map([required("first", done)]), states(false)), status).toBeNull();
+    }
+  });
+
+  it("doesn't count saved work that isn't submitted", () => {
+    const saved = milestoneStates(true, [m("x", [], { hasDraft: true })]);
+    expect(blockingPath(["first"], new Map([required("first", saved)]), states(false))).toEqual({ slug: "first", title: "FIRST" });
+  });
+
+  it("counts test attempts on a draft the tester is trying", () => {
+    const tested = milestoneStates(true, [m("x", [attempt(1, "published")], { testing: true })]);
+    expect(blockingPath(["first"], new Map([required("first", tested)]), states(false))).toBeNull();
+  });
+
+  it("names the first required path that still holds it back", () => {
+    const map = new Map([required("a", states(true)), required("b", states(false)), required("c", states(false))]);
+    expect(blockingPath(["a", "b", "c"], map, states(false))).toEqual({ slug: "b", title: "B" });
+  });
+
+  it("ignores a required path the learner can't see, or with no milestones they can see", () => {
+    expect(blockingPath(["hidden"], new Map(), states(false))).toBeNull();
+    expect(blockingPath(["empty"], new Map([required("empty", [])]), states(false))).toBeNull();
+  });
+
+  it("never locks a path the learner already has an attempt in", () => {
+    expect(blockingPath(["first"], new Map([required("first", states(false))]), states(false, true))).toBeNull();
+  });
+
+  it("locks every milestone of a locked path, and the gate says what it waits for", () => {
+    const locked = lockAll(states(false, false));
+    expect(locked.map((s) => [s.status, s.unlocked])).toEqual([
+      ["locked", false],
+      ["locked", false],
+    ]);
+    const place = milestonePlace({ slug: "p", title: "P" }, locked, "m0", { slug: "first", title: "Connect our design systems" });
+    expect(place).toMatchObject({ locked: true, lockedBy: { slug: "first" } });
+    expect(lockReason(place)).toBe("Unlocks after Connect our design systems.");
   });
 });

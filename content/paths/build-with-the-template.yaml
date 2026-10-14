@@ -1,0 +1,16 @@
+slug: build-with-the-template
+title: Build a screen with the template
+category: design-systems
+audiences: [designer]
+summary: Make your own Sandbox space and build a screen that works in light and dark mode.
+sequential: true
+milestones:
+  - bwt-1-sandbox-folder
+  - bwt-2-copy-template
+  - bwt-3-light-and-dark
+  - bwt-4-check-health
+requires: [brand-the-template]
+before_you_start: >-
+  You need the **uxda-design-systems** plugin in Claude Code, and your Figma access token set up once with
+  **/dsx-setup**. Ask Alvis if either is missing.
+status: draft

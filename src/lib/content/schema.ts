@@ -164,6 +164,8 @@ export const pathFileSchema = z.strictObject({
   summary: nonEmpty.max(160, "keep the summary to one short sentence (at most 160 characters)"),
   sequential: z.boolean().default(true),
   milestones: z.array(slug).min(2, "a path needs at least 2 milestones"),
+  /** Paths that come first: this one stays locked until each has every milestone submitted. */
+  requires: z.array(slug).default([]),
   /** Optional markdown shown in a "Before you start" box at the top of the path page (what to have set up first). */
   before_you_start: nonEmpty.max(600, "keep it short (at most 600 characters)").optional(),
   before_you_submit: z.array(nonEmpty.max(200, "keep each line short (at most 200 characters)")).max(8, "at most 8 lines").default([]),

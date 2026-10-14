@@ -1,0 +1,7 @@
+slug: e2e-order-first
+title: "[E2E] First path"
+category: e2e-path-order
+summary: Comes first.
+sequential: true
+milestones: [e2e-order-1, e2e-order-2]
+status: published
