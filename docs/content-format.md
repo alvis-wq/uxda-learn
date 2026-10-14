@@ -112,6 +112,11 @@ Links in a brief (`[text](https://…)`) to other sites (Drive, Figma, …) open
 external-link icon. Links into the app open in the same tab, with no icon: link to another challenge with
 `/challenges/<slug>`, to a category with `/categories/<slug>`, or use `#anchor`.
 
+**Images in a brief:** put the file in `public/challenges/` and write `![what the image shows](/challenges/file.png)`
+(`.png`, `.jpg`, `.webp` or `.avif`, lowercase, no folders). The alt text is required — say what the image shows, for
+people who can't see it. Images fit the text column and scale down on small screens. `content:validate` fails on a
+missing file, missing alt text, or an image from anywhere else (those are never shown).
+
 `tip` is a short markdown hint shown in a subtle box above the questions (on the first questions step
 of a stepped challenge). It is display-only, like `image`: changing it never bumps the `version`, and it
 can't contain a `TODO…` placeholder in a published challenge.
@@ -133,6 +138,8 @@ sequential: true                   # default true: each milestone unlocks once t
 milestones:                        # challenge slugs, in order (2 or more)
   - alh-1-edit-auto-layout-card
   - alh-2-convert-manual-layout
+before_you_start: >-               # optional markdown (≤ 600 characters) in a "Before you start" box at the top of the path page
+  You need the **uxda-design-systems** plugin in Claude Code. Ask Alvis if it's missing.
 before_you_submit:                 # optional, up to 8 short lines in a "Before you submit" box on the path page
   - Make every frame 360 px wide.
 status: draft                      # initial value* — draft | published | archived

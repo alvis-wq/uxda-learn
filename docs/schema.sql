@@ -59,6 +59,7 @@ create table paths (
   -- Each milestone unlocks once the one before it has any attempt (awaiting review counts).
   sequential boolean not null default true,
   milestones text[] not null check (cardinality(milestones) >= 2),   -- challenge slugs, in order
+  before_you_start text check (before_you_start is null or char_length(before_you_start) <= 600),  -- markdown box at the top
   before_you_submit text[] not null default '{}',
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
   created_at timestamptz not null default now(),

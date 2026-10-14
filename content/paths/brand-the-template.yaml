@@ -1,0 +1,15 @@
+slug: brand-the-template
+title: Bring a brand into the template
+category: design-systems
+audiences: [designer]
+summary: Copy our design system template and fill it with a real brand's colours.
+sequential: true
+milestones:
+  - btt-1-make-your-copy
+  - btt-2-connect-and-check-health
+  - btt-3-brand-colours
+  - btt-4-check-claudes-work
+before_you_start: >-
+  You need the **uxda-design-systems** plugin in Claude Code, and your Figma access token set up once with
+  **/dsx-setup**. Ask Alvis if either is missing.
+status: draft

@@ -38,6 +38,7 @@ test.describe("learning paths", () => {
     await expect(milestone(page, "e2e-path-2")).toHaveAttribute("data-status", "locked");
     await expect(milestone(page, "e2e-path-2").getByRole("link")).toHaveCount(0);
     await expect(page.getByTestId("before-you-submit")).toContainText("360 px");
+    await expect(page.getByTestId("before-you-start")).toContainText("You need Figma open.");
 
     await page.goto("/challenges/e2e-path-2");
     await expect(page).toHaveURL(/\/paths\/e2e-path$/);

@@ -47,6 +47,8 @@ Create a challenge from this description: $ARGUMENTS
    supply is missing (a Figma file, a doc link), put a `TODO_<WHAT>` placeholder there (e.g.
    `TODO_FIGMA_URL`) and list it in the summary — a challenge with a placeholder can't be published.
    - A clear brief: goal, what to do, what to submit, time estimate.
+   - An example image helps? Only if the file is in `public/challenges/`: `![what it shows](/challenges/file.png)`,
+     always with alt text. If the image doesn't exist yet, leave it out and say so in the summary.
    - Every challenge other than quiz or acknowledge has a reflection prompt that makes them evaluate the AI's
      output (what was wrong, what they changed, why).
    - Quiz options: one clearly correct answer, plausible distractors, no "all of the above".

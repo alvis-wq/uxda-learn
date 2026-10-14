@@ -147,10 +147,15 @@ export const pathStatusChangeSchema = z.strictObject({ slug, value: challengeSta
  * publish (its drafts), and at least one milestone that isn't archived.
  */
 export function pathPublishError(
-  path: { slug: string; title: string; summary: string; before_you_submit: string[] },
+  path: { slug: string; title: string; summary: string; before_you_start: string | null; before_you_submit: string[] },
   milestones: (SettingContext & { status: string })[],
 ): string | null {
-  const own = findPlaceholders({ title: path.title, summary: path.summary, "before you submit": path.before_you_submit });
+  const own = findPlaceholders({
+    title: path.title,
+    summary: path.summary,
+    "before you start": path.before_you_start,
+    "before you submit": path.before_you_submit,
+  });
   if (own.length) {
     return `Can't publish: the path still has placeholders — ${describePlaceholders(own)}. Fill them in in content/paths/${path.slug}.yaml and run content:sync.`;
   }

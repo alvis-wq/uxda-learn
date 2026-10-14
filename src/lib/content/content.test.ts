@@ -118,6 +118,7 @@ describe("learning paths", () => {
       slug: "two-steps",
       sequential: true, // the default
       milestones: ["step-one", "step-two"],
+      before_you_start: "You need **Figma** open.",
       before_you_submit: ["Frames are 360 px wide."],
       status: "draft",
     });
@@ -550,6 +551,12 @@ describe("planSync for learning paths", () => {
     const ch = content.challenges[0];
     const moved = { ...ch, data: { ...ch.data, path: undefined } };
     expect(toChallengeRows(moved, content.categories).challenge.content_hash).toBe(disk.challenges[0].challenge.content_hash);
+  });
+
+  it("writes a changed 'Before you start' box as a path content update", () => {
+    const db = synced();
+    db.paths[0] = { ...db.paths[0], before_you_start: null };
+    expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
   });
 
   it("archives a path whose file is gone", () => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ChevronLeft, ClipboardCheck, FlaskConical, Route } from "lucide-react";
+import { ChevronLeft, ClipboardCheck, FlaskConical, Info, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
+import { Markdown } from "@/components/markdown";
 import { Roadmap } from "@/components/roadmap";
 import { SECTION_LABEL_CLASS } from "@/components/section-label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,7 +20,14 @@ export function PathView({
   states,
   summary,
 }: {
-  path: { title: string; summary: string; status: string; sequential: boolean; before_you_submit: string[] };
+  path: {
+    title: string;
+    summary: string;
+    status: string;
+    sequential: boolean;
+    before_you_start: string | null;
+    before_you_submit: string[];
+  };
   category: { slug: string; title: string };
   states: MilestoneState[];
   summary: PathSummary;
@@ -56,6 +64,22 @@ export function PathView({
             published.
           </AlertDescription>
         </Alert>
+      )}
+
+      {path.before_you_start && (
+        <aside
+          aria-labelledby="before-start-heading"
+          className="bg-muted/40 grid gap-2 rounded-lg border px-5 py-4"
+          data-testid="before-you-start"
+        >
+          <h2 id="before-start-heading" className="inline-flex items-center gap-2 font-semibold">
+            <Info className="size-4" aria-hidden />
+            Before you start
+          </h2>
+          <Markdown className="prose-sm text-muted-foreground prose-p:my-0 prose-strong:text-foreground prose-strong:whitespace-nowrap">
+            {path.before_you_start}
+          </Markdown>
+        </aside>
       )}
 
       <section aria-labelledby="path-progress-heading" className="grid gap-3" data-testid="path-progress-summary">

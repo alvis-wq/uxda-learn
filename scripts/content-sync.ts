@@ -32,7 +32,7 @@ async function main() {
     db.from("categories").select("slug,title,description,audiences,sort_order,archived,image"),
     db.from("challenges").select("*"),
     db.from("challenge_keys").select("challenge_slug,answer_key,grader_notes"),
-    db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,before_you_submit,status"),
+    db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,before_you_start,before_you_submit,status"),
   ]);
   check(cats, "read categories");
   check(chs, "read challenges");

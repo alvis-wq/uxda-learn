@@ -418,6 +418,7 @@ export type Database = {
       paths: {
         Row: {
           audiences: Database["public"]["Enums"]["audience"][]
+          before_you_start: string | null
           before_you_submit: string[]
           category_slug: string
           created_at: string
@@ -431,6 +432,7 @@ export type Database = {
         }
         Insert: {
           audiences: Database["public"]["Enums"]["audience"][]
+          before_you_start?: string | null
           before_you_submit?: string[]
           category_slug: string
           created_at?: string
@@ -444,6 +446,7 @@ export type Database = {
         }
         Update: {
           audiences?: Database["public"]["Enums"]["audience"][]
+          before_you_start?: string | null
           before_you_submit?: string[]
           category_slug?: string
           created_at?: string

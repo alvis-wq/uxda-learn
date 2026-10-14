@@ -4,6 +4,7 @@ category: e2e-paths
 summary: Three milestones, one after the other.
 sequential: true
 milestones: [e2e-path-1, e2e-path-2, e2e-path-3]
+before_you_start: You need **Figma** open.
 before_you_submit:
   - Make every frame 360 px wide.
 status: published
