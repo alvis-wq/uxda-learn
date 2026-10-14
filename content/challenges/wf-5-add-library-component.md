@@ -49,8 +49,6 @@ grader_notes: |
   score with confidence low, flag figma_inaccessible.
 ---
 ## Add a component to the library
-**Time:** about 35 minutes
-
 **The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
 
 This builds on [Build a screen with /new-screen](/challenges/wf-2-new-screen), where you used library

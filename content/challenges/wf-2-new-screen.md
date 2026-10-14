@@ -40,8 +40,6 @@ grader_notes: |
   flag figma_inaccessible.
 ---
 ## Build a screen with /new-screen
-**Time:** about 20 minutes
-
 **The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
 
 This builds on [Quick draft with the Make Kit](/challenges/wf-1-make-kit-quick-draft). Same brief, new tool:

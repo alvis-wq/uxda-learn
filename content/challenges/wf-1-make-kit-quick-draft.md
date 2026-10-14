@@ -40,8 +40,6 @@ grader_notes: |
   If the link can't be opened: confidence low, flag figma_inaccessible.
 ---
 ## Quick draft with the Make Kit
-**Time:** about 20 minutes
-
 **The brief:** a banking app wants a **savings goal** screen. The user sees their goal (for
 example "Summer trip — €1,200"), how much they've saved, and can add money.
 

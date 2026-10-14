@@ -54,8 +54,6 @@ grader_notes: |
   If the link can't be opened: score from screenshots, confidence low, flag figma_inaccessible.
 ---
 ## Make it handoff-ready
-**Time:** about 40 minutes
-
 **The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
 
 This builds on [From Claude Design to Figma](/challenges/wf-4-claude-design-to-figma): you take that flow

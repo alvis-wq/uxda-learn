@@ -51,8 +51,6 @@ grader_notes: |
   If the link can't be opened: score from screenshots, confidence low, flag figma_inaccessible.
 ---
 ## From Claude Design to Figma
-**Time:** about 35 minutes
-
 **The brief:** a banking app wants a savings goal screen. The user sees their goal, e.g. "Summer trip — €1,200", how much they've saved, and can add money.
 
 This builds on [Build a screen with /new-screen](/challenges/wf-2-new-screen): there you made one screen,
