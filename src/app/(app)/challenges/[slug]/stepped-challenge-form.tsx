@@ -171,7 +171,13 @@ export function SteppedChallengeForm({
         setImages([]);
         setStep(1);
         setNavigated(false);
-        toast.success(res.status === "published" ? "Submitted and graded." : "Submitted — awaiting review.");
+        if (res.status === "published") {
+          // Graded on the spot: show the result (score and ✓/✗ per question) straight away.
+          toast.success("Submitted and graded.");
+          router.push(`/submissions/${res.submissionId}`);
+          return;
+        }
+        toast.success("Submitted — awaiting review.");
         router.refresh();
       } catch {
         autosave.resume();

@@ -775,3 +775,5 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Track `management` ("CEO and COO"): `tracks.ts` (Team group), onboarding icon, admin Users select (both read `TRACKS`), `docs/schema.sql`, `database.types.ts` (edited by hand until `db:types` is re-run), content docs and `/new-challenge`. Migration `20261014090000_management_track.sql`; not applied yet, waiting for `db:push`.
 - Attempt page (`/submissions/[id]`) and the admin review page mark each single/multi question Correct (✓) or Incorrect (✗); wrong answers show the right answer when `answerReveal` allows it (full marks or 3 attempts used), otherwise "Try again to find the right answer — N attempts left." New `results.ts` (+ tests), `attempt-results.ts` (server-only), `--success` token with contrast tests.
 
+
+- After submitting an auto-graded quiz both forms go straight to `/submissions/[id]` (score, ✓/✗ per question, reveal rules, "Try again" while attempts remain). Review-bound submissions are unchanged. E2E learner and dashboard specs updated for the new landing page (not run: no test project).

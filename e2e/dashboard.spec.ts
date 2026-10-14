@@ -30,6 +30,15 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await page.getByLabel("3", { exact: true }).check();
   await next.click();
   await submit.click();
+
+  // The result opens straight away: 4 / 10, q1 ✓, q2 ✗ — and the right answer stays hidden while attempts are left.
+  await expect(page).toHaveURL(/\/submissions\/[0-9a-f-]{36}$/);
+  await expect(page.getByTestId("attempt-result-score")).toHaveText("4 / 10 pts");
+  await expect(page.getByTestId("question-mark")).toHaveText(["Correct", "Incorrect"]);
+  await expect(page.getByTestId("right-answer")).toHaveCount(0);
+  await expect(page.getByTestId("try-again")).toHaveText("Try again to find the right answer — 2 attempts left.");
+  await page.getByTestId("try-again-link").click();
+  await expect(page).toHaveURL(/\/challenges\/e2e-quiz$/);
   await expect(page.getByTestId("attempt-score")).toHaveText("4 / 10");
 
   // The category's card now says "View result" instead of "Start".

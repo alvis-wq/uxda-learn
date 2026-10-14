@@ -55,6 +55,13 @@ test.describe("learner experience", () => {
     await expect(page.getByRole("region", { name: "Question 2" })).toContainText("2; 4");
     await submit.click();
 
+    // A quiz is graded on the spot: the attempt page opens with the score and a ✓ on every question.
+    await expect(page).toHaveURL(/\/submissions\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId("attempt-result-score")).toHaveText("10 / 10 pts");
+    await expect(page.getByTestId("question-mark")).toHaveText(["Correct", "Correct"]);
+    await expect(page.getByTestId("try-again-link")).toHaveCount(0);
+
+    await page.goto("/challenges/e2e-quiz");
     await expect(page.getByTestId("attempt-score")).toHaveText("10 / 10");
     await expect(page.getByRole("heading", { name: "[E2E] Quiz" }).locator("..")).toContainText("Completed");
     await expect(page.getByText("You already have full points.")).toBeVisible();

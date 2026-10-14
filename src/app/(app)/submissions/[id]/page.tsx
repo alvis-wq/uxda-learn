@@ -5,6 +5,7 @@ import { ChevronLeft, Info } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { SubmissionAnswers } from "@/components/submission-answers";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { parseChallenge } from "@/lib/challenges/model";
@@ -69,7 +70,7 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
             <CardTitle>
               {sub.status === "published" ? "Result" : "Changes requested"}
               {sub.final_score !== null && (
-                <span className="ml-2 font-normal">
+                <span className="ml-2 font-normal" data-testid="attempt-result-score">
                   {sub.final_score} / {sub.max_score} pts
                 </span>
               )}
@@ -97,6 +98,14 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
         results={attemptResults.state === "ready" ? attemptResults.results : undefined}
         reveal={attemptResults.state === "ready" ? attemptResults.reveal : undefined}
       />
+
+      {attemptResults.state === "ready" && !attemptResults.reveal.reveal && isResultVisible(sub.status) && (
+        <div>
+          <Link href={`/challenges/${sub.challenge_slug}`} className={buttonVariants()} data-testid="try-again-link">
+            Try again
+          </Link>
+        </div>
+      )}
     </main>
   );
 }

@@ -25,4 +25,11 @@ describe("where the right answers can come from", () => {
   it("the answers component is a server component, so the key never ships as client code", () => {
     expect(read("src/components/submission-answers.tsx")).not.toMatch(/^["']use client["']/);
   });
+
+  it("both submit forms open the attempt page when the quiz was graded on the spot", () => {
+    for (const f of ["challenge-form", "stepped-challenge-form"]) {
+      const src = read(`src/app/(app)/challenges/[slug]/${f}.tsx`);
+      expect(src, f).toMatch(/res\.status === "published"[\s\S]*router\.push\(`\/submissions\/\$\{res\.submissionId\}`\)/);
+    }
+  });
 });

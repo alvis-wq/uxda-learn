@@ -61,7 +61,13 @@ export function ChallengeForm({
           setErrors(res.fieldErrors ?? {});
           return;
         }
-        toast.success(res.status === "published" ? "Submitted and graded." : "Submitted — awaiting review.");
+        if (res.status === "published") {
+          // Graded on the spot: show the result (score and ✓/✗ per question) straight away.
+          toast.success("Submitted and graded.");
+          router.push(`/submissions/${res.submissionId}`);
+          return;
+        }
+        toast.success("Submitted — awaiting review.");
         router.refresh();
       } catch {
         setFormError("Something went wrong. Please try again.");
