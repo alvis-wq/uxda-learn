@@ -59,6 +59,10 @@ const PAIRS: [string, string][] = [
   ["warning", "muted"],
   ["warning", "accent"],
   // "Correct" marks on the attempt page (the "Incorrect" marks use destructive, above).
+  // The filter menu (a popover; the highlighted item is on accent) and draft cards (a muted surface).
+  ["brand-text", "popover"],
+  ["brand-text", "accent"],
+  ["brand-text", "muted"],
   ["success", "background"],
   ["success", "card"],
   ["success", "muted"],

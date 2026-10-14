@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { auroraBoxHeight, visibleGlowHeight } from "../src/components/aurora/geometry";
 import { cleanTestUserData } from "./fixtures";
 import { loginAs } from "./helpers";
@@ -208,89 +208,132 @@ test.describe("theme", () => {
     expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
   });
 
-  test("Categories and Challenges come right after Overall progress; the pills are 36px tall with count and name", async ({ page }) => {
+  const openFilter = async (page: Page) => {
+    await page.getByTestId("filter-button").click();
+    await expect(page.getByTestId("filter-menu")).toBeVisible();
+  };
+  const option = (page: Page, text: string) => page.getByTestId("filter-option").filter({ hasText: text });
+
+  test("Challenges come right after Overall progress; the Filter button sits at the right of its heading line", async ({ page }) => {
     await loginAs(page, "designer");
     await page.goto("/");
     const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
-    const [hero, overall, pills, list] = [await box("hero"), await box("overall-progress"), await box("category-pills"), await box("challenges-section")];
+    const [hero, overall, list] = [await box("hero"), await box("overall-progress"), await box("challenges-section")];
     expect(overall.y).toBeGreaterThanOrEqual(hero.y + hero.height);
-    expect(pills.y).toBeGreaterThanOrEqual(overall.y + overall.height);
-    expect(list.y).toBeGreaterThanOrEqual(pills.y + pills.height);
-    await expect(page.getByRole("heading", { name: "Categories", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Challenges", exact: true })).toBeVisible();
+    expect(list.y).toBeGreaterThanOrEqual(overall.y + overall.height);
+    await expect(page.getByRole("heading", { name: "Categories", exact: true })).toHaveCount(0); // the pills row is gone
+    await expect(page.getByTestId("category-pill")).toHaveCount(0);
+    const heading = (await page.getByRole("heading", { name: "Challenges", exact: true }).boundingBox())!;
+    const button = (await page.getByTestId("filter-button").boundingBox())!;
+    expect(Math.abs(button.y + button.height / 2 - (heading.y + heading.height / 2))).toBeLessThan(24); // same line
+    expect(button.x).toBeGreaterThan(heading.x + heading.width); // to its right
+    await expect(page.getByTestId("filter-button")).toHaveText("Filter: All");
     await expect(page.getByText("Required for you")).toHaveCount(0);
-    await expect(page.getByTestId("optional-hint")).toHaveCount(0);
     await expect(page.getByText("Coming soon")).toHaveCount(0);
-
-    // "All" comes first, with the overall count; then one pill per category with a visible challenge.
-    const all = page.getByTestId("category-pill").first();
-    await expect(all).toHaveAttribute("data-slug", "all");
-    await expect(all).toHaveAttribute("data-active", "");
-    await expect(all).toContainText("All");
-    await expect(all.locator("[aria-hidden]").first()).toContainText(/\d+\/\d+/);
-    const pill = page.getByTestId("category-pill").filter({ hasText: "[E2E] Test challenges" });
-    await expect(pill).toContainText("completed");
-    expect((await pill.boundingBox())!.height).toBe(36);
-    await pill.focus();
-    await expect(pill).toHaveCSS("box-shadow", /0px 0px 0px 3px/); // visible keyboard focus
   });
 
-  test("a pill filters the list in place: URL, no page load, back/forward, reload, shared link", async ({ page }) => {
+  test("All is grouped by category: a bold label with the name and done/total, its cards below, no drafts", async ({ page }) => {
     await loginAs(page, "designer");
     await page.goto("/");
-    const titles = () => page.getByTestId("challenge-card").locator("h3").allInnerTexts();
+    const group = page.getByTestId("category-group").filter({ hasText: "[E2E] Test challenges" });
+    await expect(group.getByRole("heading", { level: 3 })).toContainText("[E2E] Test challenges");
+    await expect(group.getByTestId("group-count")).toHaveText(/^\d+\/\d+$/);
+    expect(await group.getByRole("heading", { level: 3 }).evaluate((h) => getComputedStyle(h).fontWeight)).toBe("700");
+    expect(await group.getByTestId("challenge-card").count()).toBeGreaterThanOrEqual(2);
+    await expect(page.getByTestId("challenge-card").getByTestId("draft-badge")).toHaveCount(0);
+    await expect(page.getByText("[E2E] Draft")).toHaveCount(0);
+  });
+
+  test("the menu lists All and each category with done/total and 'required left'; keyboard, focus and Escape work", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    await page.getByTestId("filter-button").focus();
+    await expect(page.getByTestId("filter-button")).toHaveCSS("box-shadow", /0px 0px 0px 3px/); // visible focus
+    await page.keyboard.press("Enter");
+    const menu = page.getByTestId("filter-menu");
+    await expect(menu).toBeVisible();
+    const all = option(page, "All").first();
+    await expect(all).toHaveAttribute("data-slug", "all");
+    await expect(all).toHaveAttribute("aria-checked", "true");
+    await expect(all).toContainText(/\d+\/\d+/);
+    await expect(option(page, "[E2E] Test challenges")).toContainText(/\d+\/\d+/);
+    await expect(option(page, "[E2E] Test challenges").getByTestId("filter-required-left")).toHaveText("required left"); // the ack fixture is required for all
+    await expect(page.getByTestId("filter-option").filter({ hasText: "Drafts" })).toHaveCount(0); // testers only
+    // Escape closes and focus returns to the button.
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(page.getByTestId("filter-button")).toBeFocused();
+    // Arrow keys and Enter choose.
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("filter-option").first()).toBeFocused(); // the menu has taken focus: now the arrows work
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByTestId("filter-option").nth(1)).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\?category=[a-z0-9-]+$/);
+    await expect(page.getByTestId("filter-button")).toBeFocused();
+  });
+
+  test("a filter shows only that group, without its label: URL, no page load, back/forward, reload, shared link", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/");
+    const titles = () => page.getByTestId("challenge-card").locator("h3, h4").allInnerTexts();
     const all = await titles();
     expect(all.length).toBeGreaterThanOrEqual(2);
-    // The order: required and overdue first, the rest not started after it.
+    // The order inside a group: required and overdue first, the rest not started after it.
     expect(all[0]).toContain("[E2E] Read the rules");
 
     const loads: string[] = [];
     page.on("request", (request) => request.resourceType() === "document" && loads.push(request.url()));
     await page.evaluate(() => ((window as unknown as { __same: boolean }).__same = true));
-    const pill = page.getByTestId("category-pill").filter({ hasText: "[E2E] Test challenges" });
-    await pill.click();
+    await openFilter(page);
+    await option(page, "[E2E] Test challenges").click();
     await expect(page).toHaveURL(/\/\?category=e2e-tests$/);
-    await expect(pill).toHaveAttribute("data-active", "");
-    await expect(pill).toHaveAttribute("aria-current", "true");
-    await expect(page.getByTestId("category-pill").first()).not.toHaveAttribute("data-active", "");
+    await expect(page.getByTestId("filter-button")).toHaveText("Filter: [E2E] Test challenges");
+    await expect(page.getByTestId("category-group")).toHaveCount(0); // no section label
     expect(await titles()).toEqual(all); // every fixture challenge is in this category: same list, same order
     await expect(page.getByTestId("filter-status")).toContainText("[E2E] Test challenges");
     expect(await page.evaluate(() => (window as unknown as { __same?: boolean }).__same)).toBe(true); // same document
     expect(loads).toEqual([]);
 
-    await page.getByTestId("category-pill").first().click(); // All: the param goes away
+    await openFilter(page);
+    await option(page, "All").first().click(); // All: the param goes away
     await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId("category-group").first()).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\?category=e2e-tests$/);
-    await expect(pill).toHaveAttribute("data-active", "");
+    await expect(page.getByTestId("filter-button")).toHaveText("Filter: [E2E] Test challenges");
     await page.goForward();
     await expect(page).toHaveURL(/\/$/);
 
-    // A shared link and a reload keep the filter; an unknown category means All.
+    // A shared link and a reload keep the filter; an unknown category (or drafts, for a non-tester) means All.
     await page.goto("/?category=e2e-tests");
-    await expect(pill).toHaveAttribute("data-active", "");
+    await expect(page.getByTestId("filter-button")).toHaveText("Filter: [E2E] Test challenges");
     await page.reload();
-    await expect(pill).toHaveAttribute("data-active", "");
-    await page.goto("/?category=nope");
-    await expect(page.getByTestId("category-pill").first()).toHaveAttribute("data-active", "");
+    await expect(page.getByTestId("filter-button")).toHaveText("Filter: [E2E] Test challenges");
+    for (const bad of ["nope", "drafts"]) {
+      await page.goto(`/?category=${bad}`);
+      await expect(page.getByTestId("filter-button")).toHaveText("Filter: All");
+    }
     expect(await titles()).toEqual(all);
   });
 
-  test("the pill row scrolls sideways on a phone without making the page scroll", async ({ page }) => {
+  test("on a phone the Filter button fits next to the heading and the page doesn't scroll sideways", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     await loginAs(page, "designer");
     await page.goto("/");
-    await expect(page.getByTestId("category-pills")).toBeVisible();
+    await expect(page.getByTestId("filter-button")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    const list = page.getByTestId("category-pills").locator("ul");
-    await expect(list).toHaveCSS("overflow-x", "auto");
-    await expect(list).toHaveCSS("flex-wrap", "nowrap");
+    await openFilter(page);
+    const menu = (await page.getByTestId("filter-menu").boundingBox())!;
+    expect(menu.x).toBeGreaterThanOrEqual(0);
+    expect(menu.x + menu.width).toBeLessThanOrEqual(375);
   });
 
   test("with reduced motion the list does not animate when the filter changes", async ({ page }) => {
     await loginAs(page, "designer"); // the suite runs with reduced motion on
     await page.goto("/");
-    await page.getByTestId("category-pill").filter({ hasText: "[E2E] Test challenges" }).click();
+    await openFilter(page);
+    await option(page, "[E2E] Test challenges").click();
     await expect(page.getByTestId("challenge-list")).toHaveCSS("animation-name", "none");
   });
 });

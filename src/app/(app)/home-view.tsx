@@ -13,15 +13,15 @@ import { TRACK_LABEL, type Track } from "@/lib/tracks";
 /** The signed-in home page: hero, overall progress, then the category filter and the challenge list. Data-free so it can be rendered on its own. */
 export function HomeView({
   profile,
-  data: { hero, overall, categories, required, challenges },
+  data: { hero, overall, categories, required, challenges, drafts },
   now,
 }: {
-  profile: { full_name: string | null; track: Track | null };
+  profile: { full_name: string | null; track: Track | null; is_tester: boolean };
   data: HomeData;
   now: Date;
 }) {
   const firstName = profile.full_name?.split(" ")[0];
-  // A category with no challenge visible to the learner gets no pill.
+  // A category with no challenge visible to the learner gets no group and no filter option.
   const withChallenges = categories.filter((c) => c.total > 0);
 
   return (
@@ -59,12 +59,16 @@ export function HomeView({
                       <span className="text-foreground/80 text-base"> of {hero.rank.of}</span>
                     </>
                   ) : (
-                    <>
-                      <span className="text-foreground/80 text-base">Not ranked · </span>
-                      <Link href="/profile" className="text-base underline underline-offset-4">
-                        hidden from the leaderboard
-                      </Link>
-                    </>
+                    hero.hidden ? (
+                      <>
+                        <span className="text-foreground/80 text-base">Not ranked · </span>
+                        <Link href="/profile" className="text-base underline underline-offset-4">
+                          hidden from the leaderboard
+                        </Link>
+                      </>
+                    ) : (
+                      <span className="text-foreground/80 text-base">Not ranked yet</span>
+                    )
                   )}
                 </dd>
               </div>
@@ -101,6 +105,8 @@ export function HomeView({
               overall={overall}
               requiredLeft={required.total - required.done}
               challenges={challenges}
+              drafts={drafts}
+              tester={profile.is_tester}
               now={now}
             />
           </>

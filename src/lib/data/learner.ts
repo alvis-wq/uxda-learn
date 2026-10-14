@@ -221,8 +221,10 @@ function cardWithout({ categoryOrder, ...card }: CardChallenge & { categoryOrder
 export type HomeHero = {
   totalScore: number;
   groupLabel: string | null;
-  /** Null when the learner isn't on the leaderboard (hidden from it). */
+  /** Null when the learner has no rank: hidden from the leaderboard, or no points yet (see `hidden`). */
   rank: { position: number; of: number } | null;
+  /** Hidden from the leaderboard by their own choice (as opposed to just having no points yet). */
+  hidden: boolean;
 };
 
 export type HomeData = {
@@ -232,8 +234,10 @@ export type HomeData = {
   categories: CategoryProgress[];
   /** Required challenges among them: how many, how many done, how many are overdue. */
   required: { total: number; done: number; overdue: number };
-  /** Every challenge the learner can see, in the home page's order (see sortHomeChallenges); the page filters it. */
+  /** Every challenge the learner can see, in the home page's order (see sortHomeChallenges); the page groups and filters it. Never drafts. */
   challenges: CardChallenge[];
+  /** Draft challenges a tester can try (empty for everyone else); only shown under the "Drafts — testing" filter, never counted. */
+  drafts: CardChallenge[];
 };
 
 export async function getHomeData(profile: Profile, now = new Date()): Promise<HomeData> {
@@ -284,19 +288,24 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
 
   const required = visible.filter((ch) => ch.required);
   const categoryOrder = new Map(cats.data.map((c, i) => [c.slug, i]));
-  const challenges = sortHomeChallenges(
-    listed.map((ch) => {
-      const category = catBySlug.get(ch.category_slug);
-      const card = cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
-      return { ...card, categoryOrder: categoryOrder.get(ch.category_slug) ?? 0 };
-    }),
-  ).map((item) => cardWithout(item));
+  const toCards = (items: typeof listed) =>
+    sortHomeChallenges(
+      items.map((ch) => {
+        const category = catBySlug.get(ch.category_slug);
+        const card = cardOf(ch, { title: category?.title ?? "", image: category?.image ?? null }, ch);
+        return { ...card, categoryOrder: categoryOrder.get(ch.category_slug) ?? 0 };
+      }),
+    ).map((item) => cardWithout(item));
+  // Drafts are kept apart: the page shows them only under the tester's "Drafts — testing" filter.
+  const challenges = toCards(visible);
+  const draftCards = toCards(listed.filter((ch) => isTestChallenge(ch.status)));
 
   const { totalScore } = summarizeScores(subs);
   const hero: HomeHero = {
     totalScore,
     groupLabel: group?.label ?? null,
     rank: board?.data ? rankOf(board.data, profile.id) : null,
+    hidden: !profile.show_on_leaderboard,
   };
 
   return {
@@ -309,6 +318,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
       overdue: required.filter((ch) => ch.requiredState === "overdue").length,
     },
     challenges,
+    drafts: draftCards,
   };
 }
 
@@ -326,7 +336,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
       .from("challenges")
       .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image,questions,submission_spec")
       .eq("category_slug", slug)
-      .in("status", listedStatuses(profile))
+      .eq("status", "published") // drafts are only listed on the home page, under the tester's filter
       .order("difficulty")
       .order("title"),
     mySubmissions(profile.id),
@@ -340,7 +350,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     category,
     challenges: requiredFirst(
       chs.data
-        .filter((ch) => isChallengeVisible(ch, category, profile.track, profile.is_tester))
+        .filter((ch) => isChallengeVisible(ch, category, profile.track))
         .map((ch) => {
           const progress = progressFor(ch, profile, bySlug.get(ch.slug) ?? [], acks, drafts, now);
           return { ...cardOf(ch, category, progress), required: progress.required };

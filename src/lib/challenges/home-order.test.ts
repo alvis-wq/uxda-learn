@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterByCategory, homeGroup, parseCategoryFilter, sortHomeChallenges, type HomeSortable } from "./home-order";
+import { filterByCategory, groupByCategory, homeGroup, parseHomeFilter, sortHomeChallenges, type HomeSortable } from "./home-order";
 
 const c = (slug: string, over: Partial<HomeSortable> = {}): HomeSortable => ({
   slug, title: slug, categorySlug: "a", categoryOrder: 10, difficulty: 1, inProgress: false, savedAt: null,
@@ -70,11 +70,16 @@ describe("sortHomeChallenges", () => {
   });
 });
 
-describe("category filter", () => {
+describe("home filter", () => {
   const slugs = ["ai", "wire"];
   it("parses a known slug, and falls back to All for anything else", () => {
-    expect(parseCategoryFilter("ai", slugs)).toBe("ai");
-    for (const bad of [null, undefined, "", "nope", "all", "AI"]) expect(parseCategoryFilter(bad, slugs)).toBe("all");
+    expect(parseHomeFilter("ai", slugs, { tester: false })).toBe("ai");
+    for (const bad of [null, undefined, "", "nope", "all", "AI"]) expect(parseHomeFilter(bad, slugs, { tester: false })).toBe("all");
+  });
+
+  it("the drafts filter is for testers only", () => {
+    expect(parseHomeFilter("drafts", slugs, { tester: true })).toBe("drafts");
+    expect(parseHomeFilter("drafts", slugs, { tester: false })).toBe("all");
   });
 
   it("filters keeping the order, and All keeps everything", () => {
@@ -82,5 +87,37 @@ describe("category filter", () => {
     expect(filterByCategory(items, "ai").map((x) => x.slug)).toEqual(["1", "3"]);
     expect(filterByCategory(items, "all")).toHaveLength(3);
     expect(filterByCategory(items, "wire").map((x) => x.slug)).toEqual(["2"]);
+  });
+});
+
+describe("groupByCategory", () => {
+  const categories = [
+    { slug: "uxda", title: "The UXDA Way", completed: 1, total: 3 },
+    { slug: "ai", title: "AI workflow", completed: 0, total: 2 },
+    { slug: "empty", title: "Nothing visible", completed: 0, total: 0 },
+  ];
+
+  it("one group per category, in the category order, with its own done/total", () => {
+    const items = [c("ai-1", { categorySlug: "ai" }), c("u-1", { categorySlug: "uxda" })];
+    const groups = groupByCategory(items, categories);
+    expect(groups.map((g) => [g.slug, g.title, g.completed, g.total])).toEqual([["uxda", "The UXDA Way", 1, 3], ["ai", "AI workflow", 0, 2]]);
+  });
+
+  it("keeps the sort inside each group: in progress, required not done, other, completed", () => {
+    const sorted = sortHomeChallenges([
+      c("done", { categorySlug: "uxda", done: true }),
+      c("other", { categorySlug: "uxda" }),
+      c("ai-other", { categorySlug: "ai" }),
+      c("required", { categorySlug: "uxda", required: true }),
+      c("started", { categorySlug: "uxda", inProgress: true, savedAt: "2026-10-13T10:00:00Z" }),
+    ]);
+    const groups = groupByCategory(sorted, categories);
+    expect(groups[0].items.map((x) => x.slug)).toEqual(["started", "required", "other", "done"]);
+    expect(groups[1].items.map((x) => x.slug)).toEqual(["ai-other"]);
+  });
+
+  it("leaves out a category with nothing in it, and gives no group to an unknown category", () => {
+    const groups = groupByCategory([c("x", { categorySlug: "unknown" })], categories);
+    expect(groups).toEqual([]);
   });
 });

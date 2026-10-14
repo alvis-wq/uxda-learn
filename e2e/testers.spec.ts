@@ -43,9 +43,23 @@ test.describe("testers", () => {
       .toEqual([{ old_value: false, new_value: true }]);
   });
 
-  test("a tester sees the draft with a badge, and it is not counted", async ({ page }) => {
+  test("a tester finds drafts only under the Drafts filter, as dashed cards with a badge; they are not counted", async ({ page }) => {
     await loginAs(page, "designer");
+    // Not under All, not in a category (home group or category page).
+    await expect(page.getByText("[E2E] Draft quiz")).toHaveCount(0);
+    await expect(page.getByTestId("overall-count")).toHaveText(overallBefore);
+    await page.goto("/categories/e2e-tests");
+    await expect(page.getByText("[E2E] Draft quiz")).toHaveCount(0);
+    await page.goto("/");
+    await page.getByTestId("filter-button").click();
+    const option = page.getByTestId("filter-option").filter({ hasText: "Drafts — testing" });
+    await expect(option).toContainText("1"); // the number of drafts
+    await option.click();
+    await expect(page).toHaveURL(/\?category=drafts$/);
+    await expect(page.getByTestId("category-group")).toHaveCount(0); // no section label
     const card = page.getByTestId("challenge-card").filter({ hasText: "[E2E] Draft quiz" });
+    await expect(card).toHaveAttribute("data-draft", "");
+    await expect(card).toHaveCSS("border-style", "dashed");
     await expect(card.getByTestId("draft-badge")).toHaveText("Draft — testing");
     await expect(page.getByTestId("overall-count")).toHaveText(overallBefore);
     await card.getByRole("link", { name: "[E2E] Draft quiz" }).click();

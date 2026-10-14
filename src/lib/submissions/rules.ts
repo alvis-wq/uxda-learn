@@ -86,15 +86,32 @@ export function rankRows<T extends { total_score: number }>(rows: T[]): (T & { r
 }
 
 /**
- * A user's place in a leaderboard group: standard competition rank and how many are ranked. Null when they aren't
- * on the board (hidden from the leaderboard, or not in the group).
+ * A leaderboard split in two: everyone with points, ranked (standard competition ranking), and everyone with none,
+ * who get no rank at all and are listed after them ("Not started yet"), by name. The incoming order is kept for the
+ * ranked rows.
+ */
+export function splitLeaderboard<T extends { total_score: number; full_name?: string | null }>(
+  rows: T[],
+): { ranked: (T & { rank: number })[]; notStarted: T[] } {
+  const scored = rows.filter((r) => Number(r.total_score) > 0);
+  const notStarted = rows
+    .filter((r) => !(Number(r.total_score) > 0))
+    .sort((a, b) => (a.full_name ?? "Unnamed").localeCompare(b.full_name ?? "Unnamed"));
+  return { ranked: rankRows(scored), notStarted };
+}
+
+/**
+ * A user's place in a leaderboard group: standard competition rank and how many are ranked. Null when they have no
+ * rank: hidden from the leaderboard, not in the group, or no points yet (nobody without points is ranked, and they
+ * aren't counted in "of").
  */
 export function rankOf<T extends { user_id: string; total_score: number }>(
   rows: T[],
   userId: string,
 ): { position: number; of: number } | null {
-  const me = rankRows(rows).find((r) => r.user_id === userId);
-  return me ? { position: me.rank, of: rows.length } : null;
+  const { ranked } = splitLeaderboard(rows);
+  const me = ranked.find((r) => r.user_id === userId);
+  return me ? { position: me.rank, of: ranked.length } : null;
 }
 
 /** How one attempt reads in the learner's history. */

@@ -46,7 +46,7 @@ export function ChallengeCard({
   subheading?: string | null;
   /** Muted paragraph (the summary on the home page). */
   body?: string | null;
-  headingLevel: 2 | 3;
+  headingLevel: 2 | 3 | 4;
   now: Date;
 }) {
   const Heading = `h${headingLevel}` as const;
@@ -59,9 +59,12 @@ export function ChallengeCard({
       data-testid="challenge-card"
       data-span={span}
       data-has-image={hasImage ? "" : undefined}
+      data-draft={ch.isDraft ? "" : undefined}
       className={cn(
-        "challenge-card group bg-tile relative isolate flex min-h-64 w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
+        "challenge-card group relative isolate flex min-h-64 w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
         "hover:border-primary has-[a:focus-visible]:ring-ring/50 has-[a:focus-visible]:ring-[3px]",
+        // A draft a tester can try: dashed border and a muted surface, so it can't be mistaken for a real challenge.
+        ch.isDraft ? "bg-muted border-muted-foreground/50 border-dashed" : "bg-tile",
         IMAGE_WIDTH[span],
       )}
     >
@@ -117,7 +120,7 @@ export function ChallengeCard({
       </div>
       {/* The meta rows span the whole card (below the artwork's column, which they are painted over), so they are
           two rows at every width. z-[5]: above the artwork, below the card-wide link (z-10). */}
-      <div className="bg-tile relative z-[5] px-[var(--pad)] pt-4 pb-[var(--pad)]">
+      <div className={cn("relative z-[5] px-[var(--pad)] pt-4 pb-[var(--pad)]", ch.isDraft ? "bg-muted" : "bg-tile")}>
         {/* Always two rows: 1) what it is, 2) where the learner stands. */}
         <div className="grid gap-2" data-testid="card-meta">
           <ChallengeMeta challenge={ch} nowrap />
@@ -150,7 +153,7 @@ export function ChallengeCardGrid({
   detail,
 }: {
   items: CardChallenge[];
-  headingLevel: 2 | 3;
+  headingLevel: 2 | 3 | 4;
   now: Date;
   /** What goes under the heading: the category (home) or the summary (category page). */
   detail: "category" | "summary";

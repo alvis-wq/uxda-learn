@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupAttemptHistory, isLowScore, rankOf, rankRows, summarizeScores, type SubmissionStatus } from "./rules";
+import { groupAttemptHistory, isLowScore, rankOf, rankRows, splitLeaderboard, summarizeScores, type SubmissionStatus } from "./rules";
 
 describe("summarizeScores", () => {
   it("counts the best published attempt per challenge, and pending reviews", () => {
@@ -102,14 +102,47 @@ describe("rankOf", () => {
     { user_id: "c", total_score: 20 },
     { user_id: "d", total_score: 0 },
   ];
-  it("is the competition rank and the number ranked", () => {
-    expect(rankOf(rows, "a")).toEqual({ position: 1, of: 4 });
-    expect(rankOf(rows, "b")).toEqual({ position: 2, of: 4 });
-    expect(rankOf(rows, "c")).toEqual({ position: 2, of: 4 }); // tie
-    expect(rankOf(rows, "d")).toEqual({ position: 4, of: 4 });
+  it("is the competition rank and the number ranked (people with points only)", () => {
+    expect(rankOf(rows, "a")).toEqual({ position: 1, of: 3 });
+    expect(rankOf(rows, "b")).toEqual({ position: 2, of: 3 });
+    expect(rankOf(rows, "c")).toEqual({ position: 2, of: 3 }); // tie
+  });
+  it("is null for someone with no points: they have no rank", () => {
+    expect(rankOf(rows, "d")).toBeNull();
+    expect(rankOf([{ user_id: "x", total_score: 0 }], "x")).toBeNull();
   });
   it("is null when the user isn't on the board (hidden, or another group)", () => {
     expect(rankOf(rows, "zzz")).toBeNull();
     expect(rankOf([], "a")).toBeNull();
   });
 });
+
+describe("splitLeaderboard", () => {
+  const row = (user_id: string, total_score: number, full_name: string | null = user_id) => ({ user_id, total_score, full_name });
+
+  it("ranks everyone with points and keeps the order they came in", () => {
+    const { ranked } = splitLeaderboard([row("a", 30), row("b", 20), row("c", 20), row("d", 5)]);
+    expect(ranked.map((r) => [r.user_id, r.rank])).toEqual([["a", 1], ["b", 2], ["c", 2], ["d", 4]]);
+  });
+
+  it("gives people with 0 points no rank and lists them separately, by name", () => {
+    const { ranked, notStarted } = splitLeaderboard([row("a", 10), row("z", 0, "Zane"), row("m", 0, "Anna"), row("b", 5), row("n", 0, null)]);
+    expect(ranked.map((r) => r.user_id)).toEqual(["a", "b"]);
+    expect(ranked.map((r) => r.rank)).toEqual([1, 2]);
+    expect(notStarted.map((r) => r.user_id)).toEqual(["m", "n", "z"]); // Anna, Unnamed, Zane
+    expect(notStarted.every((r) => !("rank" in r))).toBe(true);
+  });
+
+  it("a board where nobody has points has only the 'not started' group", () => {
+    const { ranked, notStarted } = splitLeaderboard([row("a", 0), row("b", 0)]);
+    expect(ranked).toEqual([]);
+    expect(notStarted).toHaveLength(2);
+  });
+
+  it("scores arrive as numbers or numeric strings", () => {
+    const { ranked, notStarted } = splitLeaderboard([{ user_id: "a", total_score: "12" as unknown as number }, { user_id: "b", total_score: "0" as unknown as number }]);
+    expect(ranked).toHaveLength(1);
+    expect(notStarted).toHaveLength(1);
+  });
+});
+
