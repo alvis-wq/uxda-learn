@@ -9,6 +9,6 @@ milestones:
   - cds-2-connect-and-harvest
   - cds-3-health-in-figma
 before_you_start: >-
-  You need the **uxda-design-systems** plugin in Claude Code, and your Figma access token set up once with
-  **/dsx-setup**. Ask Alvis if either is missing.
+  This path has 3 parts. You'll set up a Claude Code project for each of our five design system files,
+  harvest their data, and check their health in Figma. Do them in order.
 status: draft

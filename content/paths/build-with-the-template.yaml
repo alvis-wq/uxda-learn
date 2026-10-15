@@ -11,6 +11,6 @@ milestones:
   - bwt-4-check-health
 requires: [brand-the-template]
 before_you_start: >-
-  You need the **uxda-design-systems** plugin in Claude Code, and your Figma access token set up once with
-  **/dsx-setup**. Ask Alvis if either is missing.
+  This path has 4 parts. You'll make your own Sandbox folder, bring your branded template into it,
+  build a screen that works in light and dark mode, and check the template's health. Do them in order.
 status: draft

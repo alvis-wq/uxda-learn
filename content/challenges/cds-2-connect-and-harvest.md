@@ -1,6 +1,6 @@
 ---
 slug: cds-2-connect-and-harvest
-title: Connect and harvest
+title: Harvest each design system
 category: design-systems
 audiences: [designer]
 path: connect-design-systems
@@ -10,45 +10,43 @@ points: 10
 status: draft
 submission:
   screenshots:
-    min: 5
-    max: 10
-    label: The harvest result for each Figma file (one screenshot each, 5 in all)
+    min: 1
+    max: 5
+    label: A screenshot of your folder structure, with the harvested files in each of the five folders
 rubric:
   - id: all-five
-    criterion: "A harvest result for each of Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template"
+    criterion: "All five folders are shown: Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template"
     points: 5
     levels:
-      full: "Five screenshots, one per Figma file"
-      partial: "Some of them are missing"
-      none: "No harvest results"
-  - id: worked
-    criterion: "Each harvest worked"
+      full: "All five folders are open, so their files show"
+      partial: "Some folders are missing or closed, so their files don't show"
+      none: "No folder structure"
+  - id: harvested
+    criterion: "Each folder contains a ds-health.json file"
     points: 5
     levels:
-      full: "Each result shows the harvest finished, with ds-health.json written"
-      partial: "One shows an error, or is cut off before the end"
-      none: "Errors, or not a harvest result"
+      full: "ds-health.json is in all five folders"
+      partial: "ds-health.json is missing from one or more folders"
+      none: "No ds-health.json files, or not the UXDA-DS folders"
 grader_notes: |
-  Milestone 2 of 3 in "Connect our design systems". Each screenshot should be the end of a /harvest run in Claude
-  Code, one per Figma file (Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template), ideally showing ds-health.json being written.
-  Common mistakes: running /harvest without /dsx-connect first (it stops and asks to connect), several screenshots
-  from the same folder, cut-off results.
+  Milestone 2 of 3 in "Connect our design systems". The screenshot(s) should show the UXDA-DS folder (Finder or similar)
+  with Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template open, each containing ds-health.json
+  (CLAUDE.md and other files may show too; like the example image in the brief). Several screenshots are fine if
+  they don't fit in one.
+  Common mistakes: folders left closed so the files don't show (the example has DIB Tokens closed — theirs shouldn't),
+  ds-health.json missing in one folder (/harvest wasn't run there or stopped early).
 ---
-In each folder's chat in Claude Code, run **/dsx-connect** with its Figma link, then run **/harvest**. It worked when the folder has a **ds-health.json** file.
+In each of the five folders' chats in Claude Code, run **/harvest**. It worked when each folder contains a **ds-health.json** file.
 
 ### What to do
-For each Figma file — Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template:
+For each folder — Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template:
 1. Go to its chat in Claude Code (its own section in the sidebar).
-2. Run **/dsx-connect** and paste the link to its Figma file.
-3. Run **/harvest**.
-4. Check that its folder now has a **ds-health.json** file.
-
-### Our five design system files
-- **Arcnine Desktop** — find the file in our Figma.
-- **Arcnine Mobile** — find the file in our Figma.
-- **DIB Components** — find the file in our Figma.
-- **DIB Tokens** — find the file in our Figma.
-- **Template** — the UXDA Design System Template: [open it in Figma](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82)
+2. Run **/harvest**.
+3. Check that the folder now contains a **ds-health.json** file.
 
 ### What to send
-A screenshot of the harvest result for each of the five.
+One screenshot of your folder structure, with each of the five folders open so the harvested files show.
+
+Yours should look like this:
+
+![Example folder structure in Finder: the UXDA-DS folder with Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tokens and Template, each folder containing CLAUDE.md and ds-health.json](/challenges/harvest-folder-structure.png)

@@ -11,6 +11,6 @@ milestones:
   - btt-3-brand-colours
   - btt-4-check-claudes-work
 before_you_start: >-
-  You need the **uxda-design-systems** plugin in Claude Code, and your Figma access token set up once with
-  **/dsx-setup**. Ask Alvis if either is missing.
+  This path has 4 parts. You'll make your own copy of our design system template, connect it, fill it
+  with a real brand's colours using Claude Code, and check the result. Do them in order.
 status: draft
