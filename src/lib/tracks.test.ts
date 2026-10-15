@@ -9,6 +9,7 @@ import {
   isTrack,
   isVisibleToTrack,
   LEADERBOARD_GROUPS,
+  TRACK_LABEL,
   TRACK_VALUES,
   visibleTracks,
 } from "./tracks";
@@ -23,6 +24,12 @@ describe("tracks", () => {
     expect([...TRACK_VALUES].sort()).toEqual(
       ["account_manager", "assistant", "designer", "management", "motion_designer", "strategist"].sort(),
     );
+  });
+
+  it("show the assistant track as Marketing Assistant (the value stays `assistant`)", () => {
+    expect(TRACK_LABEL.assistant).toBe("Marketing Assistant");
+    expect(isTrack("assistant")).toBe(true);
+    expect(audienceLabel(["account_manager", "assistant"])).toBe("Account Manager, Marketing Assistant");
   });
 
   it("isTrack only accepts known tracks", () => {
