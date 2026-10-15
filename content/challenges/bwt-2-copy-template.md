@@ -7,6 +7,7 @@ path: build-with-the-template
 type: mixed
 difficulty: 1
 points: 10
+estimated_minutes: 15
 status: draft
 submission:
   screenshots:

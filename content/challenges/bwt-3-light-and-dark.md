@@ -7,6 +7,8 @@ path: build-with-the-template
 type: mixed
 difficulty: 2
 points: 20
+estimated_minutes: 30
+waiting_minutes: 15
 status: draft
 submission:
   figma_url:
@@ -67,7 +69,15 @@ Build one simple screen from your library, then make a dark copy of it.
 2. Use only components from your **Name-DS-template** library.
 3. Duplicate the frame.
 4. Switch the copy to Dark mode: select the frame → **Appearance** → change the mode.
-5. Check both versions. They must look right with no manual colour changes.
+
+**Tip: let Claude Code build it.** Open a Claude Code chat, paste the link to your **Name-Screen** file and use this prompt:
+
+> In this Figma file, build one simple mobile login screen using only components from my Name-DS-template library. Don't create new components or detach any. Then duplicate the frame and switch the copy to Dark mode.
+
+### Check it yourself
+1. Are all elements real library instances (not detached)?
+2. Does the dark copy switch without any manual colours?
+3. Fix what's wrong.
 
 ### What to send
 - The link to **Name-Screen**.

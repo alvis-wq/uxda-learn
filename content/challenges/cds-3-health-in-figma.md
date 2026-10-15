@@ -7,6 +7,7 @@ path: connect-design-systems
 type: screenshot
 difficulty: 1
 points: 10
+estimated_minutes: 10
 status: draft
 submission:
   screenshots:

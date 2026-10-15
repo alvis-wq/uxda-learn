@@ -6,6 +6,7 @@ import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { Markdown } from "@/components/markdown";
 import { TipBox } from "@/components/tip-box";
+import { WaitingNote } from "@/components/time-estimate";
 import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { briefView } from "@/lib/challenges/brief";
 import { challengeNeedsReview } from "@/lib/challenges/model";
+import { timeOf } from "@/lib/challenges/time";
 import { prepareFormDraft } from "@/lib/data/drafts";
 import { getChallengePage } from "@/lib/data/learner";
 import { isResultVisible, MAX_ATTEMPTS } from "@/lib/submissions/rules";
@@ -146,6 +148,8 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
             </AlertDescription>
           </Alert>
         )}
+
+        {(timeOf(challenge)?.waiting ?? 0) > 0 && <WaitingNote />}
 
         {!briefInStepper && (stepped ? collapsibleBrief : briefFull)}
 

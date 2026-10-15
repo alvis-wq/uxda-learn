@@ -46,7 +46,10 @@ Create a challenge from this description: $ARGUMENTS
 6. **Write** `content/challenges/<slug>.md` with `status: draft`. If something only Alvis can
    supply is missing (a Figma file, a doc link), put a `TODO_<WHAT>` placeholder there (e.g.
    `TODO_FIGMA_URL`) and list it in the summary — a challenge with a placeholder can't be published.
-   - A clear brief: goal, what to do, what to submit, time estimate.
+   - A clear brief: goal, what to do, what to submit. The time goes in `estimated_minutes` (the total), not the brief.
+   - If part of that time is waiting while Claude Code works, set `waiting_minutes` to that part (at most
+     `estimated_minutes`). Learners then see hands-on, waiting and total time, and a note that they can do other
+     things meanwhile. Leave it out when there is no waiting.
    - An example image helps? Only if the file is in `public/challenges/`: `![what it shows](/challenges/file.png)`,
      always with alt text. If the image doesn't exist yet, leave it out and say so in the summary.
    - Every challenge other than quiz or acknowledge has a reflection prompt that makes them evaluate the AI's
@@ -63,7 +66,7 @@ Create a challenge from this description: $ARGUMENTS
      language. Skip the rules above about rubrics, reflections and points.
 7. Run `npm run content:validate`. Fix until it passes.
 8. Reply with a short summary: title, category (+ why), audiences, required_for (+ due_at),
-   type, difficulty, points, rubric criteria, any new category, the path and milestone number (if any), any open questions.
+   type, difficulty, points, time (total and waiting), rubric criteria, any new category, the path and milestone number (if any), any open questions.
 9. Wait for approval. On "approve": run `npm run content:sync` (creates it as a draft) and commit
    `content: add <slug>`; then Alvis reviews it under Admin → Content → "Preview with answers" and
    publishes it there. (Only if the challenge has never been synced and Alvis says to publish

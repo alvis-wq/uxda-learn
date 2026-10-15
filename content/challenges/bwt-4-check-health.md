@@ -7,6 +7,8 @@ path: build-with-the-template
 type: screenshot
 difficulty: 1
 points: 10
+estimated_minutes: 10
+waiting_minutes: 5
 status: draft
 submission:
   screenshots:

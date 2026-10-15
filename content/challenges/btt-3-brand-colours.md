@@ -7,6 +7,8 @@ path: brand-the-template
 type: mixed
 difficulty: 2
 points: 20
+estimated_minutes: 30
+waiting_minutes: 10
 status: draft
 submission:
   screenshots:

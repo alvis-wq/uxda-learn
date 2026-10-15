@@ -1,3 +1,4 @@
+import { sumTimes, type TimeEstimate } from "@/lib/challenges/time";
 import type { AttemptSummary } from "@/lib/submissions/rules";
 
 /**
@@ -31,6 +32,8 @@ export type MilestoneInput = {
   slug: string;
   title: string;
   points: number;
+  /** Its time estimate; null (or left out) when it has none. */
+  time?: TimeEstimate | null;
   /** The learner's attempts on it: real ones, or test ones while it is a draft a tester is trying. */
   attempts: AttemptSummary[];
   /** Tried as a test (a tester on a draft): any attempt is "done", and nothing has a score. */
@@ -43,6 +46,8 @@ export type MilestoneState = {
   slug: string;
   title: string;
   points: number;
+  /** Its time estimate (hands-on, waiting, total); null when it has none. */
+  time: TimeEstimate | null;
   /** 1-based place in the path. */
   position: number;
   /** What a learner sees: "locked" while the locks hold, even when a tester may open it anyway. */
@@ -88,6 +93,7 @@ export function milestoneStates(sequential: boolean, milestones: readonly Milest
       slug: m.slug,
       title: m.title,
       points: m.points,
+      time: m.time ?? null,
       position: i + 1,
       status: open ? status : "locked",
       unlocked: open || m.testing,
@@ -150,6 +156,8 @@ export type PathSummary = {
   started: boolean;
   /** Every milestone done. */
   complete: boolean;
+  /** Its milestones' times added up (the ones that have an estimate); null when none has. */
+  time: TimeEstimate | null;
 };
 
 export function summarizePath(states: readonly MilestoneState[]): PathSummary {
@@ -161,6 +169,7 @@ export function summarizePath(states: readonly MilestoneState[]): PathSummary {
     pointsPossible: states.reduce((sum, s) => sum + s.points, 0),
     started: states.some((s) => s.started),
     complete: states.length > 0 && done === states.length,
+    time: sumTimes(states.map((s) => s.time)),
   };
 }
 

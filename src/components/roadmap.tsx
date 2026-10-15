@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2, Circle, Clock, FlaskConical, Lock, PencilLine, RotateCcw, type LucideIcon } from "lucide-react";
+import { TimeEstimate } from "@/components/time-estimate";
 import { MILESTONE_STATUS_LABEL, TESTER_OPEN_HINT, type MilestoneState, type MilestoneStatus } from "@/lib/paths/progress";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +110,7 @@ export function Roadmap({
                   </span>
                 )}
                 {showScores && s.bestScore === null && <span className="text-muted-foreground tabular-nums">{s.points} pts</span>}
+                {s.time && <TimeEstimate time={s.time} className="text-muted-foreground [&_svg]:size-3.5" />}
                 {lockedLook && sequential && i > 0 && (
                   <span className="text-muted-foreground">Submit milestone {i} first</span>
                 )}

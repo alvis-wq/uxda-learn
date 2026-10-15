@@ -171,6 +171,7 @@ export type CardChallenge = {
   difficulty: number;
   points: number;
   estimated_minutes: number | null;
+  waiting_minutes: number | null;
   due_at: string | null;
   required: boolean;
   done: boolean;
@@ -203,6 +204,7 @@ type CardSource = {
   difficulty: number;
   points: number;
   estimated_minutes: number | null;
+  waiting_minutes: number | null;
   due_at: string | null;
   image: string | null;
 };
@@ -221,6 +223,7 @@ function cardOf(
     difficulty: ch.difficulty,
     points: ch.points,
     estimated_minutes: ch.estimated_minutes,
+    waiting_minutes: ch.waiting_minutes,
     due_at: ch.due_at,
     required: p.required,
     done: p.done,
@@ -389,7 +392,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
       .order("sort_order"),
     supabase
       .from("challenges")
-      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,image,questions,submission_spec,path_slug")
+      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,waiting_minutes,image,questions,submission_spec,path_slug")
       .in("status", listedStatuses(profile)),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
@@ -507,7 +510,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   const [chs, subs, acks, drafts, paths, chainPaths] = await Promise.all([
     supabase
       .from("challenges")
-      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,audiences,required_for,due_at,image,questions,submission_spec,path_slug")
+      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,waiting_minutes,audiences,required_for,due_at,image,questions,submission_spec,path_slug")
       .eq("category_slug", slug)
       .eq("status", "published") // drafts are only listed on the home page, under the tester's filter
       .order("difficulty")
