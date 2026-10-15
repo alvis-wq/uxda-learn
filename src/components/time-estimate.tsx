@@ -1,13 +1,17 @@
 import { Clock, Hourglass } from "lucide-react";
 import { timeParts, type TimeEstimate as Time } from "@/lib/challenges/time";
+import { WaitingInfo } from "@/components/waiting-info";
 import { cn } from "@/lib/utils";
 
 /**
  * "~10 min hands-on · ~10 min waiting · ~20 min total" (or "~20 min") with a clock icon. On a narrow screen the line
- * wraps between the values (each keeps its dot at the end of its line), never inside one.
+ * wraps between the values (each keeps its dot at the end of its line), never inside one. The waiting value has an
+ * info button after it that explains waiting time.
  */
 export function TimeEstimate({ time, className }: { time: Time; className?: string }) {
   const parts = timeParts(time);
+  // With waiting time the parts are hands-on, waiting, total.
+  const waitingAt = time.waiting > 0 ? 1 : -1;
   return (
     <span className={cn("inline-flex min-w-0 items-center gap-1", className)} data-testid="time-estimate">
       <Clock className="size-4 shrink-0" aria-hidden />
@@ -15,6 +19,12 @@ export function TimeEstimate({ time, className }: { time: Time; className?: stri
         {parts.map((part, i) => (
           <span key={part} className="whitespace-nowrap">
             {part}
+            {i === waitingAt && (
+              <>
+                {" "}
+                <WaitingInfo />
+              </>
+            )}
             {i < parts.length - 1 && <span aria-hidden> ·</span>}
           </span>
         ))}

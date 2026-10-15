@@ -333,3 +333,5 @@
 - `waiting_minutes` is in `content_hash` only when set — challenges without it keep their hash, so adding the column causes no version bumps or hash refreshes.
 - On challenge cards the split time gets its own row under the one-line meta row (it would be clipped there); a plain "~20 min" stays in the row.
 - A path's time adds up only the milestones that have an estimate; no estimate at all → no time shown.
+- Waiting-time info is a Radix Popover, not a Tooltip: a tooltip can't be opened by a tap. Hover (mouse) and keyboard focus open it, a click or tap pins it; focus stays on the button.
+- The challenge card's meta rows lost their `z-[5]` (no stacking context), so the info button (z-20) sits above the card-wide link (z-10) without being inside it; the rows still paint over the artwork because they come later.

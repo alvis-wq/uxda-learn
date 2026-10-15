@@ -120,8 +120,10 @@ export function ChallengeCard({
         )}
       </div>
       {/* The meta rows span the whole card (below the artwork's column, which they are painted over), so they are
-          two rows at every width. z-[5]: above the artwork, below the card-wide link (z-10). */}
-      <div className={cn("relative z-[5] px-[var(--pad)] pt-4 pb-[var(--pad)]", ch.isDraft ? "bg-muted" : "bg-tile")}>
+          two rows at every width. Positioned without a z-index: above the artwork (it comes first), below the
+          card-wide link (z-10), and no stacking context of its own, so the waiting-time info button (z-20) sits above
+          that link. */}
+      <div className={cn("relative px-[var(--pad)] pt-4 pb-[var(--pad)]", ch.isDraft ? "bg-muted" : "bg-tile")}>
         {/* Always two rows: 1) what it is, 2) where the learner stands. */}
         <div className="grid gap-2" data-testid="card-meta">
           <ChallengeMeta challenge={ch} nowrap />
