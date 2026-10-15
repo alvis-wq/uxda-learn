@@ -85,6 +85,9 @@ create table challenges (
   -- Acknowledge challenges are worth 0 points; everything else > 0.
   points int not null check (points >= 0 and ((type = 'acknowledge') = (points = 0))),
   estimated_minutes int,
+  -- Part of estimated_minutes spent waiting while Claude Code works; hands-on = estimated - waiting (not stored).
+  waiting_minutes int
+    check (waiting_minutes is null or (waiting_minutes >= 0 and estimated_minutes is not null and waiting_minutes <= estimated_minutes)),
   questions jsonb not null default '[]',        -- WITHOUT answers
   submission_spec jsonb not null default '{}',
   rubric jsonb not null default '[]',           -- criteria shown to users

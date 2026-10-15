@@ -7,6 +7,7 @@ path: brand-the-template
 type: figma
 difficulty: 1
 points: 10
+estimated_minutes: 5
 status: draft
 submission:
   figma_url:

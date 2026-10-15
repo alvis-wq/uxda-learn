@@ -62,6 +62,13 @@ export function validateContent(
       }
     }
 
+    if (c.waiting_minutes !== undefined) {
+      if (c.estimated_minutes === undefined) err(file, "waiting_minutes: needs estimated_minutes (the total time) too");
+      else if (c.waiting_minutes > c.estimated_minutes) {
+        err(file, `waiting_minutes: ${c.waiting_minutes} is more than estimated_minutes (${c.estimated_minutes}); waiting is part of the total`);
+      }
+    }
+
     if (missingImage(c.image)) err(file, `image: "${c.image}" not found in public/challenges/`);
     if (!body) err(file, "brief (markdown body) is empty");
     for (const m of briefImageErrors(body, (name) => existsSync(path.join(imageDir, name)))) err(file, m);

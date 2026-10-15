@@ -63,7 +63,9 @@ due_at: 2026-11-01T17:00:00Z       # initial value* — optional deadline (ISO 8
 type: mixed                        # quiz | screenshot | figma | mixed | acknowledge
 difficulty: 2                      # 1 easy, 2 medium, 3 hard (not used by acknowledge)
 points: 30                         # MUST equal sum of question points + rubric points
-estimated_minutes: 90
+estimated_minutes: 90              # optional total time
+waiting_minutes: 30                # optional — part of estimated_minutes spent waiting while Claude Code works
+                                   # (needs estimated_minutes, at most it); hands-on time = the difference
 image: three-tools.webp            # optional card artwork in public/challenges/ (overrides the category's)
 tip: Start with the brief's last paragraph; it lists what is scored.   # optional hint above the questions (markdown, up to 1000 chars)
 status: draft                      # initial value* — draft | published | archived
@@ -100,6 +102,11 @@ grader_notes: |                    # PRIVATE — evaluator only, never shown to 
 ## Brief
 ...
 ```
+Time: `estimated_minutes` is the total. With `waiting_minutes` (time spent waiting while Claude Code works) above 0,
+cards, the challenge page and path roadmaps show "~10 min hands-on · ~10 min waiting · ~20 min total" and the
+challenge page adds a note that learners can do other things while they wait; otherwise just "~20 min". A path shows
+its milestones' times added up. Hands-on time is calculated, never written in the file.
+
 An `order` question needs at least 2 items with different ids and different labels. You write `items`
 in the correct order; `content:sync` stores them shuffled (the same fixed shuffle every time, never the
 correct order), and the correct order lives only in the private key. It is graded like `multi`:

@@ -143,6 +143,8 @@ export const challengeFrontmatterSchema = z.strictObject({
   difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   points: z.number().int().min(0, "must be 0 or more").optional(),
   estimated_minutes: z.number().int().positive().optional(),
+  // Part of estimated_minutes spent waiting while Claude Code works (checked in validate.ts: needs estimated_minutes, at most it).
+  waiting_minutes: z.number().int().min(0, "must be 0 or more").optional(),
   status: challengeStatusSchema.default("draft"),
   summary: z.string().trim().max(300).optional(),
   image: imageFile.optional(), // overrides the category's image

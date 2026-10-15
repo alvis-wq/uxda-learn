@@ -329,3 +329,7 @@
 - Account manager and Marketing Assistant are hidden (`selectable: false`), not removed: the enum values stay, so old content, history and audit rows keep their labels and no enum migration is needed. The server refuses them on onboarding and Admin → Users; leaderboard groups only hold selectable tracks.
 - A seeded email can only be renamed while nobody has signed in with it (checked in SQL): a signed-in person's email comes from Google.
 - `content:validate` only warns (never fails) on content aimed only at hidden tracks: it's harmless, just never seen.
+- `waiting_minutes` is part of `estimated_minutes`, not added to it; hands-on time is calculated (`timeOf`), never stored — one source for the total, and the two can't disagree.
+- `waiting_minutes` is in `content_hash` only when set — challenges without it keep their hash, so adding the column causes no version bumps or hash refreshes.
+- On challenge cards the split time gets its own row under the one-line meta row (it would be clipped there); a plain "~20 min" stays in the row.
+- A path's time adds up only the milestones that have an estimate; no estimate at all → no time shown.

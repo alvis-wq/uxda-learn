@@ -3,6 +3,7 @@ import { ChevronLeft, ClipboardCheck, FlaskConical, Info, Lock, Route } from "lu
 import { DraftBadge } from "@/components/draft-badge";
 import { Markdown } from "@/components/markdown";
 import { Roadmap } from "@/components/roadmap";
+import { TimeEstimate } from "@/components/time-estimate";
 import { SECTION_LABEL_CLASS } from "@/components/section-label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -57,6 +58,7 @@ export function PathView({
           {testing && <DraftBadge />}
         </div>
         <p className="text-muted-foreground mt-2 text-lg">{path.summary}</p>
+        {summary.time && <TimeEstimate time={summary.time} className="text-muted-foreground text-meta mt-3 flex" />}
       </div>
 
       {testing && (

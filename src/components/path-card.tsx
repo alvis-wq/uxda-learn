@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, FlaskConical, Lock, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
+import { TimeEstimate } from "@/components/time-estimate";
 import { Progress } from "@/components/ui/progress";
 import type { CardPath } from "@/lib/data/learner";
 import { pathLockLine, pathProgressLine, TESTER_OPEN_HINT } from "@/lib/paths/progress";
@@ -12,7 +13,7 @@ import { cn } from "@/lib/utils";
  * link, so its accessible name stays the path title. The milestones themselves are only on the path page. A locked
  * path (`requires`) says what it waits for in place of the CTA; it still opens its page, where nothing can be started.
  * A path in a chain (paths linked by `requires`) says which step it is ("Step 1 of 3"). A tester on a draft sees the
- * same lock, plus "Open as tester": its page lets them open every draft milestone.
+ * same lock, plus "Open as tester": its page lets them open every draft milestone. Its time is its milestones' added up.
  */
 export function PathCard({
   path: p,
@@ -60,6 +61,7 @@ export function PathCard({
         {subheading && <p className="text-brand-text line-clamp-2 font-medium">{subheading}</p>}
       </div>
       {body && <p className="text-muted-foreground line-clamp-2">{body}</p>}
+      {p.progress.time && <TimeEstimate time={p.progress.time} className="text-muted-foreground text-meta" />}
 
       <div className="mt-auto grid gap-2 pt-2">
         <p className="text-meta font-medium tabular-nums" data-testid="path-progress">

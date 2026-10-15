@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { isChallengeVisible } from "@/lib/challenges/model";
+import { timeOf } from "@/lib/challenges/time";
 import {
   blockingPath,
   lockAll,
@@ -50,6 +51,8 @@ export type MilestoneRow = {
   status: string;
   audiences: Database["public"]["Enums"]["audience"][];
   difficulty: number;
+  estimated_minutes: number | null;
+  waiting_minutes: number | null;
 };
 
 export type PathProgress = {
@@ -84,7 +87,7 @@ export async function loadPathProgress(
   if (!category || !isPathVisible(path, category, viewer.track, viewer.is_tester)) return null;
 
   const [{ data: rows, error: rowsError }, { data: subs, error: subsError }, { data: drafts, error: draftsError }] = await Promise.all([
-    client.from("challenges").select("slug,title,points,status,audiences,difficulty").in("slug", path.milestones),
+    client.from("challenges").select("slug,title,points,status,audiences,difficulty,estimated_minutes,waiting_minutes").in("slug", path.milestones),
     client
       .from("submissions")
       // is_test: real and test attempts both, then each milestone keeps only the kind that applies to it (below).
@@ -126,7 +129,7 @@ export async function loadRequiredPaths(
   const milestoneSlugs = paths.flatMap((p) => p.milestones);
   const [{ data: cats, error: catsError }, { data: rows, error: rowsError }, { data: subs, error: subsError }] = await Promise.all([
     client.from("categories").select("slug,archived,audiences").in("slug", [...new Set(paths.map((p) => p.category_slug))]),
-    client.from("challenges").select("slug,title,points,status,audiences,difficulty").in("slug", milestoneSlugs),
+    client.from("challenges").select("slug,title,points,status,audiences,difficulty,estimated_minutes,waiting_minutes").in("slug", milestoneSlugs),
     client
       .from("submissions")
       // is_test: as in loadPathProgress, each milestone keeps the kind that applies to it.
@@ -168,6 +171,7 @@ export function progressOf(
         slug: m.slug,
         title: m.title,
         points: m.points,
+        time: timeOf(m),
         testing,
         attempts: subs.filter((s) => s.challenge_slug === m.slug && s.is_test === testing),
         hasDraft: draftSlugs.has(m.slug),

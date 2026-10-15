@@ -56,6 +56,8 @@ export type ChallengeRow = {
   difficulty: number;
   points: number;
   estimated_minutes: number | null;
+  /** Part of estimated_minutes spent waiting while Claude Code works; hands-on time is calculated, never stored. */
+  waiting_minutes: number | null;
   questions: PublicQuestion[];
   submission_spec: Record<string, unknown>;
   rubric: unknown[];
@@ -99,7 +101,9 @@ export function normalizeTimestamp(value: string | null | undefined): string | n
  * hash (e.g. after a format migration) can be told apart from a real content change.
  */
 export function hashPublicContent(content: PublicChallengeContent): string {
-  const picked = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, content[k] ?? null]));
+  const picked: Record<string, unknown> = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, content[k] ?? null]));
+  // Added later: only hashed when set, so challenges without it keep the hash they had (no version bump, no refresh).
+  if (content.waiting_minutes != null) picked.waiting_minutes = content.waiting_minutes;
   return createHash("sha256").update(canonicalJson(picked)).digest("hex");
 }
 
@@ -189,6 +193,7 @@ export function toChallengeRows(
     difficulty: c.difficulty ?? 1,
     points: c.points ?? 0,
     estimated_minutes: c.estimated_minutes ?? null,
+    waiting_minutes: c.waiting_minutes ?? null,
     questions: c.questions.map(toPublicQuestion),
     submission_spec: (c.submission ?? {}) as Record<string, unknown>,
     rubric: c.rubric,

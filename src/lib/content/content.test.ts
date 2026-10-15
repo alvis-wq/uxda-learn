@@ -416,6 +416,54 @@ describe("challenge tip", () => {
   });
 });
 
+describe("waiting_minutes", () => {
+  const withTimes = (estimated: number | undefined, waiting: number | undefined) => {
+    const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+    content.challenges[0].data.estimated_minutes = estimated;
+    content.challenges[0].data.waiting_minutes = waiting;
+    return content;
+  };
+  const messages = (estimated: number | undefined, waiting: number | undefined) =>
+    validateContent(withTimes(estimated, waiting)).map((e) => e.message);
+
+  it("is optional, and a whole number of 0 or more", () => {
+    const fm = { slug: "c", title: "C", category: "basics", type: "quiz" };
+    expect(challengeFrontmatterSchema.safeParse(fm).success).toBe(true);
+    expect(challengeFrontmatterSchema.safeParse({ ...fm, estimated_minutes: 20, waiting_minutes: 0 }).success).toBe(true);
+    expect(challengeFrontmatterSchema.safeParse({ ...fm, estimated_minutes: 20, waiting_minutes: -1 }).success).toBe(false);
+    expect(challengeFrontmatterSchema.safeParse({ ...fm, estimated_minutes: 20, waiting_minutes: 2.5 }).success).toBe(false);
+  });
+
+  it("can be up to estimated_minutes", () => {
+    expect(messages(20, 10)).toEqual([]);
+    expect(messages(20, 20)).toEqual([]);
+    expect(messages(20, undefined)).toEqual([]);
+  });
+
+  it("can't be more than estimated_minutes", () => {
+    expect(messages(20, 25)).toContain("waiting_minutes: 25 is more than estimated_minutes (20); waiting is part of the total");
+  });
+
+  it("needs estimated_minutes", () => {
+    expect(messages(undefined, 5)).toContain("waiting_minutes: needs estimated_minutes (the total time) too");
+  });
+
+  it("is in content_hash only when set, so challenges without it keep their hash", () => {
+    const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+    const quiz = content.challenges[0];
+    const timed = { ...quiz, data: { ...quiz.data, estimated_minutes: 20 } };
+    const row = (waiting: number | undefined) =>
+      toChallengeRows({ ...timed, data: { ...timed.data, waiting_minutes: waiting } }, content.categories).challenge;
+    const { waiting_minutes, ...withoutColumn } = row(undefined);
+    expect(waiting_minutes).toBeNull();
+    // The hash a row had before the column existed.
+    expect(row(undefined).content_hash).toBe(hashPublicContent(withoutColumn as unknown as Parameters<typeof hashPublicContent>[0]));
+    expect(row(10).waiting_minutes).toBe(10);
+    expect(row(10).content_hash).not.toBe(row(undefined).content_hash);
+    expect(row(10).content_hash).not.toBe(row(5).content_hash);
+  });
+});
+
 describe("card images", () => {
   const base = { slug: "c", title: "C", audiences: "all" };
 

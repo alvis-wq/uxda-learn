@@ -241,6 +241,7 @@ export type Database = {
           type: Database["public"]["Enums"]["challenge_type"]
           updated_at: string
           version: number
+          waiting_minutes: number | null
         }
         Insert: {
           audiences: Database["public"]["Enums"]["audience"][]
@@ -265,6 +266,7 @@ export type Database = {
           type: Database["public"]["Enums"]["challenge_type"]
           updated_at?: string
           version?: number
+          waiting_minutes?: number | null
         }
         Update: {
           audiences?: Database["public"]["Enums"]["audience"][]
@@ -289,6 +291,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["challenge_type"]
           updated_at?: string
           version?: number
+          waiting_minutes?: number | null
         }
         Relationships: [
           {

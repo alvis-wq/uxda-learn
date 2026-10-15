@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { timeOf } from "@/lib/challenges/time";
 import type { AttemptSummary } from "@/lib/submissions/rules";
 import {
   blockingPath,
@@ -128,8 +129,19 @@ describe("summarizePath", () => {
   const summary = summarizePath(states);
 
   it("counts done milestones and sums their points", () => {
-    expect(summary).toEqual({ done: 2, total: 4, pointsEarned: 40, pointsPossible: 100, started: true, complete: false });
+    expect(summary).toEqual({ done: 2, total: 4, pointsEarned: 40, pointsPossible: 100, started: true, complete: false, time: null });
     expect(pathProgressLine(summary)).toBe("2 of 4 · 40/100 pts");
+  });
+
+  it("adds up its milestones' times (hands-on, waiting, total), skipping ones without an estimate", () => {
+    const timed = milestoneStates(true, [
+      m("a", [], { time: timeOf({ estimated_minutes: 20, waiting_minutes: 10 }) }),
+      m("b", [], { time: timeOf({ estimated_minutes: 25, waiting_minutes: 20 }) }),
+      m("c", [], { time: timeOf({ estimated_minutes: 10, waiting_minutes: null }) }),
+      m("d"),
+    ]);
+    expect(timed.map((s) => s.time?.total ?? null)).toEqual([20, 25, 10, null]);
+    expect(summarizePath(timed).time).toEqual({ total: 55, waiting: 30, handsOn: 25 });
   });
 
   it("picks the CTA", () => {
