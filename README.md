@@ -1,7 +1,7 @@
 # UXDA Learn
 
 Internal learning platform for the UXDA team. People sign in with their UXDA Google Workspace
-account, choose a track (Strategist, Designer, Motion Designer, Account Manager or Assistant),
+account, choose a track (Strategist, Designer, Motion Designer, Account Manager, Marketing Assistant or Management),
 complete challenges (quizzes, screenshots, Figma work, reflections, "read and confirm"
 acknowledgements), get scored and see themselves on a leaderboard (Strategists / Designers /
 Team). Some challenges are required for certain tracks, optionally with a due date. Admins

@@ -322,3 +322,4 @@
 
 - The bypass is per milestone, on draft milestones only (the ones a tester's attempts are tests on): a published milestone inside a draft path still follows the locks, so a tester can never skip ahead for real points.
 - A bypassed milestone keeps the "locked" status (what learners see) with a separate `testerOverride` flag, so testers can still check the lock wording, and every server gate reads the same `unlocked` value.
+- Track `assistant` shown as "Marketing Assistant" — label only (`src/lib/tracks.ts`); the enum value stays `assistant`, so no migration and existing profiles, content audiences and `required_for` are unchanged.

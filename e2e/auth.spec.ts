@@ -23,7 +23,7 @@ test.describe("auth", () => {
 
     await expect(page).toHaveURL(/\/onboarding$/);
     await expect(page.getByRole("heading", { name: /Welcome, Test/ })).toBeVisible();
-    for (const track of ["Strategist", "Designer", "Motion Designer", "Account Manager", "Assistant"]) {
+    for (const track of ["Strategist", "Designer", "Motion Designer", "Account Manager", "Marketing Assistant", "Management"]) {
       await expect(page.getByRole("radio", { name: new RegExp(`^${track}\\b`) })).toHaveCount(1);
     }
     await page.getByText("Strategist", { exact: true }).click();

@@ -14,7 +14,7 @@ export const TRACKS = [
   { value: "designer", label: "Designer", description: "UI, design systems and Figma craft." },
   { value: "motion_designer", label: "Motion Designer", description: "Animation, transitions and motion systems." },
   { value: "account_manager", label: "Account Manager", description: "Clients, projects, scope and delivery." },
-  { value: "assistant", label: "Assistant", description: "Operations, coordination and team support." },
+  { value: "assistant", label: "Marketing Assistant", description: "Operations, coordination and team support." },
   { value: "management", label: "Management", description: "CEO and COO." },
 ] as const satisfies readonly { value: Track; label: string; description: string }[];
 
