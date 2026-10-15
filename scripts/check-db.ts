@@ -389,6 +389,34 @@ async function main() {
     if (await seesPath()) pass("a published path is visible to a signed-in user");
     else fail("a published path is NOT visible");
 
+    // Path required_for / due_at: admin only, audited, no row for a no-op, and the column check refuses "all" + a track.
+    const setPathSetting = (field: string, value: unknown, actor: string | undefined) =>
+      admin.rpc("set_path_setting", { p_slug: SENTINEL_PATH, p_field: field, p_value: value as never, p_source: "admin", p_actor: actor });
+    if ((await setPathSetting("required_for", ["designer"], userId)).error) pass("set_path_setting refuses an admin-panel change by a non-admin");
+    else fail("set_path_setting ACCEPTED a non-admin actor");
+    const { error: userSettingRpc } = await authed.rpc("set_path_setting", {
+      p_slug: SENTINEL_PATH, p_field: "required_for", p_value: ["designer"], p_source: "admin", p_actor: userId,
+    });
+    if (userSettingRpc) pass(`user cannot call set_path_setting (${userSettingRpc.code ?? userSettingRpc.message})`);
+    else fail("user COULD call set_path_setting");
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const required = await setPathSetting("required_for", ["designer"], userId);
+    const requiredAgain = await setPathSetting("required_for", ["designer"], userId);
+    const due = await setPathSetting("due_at", "2026-12-01T17:00:00Z", userId);
+    const badRequired = await setPathSetting("required_for", ["all", "designer"], userId);
+    const unknownField = await setPathSetting("status", "archived", userId);
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    const { data: pathNow } = await admin.from("paths").select("required_for,due_at").eq("slug", SENTINEL_PATH).single();
+    const { data: settingAudit } = await admin
+      .from("path_settings_audit").select("field,new_value,changed_by").eq("path_slug", SENTINEL_PATH).in("field", ["required_for", "due_at"]);
+    if (required.data === true && requiredAgain.data === false && due.data === true && badRequired.error && unknownField.error &&
+        pathNow?.required_for.join() === "designer" && pathNow.due_at !== null &&
+        settingAudit?.length === 2 && settingAudit.every((r) => r.changed_by === userId)) {
+      pass("set_path_setting sets required_for and due_at with audit rows (none for a no-op), refuses bad values and fields");
+    } else {
+      fail(`set_path_setting: ${JSON.stringify({ required, requiredAgain, due, badRequired: badRequired.error?.message, unknownField: unknownField.error?.message, pathNow, settingAudit })}`);
+    }
+
     const importAs = (actor: string, score = 1) =>
       admin.rpc("import_submission", {
         p_user: userId!, p_challenge: SENTINEL_CHALLENGE, p_status: "published", p_score: score,

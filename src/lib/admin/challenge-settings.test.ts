@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   describeAudit,
+  pathSettingChangeError,
+  pathSettingChangeSchema,
   formatSettingValue,
   settingChangeError,
   settingChangeSchema,
@@ -120,5 +122,29 @@ describe("audit formatting", () => {
     expect(
       describeAudit({ ...base, field: "status", old_value: "published", new_value: "archived", source: "content:sync", actor: null }).who,
     ).toBe("content:sync (file removed)");
+  });
+});
+
+describe("path settings (required_for, due_at)", () => {
+  it("accepts the same shapes as a challenge's, and nothing else", () => {
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "required_for", value: ["designer"] }).success).toBe(true);
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "required_for", value: [] }).success).toBe(true);
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "due_at", value: "2026-12-01T17:00:00Z" }).success).toBe(true);
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "due_at", value: null }).success).toBe(true);
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "status", value: "published" }).success).toBe(false);
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "required_for", value: ["all", "designer"] }).success).toBe(false);
+    expect(pathSettingChangeSchema.safeParse({ slug: "p", field: "due_at", value: "soon" }).success).toBe(false);
+  });
+
+  it("only allows tracks that can see the path", () => {
+    const path = { audiences: ["designer" as const] };
+    const category = { audiences: ["all" as const] };
+    const req = (value: ("all" | "designer" | "strategist")[]) => ({ slug: "p", field: "required_for" as const, value });
+    expect(pathSettingChangeError(req(["designer"]), path, category)).toBeNull();
+    expect(pathSettingChangeError(req([]), path, category)).toBeNull();
+    expect(pathSettingChangeError(req(["strategist"]), path, category)).toMatch(/Strategist: they can't see this path/);
+    expect(pathSettingChangeError(req(["all"]), path, category)).toMatch(/^Can't require it for everyone/);
+    expect(pathSettingChangeError(req(["designer"]), path, null)).toBe("This path's category is missing.");
+    expect(pathSettingChangeError({ slug: "p", field: "due_at", value: null }, path, null)).toBeNull();
   });
 });

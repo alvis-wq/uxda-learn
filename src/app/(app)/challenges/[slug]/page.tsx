@@ -125,6 +125,14 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
           </div>
           <div className="mt-2 grid gap-2">
             {!testing && <RequiredBadges required={progress.required} dueAt={challenge.due_at} done={progress.done} />}
+            {/* A milestone inherits its path's required / due date (the path counts, not the milestone). */}
+            {!testing && milestone?.pathRequirement && (
+              <RequiredBadges
+                required={milestone.pathRequirement.required}
+                dueAt={milestone.pathRequirement.dueAt}
+                done={milestone.pathRequirement.allSubmitted}
+              />
+            )}
             <ChallengeMeta challenge={challenge} />
           </div>
         </div>

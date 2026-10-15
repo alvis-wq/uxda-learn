@@ -172,6 +172,9 @@ export const pathFileSchema = z.strictObject({
   before_you_start: nonEmpty.max(600, "keep it short (at most 600 characters)").optional(),
   before_you_submit: z.array(nonEmpty.max(200, "keep each line short (at most 200 characters)")).max(8, "at most 8 lines").default([]),
   status: challengeStatusSchema.default("draft"), // initial value only, like a challenge's
+  // Initial values only, like status: required for these tracks (counts as one required item), and its due date.
+  required_for: audiencesSchema.optional(),
+  due_at: z.iso.datetime({ offset: true }).optional(),
 });
 
 export type Category = z.infer<typeof categorySchema>;

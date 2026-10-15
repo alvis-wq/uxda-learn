@@ -7,6 +7,7 @@ import {
   type ChallengeRow,
   type ChallengeSettings,
   type PathRow,
+  type PathSettings,
   type PublicChallengeContent,
   type SettingField,
 } from "./transform";
@@ -22,7 +23,11 @@ export type DbChallenge = PublicChallengeContent & {
   required_for: string[];
   due_at: string | null;
 };
-export type DbPath = PathRow & { status: string };
+export type DbPath = PathRow & {
+  status: string;
+  required_for?: string[]; // undefined until the path required/due migration has been applied
+  due_at?: string | null;
+};
 export type DbKey = { challenge_slug: string; answer_key: unknown; grader_notes: string | null };
 
 export type SyncPlan = {
@@ -43,12 +48,15 @@ export type SyncPlan = {
   challengeArchives: string[];
   /** File and DB disagree on an admin-owned setting. Informational only: the DB wins, nothing is written. */
   settingsDrift: { slug: string; field: SettingField; file: string; db: string }[];
-  /** Learning paths: created with the file's status, then only their content columns are written (status is the panel's). */
-  pathWrites: ({ action: "create"; row: PathRow; status: string } | { action: "update"; row: PathRow })[];
+  /**
+   * Learning paths: created with the file's status, required_for and due_at; then only their content columns are
+   * written (those settings are the panel's).
+   */
+  pathWrites: ({ action: "create"; row: PathRow; settings: PathSettings } | { action: "update"; row: PathRow })[];
   /** In the DB but no longer on disk → archived (through set_path_status, audited). */
   pathArchives: string[];
-  /** A path's status in the file differs from the DB. Informational only. */
-  pathStatusDrift: { slug: string; file: string; db: string }[];
+  /** A path's status, required_for or due_at in the file differs from the DB. Informational only. */
+  pathSettingsDrift: { slug: string; field: SettingField; file: string; db: string }[];
 };
 
 /** Number of writes the plan would make (settings drift is informational and not counted). */
@@ -108,7 +116,11 @@ function settingText(field: SettingField, value: unknown): string {
   return String(value);
 }
 
-function drift(slug: string, file: ChallengeSettings, db: DbChallenge): SyncPlan["settingsDrift"] {
+function drift(
+  slug: string,
+  file: ChallengeSettings,
+  db: { status: string; required_for?: string[]; due_at?: string | null },
+): SyncPlan["settingsDrift"] {
   const out: SyncPlan["settingsDrift"] = [];
   for (const field of ["status", "required_for", "due_at"] as const) {
     const f = settingText(field, file[field]);
@@ -125,7 +137,8 @@ function drift(slug: string, file: ChallengeSettings, db: DbChallenge): SyncPlan
  * - Stored hash differs but the DB row's public fields hash the same as disk (e.g. after a
  *   format change) → hash refresh, no version bump.
  * - Only the card image, tip or path differs → display update, no version bump (display only).
- * - Paths: created with the file's status; afterwards only their content columns are written. Removed → archived.
+ * - Paths: created with the file's status, required_for and due_at; afterwards only their content columns are
+ *   written (settings drift reported like a challenge's). Removed → archived.
  * - Settings that differ between file and DB → reported as drift, never written (DB wins).
  * - In DB but not on disk → archived (never deleted).
  */
@@ -133,7 +146,7 @@ export function planSync(
   disk: {
     categories: CategoryRow[];
     challenges: { challenge: ChallengeRow; settings: ChallengeSettings; key: ChallengeKeyRow }[];
-    paths?: { row: PathRow; status: string }[];
+    paths?: { row: PathRow; settings: PathSettings }[];
   },
   db: { categories: DbCategory[]; challenges: DbChallenge[]; keys: DbKey[]; paths?: DbPath[] },
 ): SyncPlan {
@@ -147,18 +160,18 @@ export function planSync(
     settingsDrift: [],
     pathWrites: [],
     pathArchives: [],
-    pathStatusDrift: [],
+    pathSettingsDrift: [],
   };
 
   const dbPaths = new Map((db.paths ?? []).map((p) => [p.slug, p]));
-  for (const { row, status } of disk.paths ?? []) {
+  for (const { row, settings } of disk.paths ?? []) {
     const existing = dbPaths.get(row.slug);
     if (!existing) {
-      plan.pathWrites.push({ action: "create", row, status });
+      plan.pathWrites.push({ action: "create", row, settings });
       continue;
     }
     if (!samePath(row, existing)) plan.pathWrites.push({ action: "update", row });
-    if (existing.status !== status) plan.pathStatusDrift.push({ slug: row.slug, file: status, db: existing.status });
+    plan.pathSettingsDrift.push(...drift(row.slug, settings, existing));
   }
   const diskPathSlugs = new Set((disk.paths ?? []).map((p) => p.row.slug));
   for (const p of db.paths ?? []) {

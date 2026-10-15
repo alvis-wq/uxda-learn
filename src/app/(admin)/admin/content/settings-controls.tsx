@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatSettingValue } from "@/lib/admin/challenge-settings";
 import { TRACKS, TRACK_VALUES, type Audience, type Track } from "@/lib/tracks";
-import { updateChallengeSetting, updatePathStatus } from "./actions";
+import { updateChallengeSetting, updatePathSetting, updatePathStatus } from "./actions";
 
 type Props = {
   slug: string;
@@ -20,6 +20,8 @@ type Props = {
   visibleTracks: Track[];
   /** A path milestone: only its status is set here (never required or due on its own). */
   milestone?: boolean;
+  /** What the controls set: a challenge (default) or a learning path (required_for and due_at only). */
+  kind?: "challenge" | "path";
 };
 
 const STATUSES = [
@@ -40,12 +42,13 @@ export function ChallengeSettingsControls(props: Props) {
   );
 }
 
-function useSave(title: string) {
+function useSave(title: string, kind: Props["kind"] = "challenge") {
   const [pending, start] = useTransition();
   const save = (change: { slug: string } & ({ field: "status"; value: string } | { field: "required_for"; value: Audience[] } | { field: "due_at"; value: string | null }), onOptimistic: () => void) =>
     start(async () => {
       onOptimistic();
-      const res = await updateChallengeSetting(change);
+      // A path's status has its own control (PathStatusSelect): here a path only sets required_for and due_at.
+      const res = kind === "path" && change.field !== "status" ? await updatePathSetting(change) : await updateChallengeSetting(change);
       if (!res.ok) toast.error(res.error);
       else {
         const label = { status: "Status", required_for: "Required for", due_at: "Due date" }[change.field];
@@ -84,8 +87,13 @@ function StatusSelect({ slug, title, status }: Props) {
   );
 }
 
-function RequiredForPicker({ slug, title, requiredFor, visibleTracks }: Props) {
-  const { pending, save } = useSave(title);
+/** Element ids: a path's controls get their own prefix (a path and a challenge may share a slug). */
+const idBase = (kind: Props["kind"], slug: string) => (kind === "path" ? `path-${slug}` : slug);
+
+function RequiredForPicker({ slug, title, requiredFor, visibleTracks, kind }: Props) {
+  const { pending, save } = useSave(title, kind);
+  const noun = kind === "path" ? "path" : "challenge";
+  const base = idBase(kind, slug);
   const [value, setValue] = useOptimistic(requiredFor);
   const all = value.includes("all");
   const everyoneSees = visibleTracks.length === TRACK_VALUES.length;
@@ -99,15 +107,15 @@ function RequiredForPicker({ slug, title, requiredFor, visibleTracks }: Props) {
   };
 
   return (
-    <fieldset className="grid gap-1.5" aria-describedby={`required-hint-${slug}`}>
+    <fieldset className="grid gap-1.5" aria-describedby={`required-hint-${base}`}>
       <legend className="text-meta mb-1.5 font-medium">Required for</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         <CheckOption
-          id={`req-${slug}-all`}
+          id={`req-${base}-all`}
           label="Everyone"
           checked={all}
           disabled={pending || !everyoneSees}
-          title={everyoneSees ? "Required for every track, including tracks added later" : "Not every track can see this challenge"}
+          title={everyoneSees ? "Required for every track, including tracks added later" : `Not every track can see this ${noun}`}
           onChange={(on) => commit(on ? ["all"] : [])}
         />
         {/* Hidden tracks only show while still ticked, so they can be cleared. */}
@@ -116,17 +124,17 @@ function RequiredForPicker({ slug, title, requiredFor, visibleTracks }: Props) {
           return (
             <CheckOption
               key={t.value}
-              id={`req-${slug}-${t.value}`}
+              id={`req-${base}-${t.value}`}
               label={t.label}
               checked={all ? canSee : value.includes(t.value)}
               disabled={pending || all || !canSee}
-              title={canSee ? undefined : `${t.label} can't see this challenge`}
+              title={canSee ? undefined : `${t.label} can't see this ${noun}`}
               onChange={(on) => toggleTrack(t.value, on)}
             />
           );
         })}
       </div>
-      <p id={`required-hint-${slug}`} className="text-muted-foreground text-meta">
+      <p id={`required-hint-${base}`} className="text-muted-foreground text-meta">
         {value.length === 0 ? "Optional for everyone." : `Required for ${formatSettingValue("required_for", value)}.`}{" "}
         Only tracks that can see it can be selected.
       </p>
@@ -169,15 +177,15 @@ function toLocalInput(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function DueDateInput({ slug, title, dueAt }: Props) {
-  const { pending, save } = useSave(title);
+function DueDateInput({ slug, title, dueAt, kind }: Props) {
+  const { pending, save } = useSave(title, kind);
   const [value, setValue] = useOptimistic(dueAt);
   const [draft, setDraft] = useState<string | null>(null); // null = not being edited
   // Local time needs the browser's time zone, so render the value only after hydration.
   const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const current = hydrated ? toLocalInput(value) : "";
   const shown = draft ?? current;
-  const id = `due-${slug}`;
+  const id = `due-${idBase(kind, slug)}`;
 
   const commit = (next: string | null) => {
     setDraft(null);
@@ -267,6 +275,37 @@ export function PathStatusSelect({ slug, title, status, draftMilestones }: { slu
           ? `Publishing also publishes its ${draftMilestones} draft ${draftMilestones === 1 ? "milestone" : "milestones"}.`
           : "All its milestones are already published or archived."}
       </p>
+    </div>
+  );
+}
+
+/**
+ * A learning path's settings: status, required-for and due date, like a challenge's. A required path counts as one
+ * required item; its milestones are never required on their own. Every change saves immediately and is audited.
+ */
+export function PathSettingsControls({
+  slug,
+  title,
+  status,
+  draftMilestones,
+  requiredFor,
+  dueAt,
+  visibleTracks,
+}: {
+  slug: string;
+  title: string;
+  status: string;
+  draftMilestones: number;
+  requiredFor: Audience[];
+  dueAt: string | null;
+  visibleTracks: Track[];
+}) {
+  const props: Props = { slug, title, status, requiredFor, dueAt, visibleTracks, kind: "path" };
+  return (
+    <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start lg:grid-cols-[auto_1fr_auto]">
+      <PathStatusSelect slug={slug} title={title} status={status} draftMilestones={draftMilestones} />
+      <RequiredForPicker {...props} />
+      <DueDateInput {...props} />
     </div>
   );
 }

@@ -58,3 +58,18 @@ export function countStates(states: RequiredState[]): Record<RequiredState, numb
   for (const s of states) counts[s]++;
   return counts;
 }
+
+/**
+ * The home page's "Required: x of y done · n overdue" over challenge and path cards (a required path is one item).
+ * `left` is what the filter's "required left" shows.
+ */
+export function summarizeRequired(items: readonly { required: boolean; done: boolean; requiredState: RequiredState }[]): {
+  total: number;
+  done: number;
+  overdue: number;
+  left: number;
+} {
+  const required = items.filter((i) => i.required);
+  const done = required.filter((i) => i.done).length;
+  return { total: required.length, done, overdue: required.filter((i) => i.requiredState === "overdue").length, left: required.length - done };
+}

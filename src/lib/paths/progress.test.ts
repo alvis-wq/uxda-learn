@@ -9,6 +9,7 @@ import {
   milestoneStates,
   pathCta,
   pathProgressLine,
+  requiredPathState,
   summarizePath,
   type MilestoneInput,
 } from "./progress";
@@ -129,7 +130,7 @@ describe("summarizePath", () => {
   const summary = summarizePath(states);
 
   it("counts done milestones and sums their points", () => {
-    expect(summary).toEqual({ done: 2, total: 4, pointsEarned: 40, pointsPossible: 100, started: true, complete: false, time: null });
+    expect(summary).toEqual({ done: 2, total: 4, pointsEarned: 40, pointsPossible: 100, started: true, complete: false, allSubmitted: false, time: null });
     expect(pathProgressLine(summary)).toBe("2 of 4 · 40/100 pts");
   });
 
@@ -248,5 +249,37 @@ describe("blockingPath (path order)", () => {
     const place = milestonePlace({ slug: "p", title: "P" }, locked, "m0", { slug: "first", title: "Connect our design systems" });
     expect(place).toMatchObject({ locked: true, lockedBy: { slug: "first" } });
     expect(lockReason(place)).toBe("Unlocks after Connect our design systems.");
+  });
+});
+
+describe("requiredPathState (a required path is one item)", () => {
+  const now = new Date("2026-11-10T12:00:00Z");
+  const past = "2026-11-01T17:00:00Z";
+  const future = "2026-12-01T17:00:00Z";
+  const states = (...attempts: AttemptSummary[][]) => milestoneStates(true, attempts.map((a, i) => m(`m${i}`, a)));
+
+  it("is done when every milestone has a published score", () => {
+    expect(requiredPathState(states([attempt(1, "published", 20)], [attempt(1, "published", 10)]), past, now)).toBe("done");
+  });
+
+  it("is pending when all are submitted and the rest only wait for review", () => {
+    expect(requiredPathState(states([attempt(1, "published", 20)], [attempt(1, "submitted")]), past, now)).toBe("pending");
+    expect(requiredPathState(states([attempt(1, "ai_reviewed")], [attempt(1, "submitted")]), null, now)).toBe("pending");
+  });
+
+  it("is overdue past the due date while some milestone has no attempt", () => {
+    expect(requiredPathState(states([attempt(1, "published", 20)], []), past, now)).toBe("overdue");
+    expect(requiredPathState(states([], []), past, now)).toBe("overdue");
+  });
+
+  it("is missing before the due date, without one, or when all are submitted but changes were requested", () => {
+    expect(requiredPathState(states([attempt(1, "published", 20)], []), future, now)).toBe("missing");
+    expect(requiredPathState(states([], []), null, now)).toBe("missing");
+    expect(requiredPathState(states([attempt(1, "published", 20)], [attempt(1, "needs_resubmission")]), past, now)).toBe("missing");
+  });
+
+  it("tells when every milestone is submitted (the due date is met)", () => {
+    expect(summarizePath(states([attempt(1, "submitted")], [attempt(1, "published", 5)])).allSubmitted).toBe(true);
+    expect(summarizePath(states([attempt(1, "submitted")], [])).allSubmitted).toBe(false);
   });
 });

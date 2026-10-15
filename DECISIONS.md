@@ -335,3 +335,9 @@
 - A path's time adds up only the milestones that have an estimate; no estimate at all → no time shown.
 - Waiting-time info is a Radix Popover, not a Tooltip: a tooltip can't be opened by a tap. Hover (mouse) and keyboard focus open it, a click or tap pins it; focus stays on the button.
 - The challenge card's meta rows lost their `z-[5]` (no stacking context), so the info button (z-20) sits above the card-wide link (z-10) without being inside it; the rows still paint over the artwork because they come later.
+- A path's required_for / due_at go through a new `set_path_setting()` (audited in `path_settings_audit`), not `set_path_status()` — status keeps its publish-the-milestones side effect; the other two are plain settings like a challenge's.
+- A required path is ONE required item: done = every visible milestone has a published score; pending = all submitted and the rest only await review; overdue = past due and some milestone has no attempt; else missing (all submitted with changes requested is missing, not overdue).
+- For a path, RequiredBadges gets `done` = "every milestone submitted": the due date is met then, so the due badge goes away and it can't be overdue — the same rule as the state, without a special case in the badge.
+- Required progress CSV: path rows reuse the challenge_slug / challenge_title columns, plus an `item_type` column (challenge | path) added last so existing imports keep working.
+- A milestone's page shows its path's Required / due badges (inherited, display only); a milestone still never counts on its own.
+- A draft path is never required, not even for a tester trying it (like a draft challenge).

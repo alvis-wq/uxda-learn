@@ -3,7 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { isOverdue } from "@/lib/challenges/required";
 import { cn, formatDate } from "@/lib/utils";
 
-/** "Required" plus a due / overdue badge. Renders nothing for optional, undated challenges. */
+/**
+ * "Required" plus a due / overdue badge. Renders nothing for optional, undated challenges and paths. For a path, `done`
+ * is "every milestone submitted": the due date is met then, and it's overdue only before that.
+ */
 export function RequiredBadges({
   required,
   dueAt,

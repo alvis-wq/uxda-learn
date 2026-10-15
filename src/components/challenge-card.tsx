@@ -173,6 +173,7 @@ export function ChallengeCardGrid({
               headingLevel={headingLevel}
               subheading={detail === "category" ? ch.categoryTitle : ch.summary}
               body={detail === "category" ? ch.summary : null}
+              now={now}
             />
           ) : (
           <ChallengeCard

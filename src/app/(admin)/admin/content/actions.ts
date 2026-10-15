@@ -1,7 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { pathPublishError, pathStatusChangeSchema, settingChangeError, settingChangeSchema } from "@/lib/admin/challenge-settings";
+import {
+  pathPublishError,
+  pathSettingChangeError,
+  pathSettingChangeSchema,
+  pathStatusChangeSchema,
+  settingChangeError,
+  settingChangeSchema,
+} from "@/lib/admin/challenge-settings";
 import { getAdminOrNull } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "../actions";
@@ -86,6 +93,39 @@ export async function updatePathStatus(raw: unknown): Promise<ActionResult> {
     p_source: "admin",
     p_actor: admin.id,
     p_publish_milestones: value === "published",
+  });
+  if (error) return { ok: false, error: "Couldn't save the change. Please try again." };
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Change a learning path's required_for or due_at, audited in path_settings_audit (set_path_setting). Admin-owned like
+ * its status: content:sync never writes them after the path is created.
+ */
+export async function updatePathSetting(raw: unknown): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return { ok: false, error: "Only admins can do this." };
+
+  const parsed = pathSettingChangeSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Invalid value." };
+  const change = parsed.data;
+
+  const db = createAdminClient();
+  const { data: path } = await db.from("paths").select("slug,audiences,category_slug").eq("slug", change.slug).maybeSingle();
+  if (!path) return { ok: false, error: "Path not found." };
+  const { data: category } = await db.from("categories").select("audiences").eq("slug", path.category_slug).maybeSingle();
+
+  const problem = pathSettingChangeError(change, path, category);
+  if (problem) return { ok: false, error: problem };
+
+  const { error } = await db.rpc("set_path_setting", {
+    p_slug: change.slug,
+    p_field: change.field,
+    p_value: change.value,
+    p_source: "admin",
+    p_actor: admin.id,
   });
   if (error) return { ok: false, error: "Couldn't save the change. Please try again." };
 

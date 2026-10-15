@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/auth/session";
 import { isChallengeVisible, parseChallenge, type Challenge } from "@/lib/challenges/model";
-import { requiredFirst, requiredState, type RequiredState } from "@/lib/challenges/required";
+import { requiredFirst, requiredState, summarizeRequired, type RequiredState } from "@/lib/challenges/required";
 import { resolveCardImage } from "@/lib/challenges/card";
 import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
 import { groupChains, pathChains, sortHomeChallenges, type ChainPlace } from "@/lib/challenges/home-order";
@@ -18,7 +18,7 @@ import {
   progressOf,
   type MilestoneRow,
 } from "@/lib/data/paths";
-import { blockingPath, pathCta, type MilestonePlace, type MilestoneState, type PathSummary, type RequiredPath } from "@/lib/paths/progress";
+import { blockingPath, pathCta, requiredPathState, type MilestonePlace, type MilestoneState, type PathSummary, type RequiredPath } from "@/lib/paths/progress";
 import {
   attemptState,
   rankOf,
@@ -267,9 +267,10 @@ export type CardPath = {
   chain: ChainPlace | null;
   /** Locked for learners, but a tester can open its draft milestones anyway ("Open as tester"). */
   testerOpen: boolean;
-  required: false;
+  /** Required for the learner's track: ONE required item, done when every milestone has a published score. */
+  required: boolean;
   requiredState: RequiredState;
-  due_at: null;
+  due_at: string | null;
 };
 
 /** What the home page and a category page list. */
@@ -285,6 +286,8 @@ type PathSource = {
   sequential: boolean;
   milestones: string[];
   requires: string[];
+  required_for: Challenge["required_for"];
+  due_at: string | null;
 };
 
 /** A path's card (not locked yet, see `withLock`) and its milestone states, or null when the learner sees none of its milestones. */
@@ -295,6 +298,7 @@ function pathCardOf(
   viewer: { track: Track | null; is_tester: boolean },
   subs: readonly (SubmissionLite & { is_test: boolean })[],
   drafts: Drafts,
+  now: Date,
 ): { card: CardPath; states: MilestoneState[] } | null {
   const bySlug = new Map(rows.map((r) => [r.slug, r]));
   const milestones = path.milestones
@@ -307,6 +311,8 @@ function pathCardOf(
     subs,
     [...drafts].map(([challenge_slug, d]) => ({ challenge_slug, updated_at: d.savedAt })),
   );
+  // A draft a tester is trying is never required, like a draft challenge.
+  const isDraft = isTestChallenge(path.status);
   const card: CardPath = {
     kind: "path",
     slug: path.slug,
@@ -320,13 +326,13 @@ function pathCardOf(
     done: summary.complete,
     inProgress: summary.started && !summary.complete,
     savedAt: lastActivity,
-    isDraft: isTestChallenge(path.status),
+    isDraft,
     lockedBy: null,
     chain: null,
     testerOpen: false,
-    required: false,
-    requiredState: summary.complete ? "done" : "missing",
-    due_at: null,
+    required: !isDraft && isRequiredFor(path.required_for, viewer.track),
+    requiredState: requiredPathState(states, isDraft ? null : path.due_at, now),
+    due_at: isDraft ? null : path.due_at,
   };
   return { card, states };
 }
@@ -370,7 +376,7 @@ export type HomeData = {
   /** Every challenge the learner can see (acknowledge ones included, as in the category counts), and how many are done. */
   overall: { done: number; total: number };
   categories: CategoryProgress[];
-  /** Required challenges among them: how many, how many done, how many are overdue. */
+  /** Required challenges and paths among them (a path is one item): how many, how many done, how many are overdue. */
   required: { total: number; done: number; overdue: number };
   /**
    * Every challenge and path the learner can see, in the home page's order (see sortHomeChallenges); the page groups
@@ -400,7 +406,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     group ? supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] }) : Promise.resolve(null),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at")
       .in("status", listedStatuses(profile)),
     profile.is_tester ? myTestAttempts(profile.id) : Promise.resolve([]),
   ]);
@@ -425,7 +431,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     return !!category && isPathVisible(p, category, profile.track, profile.is_tester);
   });
   const builtPaths = visiblePaths.flatMap((p) => {
-    const built = pathCardOf(p, catBySlug.get(p.category_slug)!, chs.data, profile, pathSubs, drafts);
+    const built = pathCardOf(p, catBySlug.get(p.category_slug)!, chs.data, profile, pathSubs, drafts, now);
     return built ? [{ ...built, requires: p.requires }] : [];
   });
   // Path order: every path the learner can see is loaded here, so a required one is looked up, not read again.
@@ -449,11 +455,12 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
           list.reduce((s, ch) => s + (ch.done ? (ch.state.bestScore ?? 0) : 0), 0) +
           pathList.reduce((s, p) => s + p.progress.pointsEarned, 0),
         pointsPossible: list.reduce((s, ch) => s + ch.points, 0) + pathList.reduce((s, p) => s + p.progress.pointsPossible, 0),
-        requiredOutstanding: list.filter((ch) => ch.required && !ch.done).length,
+        requiredOutstanding: summarizeRequired([...list, ...pathList]).left,
       };
     });
 
-  const required = visible.filter((ch) => ch.required);
+  // A required path is one required item, like a challenge (draft paths are never required).
+  const required = summarizeRequired([...visible, ...livePaths]);
   const categoryOrder = new Map(cats.data.map((c, i) => [c.slug, i]));
   // Sorted, then each chain of paths gathered where the step the learner is on sorts (every list: All, a category, the
   // drafts).
@@ -488,11 +495,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
       total: visible.length + livePaths.length,
     },
     categories,
-    required: {
-      total: required.length,
-      done: required.filter((ch) => ch.done).length,
-      overdue: required.filter((ch) => ch.requiredState === "overdue").length,
-    },
+    required: { total: required.total, done: required.done, overdue: required.overdue },
     challenges,
     drafts: draftCards,
   };
@@ -520,7 +523,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     myDrafts(profile.id),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at")
       .eq("category_slug", slug)
       .eq("status", "published") // like challenges: draft paths only under the tester's filter on home
       .order("title"),
@@ -542,7 +545,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     });
   const builtPaths = paths.data.flatMap((p) => {
     if (!isPathVisible(p, category, profile.track)) return [];
-    const built = pathCardOf(p, category, chs.data, viewer, realSubs, drafts);
+    const built = pathCardOf(p, category, chs.data, viewer, realSubs, drafts, now);
     return built ? [{ ...built, requires: p.requires }] : [];
   });
   // A required path can be in another category: read as on the path page, so the lock is the same everywhere.

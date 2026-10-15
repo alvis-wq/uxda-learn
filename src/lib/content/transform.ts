@@ -127,7 +127,10 @@ export type PathRow = {
   before_you_submit: string[];
 };
 
-export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; status: ChallengeSettings["status"] } {
+/** A path's admin-owned settings: the same three as a challenge's, set from the file only when the path is created. */
+export type PathSettings = ChallengeSettings;
+
+export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; settings: PathSettings } {
   return {
     row: {
       slug: p.slug,
@@ -141,7 +144,7 @@ export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; 
       before_you_start: p.before_you_start ?? null,
       before_you_submit: p.before_you_submit,
     },
-    status: p.status,
+    settings: { status: p.status, required_for: p.required_for ?? [], due_at: normalizeTimestamp(p.due_at) },
   };
 }
 

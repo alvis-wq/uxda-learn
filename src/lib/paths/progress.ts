@@ -1,3 +1,4 @@
+import type { RequiredState } from "@/lib/challenges/required";
 import { sumTimes, type TimeEstimate } from "@/lib/challenges/time";
 import type { AttemptSummary } from "@/lib/submissions/rules";
 
@@ -156,6 +157,8 @@ export type PathSummary = {
   started: boolean;
   /** Every milestone done. */
   complete: boolean;
+  /** Every milestone has an attempt: a due date is met (a path is overdue only before that). */
+  allSubmitted: boolean;
   /** Its milestones' times added up (the ones that have an estimate); null when none has. */
   time: TimeEstimate | null;
 };
@@ -169,6 +172,7 @@ export function summarizePath(states: readonly MilestoneState[]): PathSummary {
     pointsPossible: states.reduce((sum, s) => sum + s.points, 0),
     started: states.some((s) => s.started),
     complete: states.length > 0 && done === states.length,
+    allSubmitted: states.length > 0 && states.every((s) => s.submitted),
     time: sumTimes(states.map((s) => s.time)),
   };
 }
@@ -195,6 +199,11 @@ export type MilestonePlace = {
   lockedBy: PathLock | null;
   /** The next milestone, when there is one. */
   next: { slug: string; title: string } | null;
+  /**
+   * The path's required / due date, which its milestones inherit (shown on their pages; they never count on their
+   * own). `allSubmitted`: every milestone of the path has an attempt, so the due date is met. Set by loadMilestonePlace.
+   */
+  pathRequirement?: { required: boolean; dueAt: string | null; allSubmitted: boolean };
 };
 
 export function milestonePlace(
@@ -221,4 +230,23 @@ export function milestonePlace(
 export function lockReason(place: Pick<MilestonePlace, "locked" | "position" | "lockedBy"> | null): string | null {
   if (!place?.locked) return null;
   return place.lockedBy ? `${pathLockLine(place.lockedBy)}.` : `Submit milestone ${place.position - 1} first.`;
+}
+
+/**
+ * A required path's state: it counts as ONE required item.
+ * - done:    every milestone has a published score
+ * - pending: every milestone is submitted, and each one not done yet is awaiting review (the learner can't act)
+ * - overdue: past its due date and not every milestone submitted
+ * - missing: everything else (including "all submitted, but changes requested on one")
+ */
+export function requiredPathState(
+  states: readonly Pick<MilestoneState, "done" | "submitted" | "status">[],
+  dueAt: string | null | undefined,
+  now: Date,
+): RequiredState {
+  if (states.length > 0 && states.every((s) => s.done)) return "done";
+  const allSubmitted = states.length > 0 && states.every((s) => s.submitted);
+  if (allSubmitted && states.every((s) => s.done || s.status === "awaiting_review")) return "pending";
+  if (!allSubmitted && dueAt && new Date(dueAt).getTime() < now.getTime()) return "overdue";
+  return "missing";
 }

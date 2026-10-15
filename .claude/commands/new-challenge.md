@@ -32,7 +32,8 @@ Create a challenge from this description: $ARGUMENTS
      under `milestones` in `content/paths/<path slug>.yaml` (create that file for a new path: slug, title, category,
      audiences, one-sentence summary, `sequential`, milestones, optional `before_you_submit` lines, `status: draft`).
      A milestone has the same category and audiences as its path, is never `acknowledge`, and has no `required_for`
-     or `due_at`. See "Learning paths" in `docs/content-format.md`.
+     or `due_at`. If the path is mandatory, put `required_for` (and `due_at` if given) on the path file instead: same
+     rules as a challenge's, starting values only. See "Learning paths" in `docs/content-format.md`.
 4. **Pick the type:**
    - `acknowledge` for "read and confirm" content (new rules, policies, announcements): just the
      brief and an "I've read and understood" button. No questions, submission, rubric or

@@ -51,7 +51,8 @@ create table categories (
 );
 
 -- A learning path: one card that opens a roadmap of milestone challenges (content/paths/<slug>.yaml). Content columns
--- come from the file; status is owned by the admin panel after creation (set_path_status, audited).
+-- come from the file; status, required_for and due_at are owned by the admin panel after creation (set_path_status /
+-- set_path_setting, audited).
 create table paths (
   slug text primary key,
   category_slug text not null references categories(slug),
@@ -66,6 +67,10 @@ create table paths (
   -- Path slugs that come first: this path stays locked until each has every milestone submitted (any attempt counts).
   requires text[] not null default '{}',
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
+  -- Admin-owned like status (set_path_setting, audited). A required path is ONE required item; milestones never are.
+  required_for audience[] not null default '{}'
+    check (cardinality(required_for) = 0 or public.valid_audiences(required_for)),
+  due_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -249,11 +254,11 @@ create table challenge_feedback (
 );
 create index challenge_feedback_slug_idx on challenge_feedback (challenge_slug, created_at desc);
 
--- Who changed a path's status, and when. Written only by set_path_status().
+-- Who changed a path's status, required_for or due_at, and when. Written only by set_path_status() / set_path_setting().
 create table path_settings_audit (
   id bigint generated always as identity primary key,
   path_slug text not null references paths(slug) on delete cascade,
-  field text not null check (field in ('status')),
+  field text not null check (field in ('status', 'required_for', 'due_at')),
   old_value jsonb,
   new_value jsonb,
   source text not null check (source in ('admin', 'content:sync')),
@@ -364,6 +369,8 @@ $$;
 -- Paths and imports. Full bodies: supabase/migrations/20261015090000_learning_paths.sql. All service role only.
 -- set_path_status(p_slug, p_value, p_source, p_actor, p_publish_milestones): status + audit row (none for a no-op);
 --   publishing with p_publish_milestones also publishes the path's draft milestones via set_challenge_setting.
+-- set_path_setting(p_slug, p_field, p_value, p_source, p_actor): required_for or due_at + audit row (none for a no-op);
+--   actor must be an admin for source 'admin'. Body: supabase/migrations/20261020090000_path_required_due.sql.
 -- import_submission(p_user, p_challenge, p_status, p_score, p_feedback, p_source, p_actor) returns uuid: the next real
 --   attempt on a published milestone of a published path, flagged is_imported; actor must be an admin; same limits as
 --   a submit (nothing awaiting review, an attempt left, not at full points); audited.

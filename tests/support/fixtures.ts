@@ -62,8 +62,8 @@ export async function installFixtures(db: Db, dir: string = FIXTURE_DIR) {
   if (catErr) throw new Error(`fixture categories: ${catErr.message}`);
   // Paths before challenges: a milestone's path_slug references its path.
   for (const p of content.paths) {
-    const { row, status } = toPathRow(p.data, content.categories);
-    const { error } = await db.from("paths").upsert({ ...row, status });
+    const { row, settings } = toPathRow(p.data, content.categories);
+    const { error } = await db.from("paths").upsert({ ...row, ...settings });
     if (error) throw new Error(`fixture path ${row.slug}: ${error.message}`);
   }
   for (const ch of content.challenges) {

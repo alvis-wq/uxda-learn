@@ -41,6 +41,9 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
 - Learning paths (`content/paths/*.yaml`): one card that opens a roadmap of milestone challenges (`path:` on the
   challenge). A path page can have "Before you start" (markdown) and "Before you submit" boxes. Milestones are listed only inside their path; a path counts as one item, done when every milestone is
   done; in a sequential path a milestone unlocks once the previous one has any attempt (checked on the server).
+  A path can be required with a due date (`required_for`, `due_at` on the path; admin-owned like status, audited in
+  `path_settings_audit`): it counts as ONE required item, done when every milestone has a published score, overdue when
+  past due and not every milestone submitted. Milestones are never required on their own.
   Admins can import earlier progress (Admin → Users → a user, or `scripts/import-path-progress.ts`): a normal attempt
   flagged `is_imported`, only on a published path, written by `import_submission()` and audited.
 - Testers (`profiles.is_tester`, switched in Admin → Users, audited) can see and take DRAFT challenges their

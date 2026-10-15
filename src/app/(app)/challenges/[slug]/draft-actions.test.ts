@@ -336,7 +336,7 @@ describe("saveDraft on a path milestone", () => {
         {
           challenges: [step("s1", status), step("s2", status)],
           categories: [{ slug: "cat", title: "Cat", archived: false, audiences: ["all"] }],
-          paths: [{ slug: "p", title: "P", category_slug: "cat", status, audiences: ["all"], sequential: true, milestones: ["s1", "s2"], requires: [] }],
+          paths: [{ slug: "p", title: "P", category_slug: "cat", status, audiences: ["all"], sequential: true, milestones: ["s1", "s2"], requires: [], required_for: [], due_at: null }],
           submissions: [],
           submission_drafts: [],
         },

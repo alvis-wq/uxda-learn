@@ -13,7 +13,7 @@ export type FilterOption = {
   total?: number;
   /** The number of drafts (drafts option only). */
   count?: number;
-  /** Required challenges still to do: a dot and "required left" while there are any. */
+  /** Required challenges and paths still to do: a dot and "required left" while there are any. */
   requiredOutstanding?: number;
 };
 

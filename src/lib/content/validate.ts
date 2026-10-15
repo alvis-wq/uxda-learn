@@ -185,7 +185,8 @@ function sameAudiences(a: readonly Audience[], b: readonly Audience[]): boolean 
 /**
  * Learning paths (content/paths/*.yaml) and their milestones: every listed slug exists, points back at the path with
  * `path:`, is listed once and in one path only; every challenge with `path:` is listed there; a milestone shares its
- * path's category and audiences; it is never `acknowledge` and is never required or due on its own. `requires` names
+ * path's category and audiences; it is never `acknowledge` and is never required or due on its own (its path can be).
+ * A path's `required_for` only names tracks that can see it. `requires` names
  * other existing paths, never itself, and never goes round in a loop.
  */
 function validatePaths(
@@ -211,6 +212,13 @@ function validatePaths(
       const categoryTracks = audienceTracks(category.audiences) as Audience[];
       for (const t of p.audiences) {
         if (!categoryTracks.includes(t)) err(file, `audiences: ${TRACK_LABEL[t as Track]} can't see category "${category.slug}"`);
+      }
+    }
+    // Required for a track that can't see the path → nobody on that track could ever complete it.
+    if (category && p.required_for) {
+      const visible = visibleTracks(category.audiences, p.audiences ?? category.audiences);
+      for (const t of audienceTracks(p.required_for)) {
+        if (!visible.includes(t)) err(file, `required_for: ${TRACK_LABEL[t]} can't see this path (check audiences of the path and its category)`);
       }
     }
     for (const slug of duplicates(p.milestones)) err(file, `milestones: "${slug}" is listed twice`);
@@ -287,6 +295,8 @@ export function contentWarnings(content: LoadedContent): ContentError[] {
   for (const { file, data: p } of content.paths) {
     const names = hiddenOnly(p.audiences);
     if (names) warnings.push({ file, message: `audiences: only ${names}, which nobody can choose any more` });
+    const required = hiddenOnly(p.required_for);
+    if (required) warnings.push({ file, message: `required_for: only ${required}, which nobody can choose any more` });
   }
   return warnings;
 }
