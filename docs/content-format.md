@@ -21,8 +21,10 @@
   `status: published`. Keep such challenges `draft` until the placeholder is filled in.
 
 ## Tracks and audiences
-Tracks: `strategist`, `designer`, `motion_designer`, `account_manager`, `assistant`, `management`
-(labels and leaderboard groups live in `src/lib/tracks.ts`).
+Tracks: `strategist`, `designer`, `motion_designer`, `management` (labels and leaderboard groups live in
+`src/lib/tracks.ts`). `account_manager` and `assistant` still exist but are no longer offered — nobody is on them
+(everyone moved to `management`). `content:validate` **warns** (doesn't fail) when a category, challenge, path or
+`required_for` names only those two tracks, since nobody would ever see it.
 
 An **audience list** is either `all` (everyone, including tracks added later) or a list of
 tracks: `audiences: [designer, motion_designer]`. `all` can't be mixed with tracks. The old

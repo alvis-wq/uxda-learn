@@ -110,7 +110,8 @@ function RequiredForPicker({ slug, title, requiredFor, visibleTracks }: Props) {
           title={everyoneSees ? "Required for every track, including tracks added later" : "Not every track can see this challenge"}
           onChange={(on) => commit(on ? ["all"] : [])}
         />
-        {TRACKS.map((t) => {
+        {/* Hidden tracks only show while still ticked, so they can be cleared. */}
+        {TRACKS.filter((t) => t.selectable || value.includes(t.value)).map((t) => {
           const canSee = visibleTracks.includes(t.value);
           return (
             <CheckOption

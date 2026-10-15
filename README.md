@@ -1,7 +1,7 @@
 # UXDA Learn
 
 Internal learning platform for the UXDA team. People sign in with their UXDA Google Workspace
-account, choose a track (Strategist, Designer, Motion Designer, Account Manager, Marketing Assistant or Management),
+account, choose a track (Strategist, Designer, Motion Designer or Management), see their job title under their name,
 complete challenges (quizzes, screenshots, Figma work, reflections, "read and confirm"
 acknowledgements), get scored and see themselves on a leaderboard (Strategists / Designers /
 Team). Some challenges are required for certain tracks, optionally with a due date. Admins
@@ -23,6 +23,7 @@ npm run db:push              # apply supabase/migrations
 npm run db:types             # regenerate src/lib/database.types.ts
 npm run seed:domains         # ALLOWED_EMAIL_DOMAINS → allowed_email_domains (who may sign up)
 npm run seed:admins          # ADMIN_EMAILS → admin_allowlist (+ promote existing profiles)
+npm run seed:titles          # data/staff-titles.json → staff_titles (dry run; add -- --apply to write)
 npm run content:sync         # /content → database
 npm run db:check             # tables, RLS, private-table and signup-domain checks
 npm run dev                  # http://localhost:3000
@@ -47,6 +48,7 @@ With `ENABLE_TEST_LOGIN=true` (development only) the login page also offers test
 | `content:sync` | Sync `/content` → DB (`-- --dry-run` to preview) |
 | `seed:admins` | Allowlist `ADMIN_EMAILS` as admins |
 | `seed:domains` | Sync `ALLOWED_EMAIL_DOMAINS` into `allowed_email_domains` (adds and removes) |
+| `seed:titles` | Upsert job titles from `data/staff-titles.json` (dry run unless `-- --apply`; audited; never deletes) |
 | `eval:pull` / `eval:push` | Evaluation batch export / import (see below) |
 
 ## Content workflow

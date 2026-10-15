@@ -12,6 +12,11 @@ describe("home page layout", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
+  it("shows the job title right under the greeting, and nothing at all when there is none", () => {
+    expect(at("{jobTitle && (")).toBeGreaterThan(at('id="hero-heading"'));
+    expect(at("{jobTitle && (")).toBeLessThan(at('data-testid="hero-points"'));
+  });
+
   it("has no 'Completed' stat in the hero and no 'All challenges' section", () => {
     expect(source).not.toContain("hero-completed");
     expect(source).not.toContain("All challenges");

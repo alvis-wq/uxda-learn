@@ -2,7 +2,13 @@
 import { loadAndValidate } from "../src/lib/content";
 
 const dir = process.argv[2] ?? "content";
-const { content, errors } = loadAndValidate(dir);
+const { content, errors, warnings } = loadAndValidate(dir);
+
+if (warnings.length > 0) {
+  console.warn(`${warnings.length} warning(s):\n`);
+  for (const w of warnings) console.warn(`  ${w.file}: ${w.message}`);
+  console.warn("");
+}
 
 if (errors.length > 0) {
   console.error(`Content validation failed with ${errors.length} error(s):\n`);

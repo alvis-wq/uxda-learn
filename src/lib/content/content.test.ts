@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { categorySchema, challengeFrontmatterSchema, loadAndValidate } from "./index";
 import { planSync, countChanges } from "./sync-plan";
-import { validateContent } from "./validate";
+import { contentWarnings, validateContent } from "./validate";
 import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows, toPathRow } from "./transform";
 
 const FIXTURES = path.resolve(__dirname, "../../../tests/fixtures/content");
@@ -25,6 +25,35 @@ describe("content validation", () => {
   it("accepts the real /content directory", () => {
     const { errors } = loadAndValidate(path.resolve(__dirname, "../../../content"));
     expect(errors).toEqual([]);
+  });
+
+  describe("warnings: content only for tracks nobody can choose (account manager, marketing assistant)", () => {
+    it("the real /content directory and the valid fixture have none", () => {
+      expect(loadAndValidate(path.resolve(__dirname, "../../../content")).warnings).toEqual([]);
+      expect(loadAndValidate(path.join(FIXTURES, "valid")).warnings).toEqual([]);
+    });
+
+    it("warns on a category, challenge, required_for or path aimed only at hidden tracks — without failing", () => {
+      const { content } = loadAndValidate(path.join(FIXTURES, "paths"));
+      content.categories[0].audiences = ["account_manager"];
+      content.challenges[0].data.audiences = ["assistant"];
+      content.challenges[1].data.required_for = ["account_manager", "assistant"];
+      content.paths[0].data.audiences = ["assistant"];
+      const messages = contentWarnings(content).map((w) => `${w.file}: ${w.message}`);
+      expect(messages).toEqual([
+        expect.stringMatching(/^categories\.yaml: category ".+" is only for Account Manager, which nobody can choose/),
+        `${content.challenges[0].file}: audiences: only Marketing Assistant, which nobody can choose any more`,
+        `${content.challenges[1].file}: required_for: only Account Manager, Marketing Assistant, which nobody can choose any more`,
+        `${content.paths[0].file}: audiences: only Marketing Assistant, which nobody can choose any more`,
+      ]);
+    });
+
+    it("doesn't warn when a selectable track or `all` is in the list too", () => {
+      const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+      content.challenges[0].data.audiences = ["assistant", "management"];
+      content.challenges[1].data.audiences = ["all"];
+      expect(contentWarnings(content)).toEqual([]);
+    });
   });
 
   describe("invalid fixture", () => {

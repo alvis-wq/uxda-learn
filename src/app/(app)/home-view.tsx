@@ -13,10 +13,13 @@ import { TRACK_LABEL, type Track } from "@/lib/tracks";
 /** The signed-in home page: hero, overall progress, then the category filter and the challenge list. Data-free so it can be rendered on its own. */
 export function HomeView({
   profile,
+  jobTitle,
   data: { hero, overall, categories, required, challenges, drafts },
   now,
 }: {
   profile: { full_name: string | null; track: Track | null; is_tester: boolean };
+  /** Shown under the greeting; nothing when there's none. */
+  jobTitle?: string;
   data: HomeData;
   now: Date;
 }) {
@@ -40,6 +43,11 @@ export function HomeView({
             <h1 id="hero-heading" className="text-3xl font-light tracking-tight sm:text-5xl">
               Welcome{firstName ? `, ${firstName}` : ""}
             </h1>
+            {jobTitle && (
+              <p className="text-foreground/80 mt-2 text-sm" data-testid="job-title">
+                {jobTitle}
+              </p>
+            )}
           </div>
 
           <div className="grid items-end gap-x-12 gap-y-6 sm:grid-cols-[auto_1fr]">

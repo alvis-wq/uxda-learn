@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { UserCheck, Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/auth/admin";
+import { notSignedIn, titleIndex } from "@/lib/staff-titles";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeScores } from "@/lib/submissions/rules";
+import { PendingStaffRow, TitleField } from "./title-controls";
 import { AdminSwitch, TesterSwitch, TrackSelect } from "./user-controls";
 
 export const metadata: Metadata = { title: "Users · Admin · UXDA Learn" };
@@ -13,11 +15,15 @@ export const metadata: Metadata = { title: "Users · Admin · UXDA Learn" };
 export default async function AdminUsersPage() {
   const me = await requireAdmin();
   const supabase = await createClient();
-  const [{ data: profiles, error }, { data: subs }] = await Promise.all([
+  const [{ data: profiles, error }, { data: subs }, { data: titles, error: titlesError }] = await Promise.all([
     supabase.from("profiles").select("*").order("full_name", { nullsFirst: false }),
     supabase.from("submissions").select("user_id,challenge_slug,status,final_score").eq("is_test", false),
+    supabase.from("staff_titles").select("email,job_title"),
   ]);
   if (error) throw new Error(`Couldn't load users: ${error.message}`);
+  if (titlesError) throw new Error(`Couldn't load job titles: ${titlesError.message}`);
+  const titleOf = titleIndex(titles);
+  const pending = notSignedIn(titles, profiles.map((p) => p.email));
 
   return (
     <section aria-labelledby="users-heading">
@@ -32,6 +38,7 @@ export default async function AdminUsersPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Title</TableHead>
                 <TableHead>Track</TableHead>
                 <TableHead className="hidden text-right md:table-cell">Score</TableHead>
                 <TableHead className="hidden text-right md:table-cell">Completed</TableHead>
@@ -52,6 +59,9 @@ export default async function AdminUsersPage() {
                         {name}
                       </Link>
                       <div className="text-muted-foreground text-xs">{p.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      <TitleField email={p.email} name={name} title={titleOf(p.email)} />
                     </TableCell>
                     <TableCell>
                       <TrackSelect userId={p.id} name={name} track={p.track} />
@@ -75,6 +85,26 @@ export default async function AdminUsersPage() {
           </Table>
         </div>
       )}
+
+      <section aria-labelledby="pending-heading" className="mt-10 grid gap-2">
+        <div>
+          <h2 id="pending-heading" className="text-lg font-semibold tracking-tight">
+            Not signed in yet
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Job titles for emails nobody has signed in with. If one stays here, the email may be wrong — fix it here.
+          </p>
+        </div>
+        {pending.length === 0 ? (
+          <EmptyState icon={UserCheck} title="Everyone with a title has signed in" />
+        ) : (
+          <ul className="divide-y" aria-label="Job titles for people who haven't signed in">
+            {pending.map((t) => (
+              <PendingStaffRow key={t.email} email={t.email} title={t.job_title} />
+            ))}
+          </ul>
+        )}
+      </section>
     </section>
   );
 }

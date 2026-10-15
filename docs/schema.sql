@@ -1,6 +1,8 @@
 -- UXDA Learn — database spec (current state). Migrations in supabase/migrations are the
 -- source of truth for how the live DB got here; keep this file in step with them.
 
+-- account_manager and assistant are no longer offered (src/lib/tracks.ts: selectable: false); everyone on them moved to
+-- management (20261018100000_simpler_tracks.sql, audited in staff_audit). The values stay for old content and history.
 create type track as enum ('strategist', 'designer', 'account_manager', 'assistant', 'motion_designer', 'management');
 create type audience as enum ('all', 'strategist', 'designer', 'account_manager', 'assistant', 'motion_designer', 'management');
 create type challenge_type as enum ('quiz', 'screenshot', 'figma', 'mixed', 'acknowledge');
@@ -210,6 +212,30 @@ create table profile_flag_audit (
 );
 create index profile_flag_audit_profile_idx on profile_flag_audit (profile_id, changed_at desc);
 
+-- Job titles shown under names, keyed by lowercase email (works before someone's first sign-in; joined to profiles by
+-- email). Signed-in users read them; written only by set_staff_title() / rename_staff_email() (service role).
+create table staff_titles (
+  email text primary key
+    check (email = lower(btrim(email)) and email ~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  job_title text not null check (job_title = btrim(job_title) and char_length(job_title) between 1 and 80),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references profiles(id) on delete set null
+);
+
+-- Every change to a job title, a title's email or a user's track (Admin → Users, the seed script, data migrations).
+create table staff_audit (
+  id bigint generated always as identity primary key,
+  email text not null,   -- the person's email (for an email change: the new one)
+  field text not null check (field in ('job_title', 'email', 'track')),
+  old_value text,
+  new_value text,
+  source text not null check (source in ('admin', 'seed', 'migration')),
+  changed_by uuid references profiles(id) on delete set null,
+  note text,
+  changed_at timestamptz not null default now()
+);
+create index staff_audit_email_idx on staff_audit (email, changed_at desc);
+
 -- Notes from testers on a draft challenge. Admin read only; written by a server action (service role).
 create table challenge_feedback (
   id uuid primary key default gen_random_uuid(),
@@ -325,6 +351,13 @@ $$;
 -- Full body: supabase/migrations/20261014100000_testers.sql
 -- function public.set_user_tester(p_user uuid, p_value boolean, p_actor uuid) returns boolean
 
+-- Staff titles and tracks. Full bodies: supabase/migrations/20261018090000_staff_titles.sql. All service role only; each
+-- writes a staff_audit row and is a no-op (returns false, no audit row) when nothing changes.
+-- set_staff_title(p_email, p_title, p_source, p_actor): set, or with an empty title remove; source 'admin' (actor must be
+--   an admin) or 'seed' (scripts/seed-staff-titles.ts).
+-- rename_staff_email(p_old, p_new, p_actor): fix a seeded email nobody has signed in with; actor must be an admin.
+-- set_user_track(p_user, p_track, p_actor): Admin → Users track change; actor must be an admin.
+
 -- Paths and imports. Full bodies: supabase/migrations/20261015090000_learning_paths.sql. All service role only.
 -- set_path_status(p_slug, p_value, p_source, p_actor, p_publish_milestones): status + audit row (none for a no-op);
 --   publishing with p_publish_milestones also publishes the path's draft milestones via set_challenge_setting.
@@ -347,6 +380,8 @@ alter table challenge_settings_audit enable row level security;
 alter table submission_drafts enable row level security;
 alter table profile_flag_audit enable row level security;
 alter table challenge_feedback enable row level security;
+alter table staff_titles enable row level security;
+alter table staff_audit enable row level security;
 
 create policy profiles_select on profiles for select to authenticated
   using (id = auth.uid() or public.is_admin());
@@ -405,6 +440,12 @@ create policy profile_flag_audit_select on profile_flag_audit for select to auth
 
 create policy challenge_feedback_select on challenge_feedback for select to authenticated using (public.is_admin());
 -- No write policies or grants: written by a server action (service role) for testers on a draft they can see.
+
+create policy staff_titles_select on staff_titles for select to authenticated using (true);
+-- No write policies or grants: written only by set_staff_title() / rename_staff_email() (service role).
+
+create policy staff_audit_select on staff_audit for select to authenticated using (public.is_admin());
+-- No write policies or grants: written only by the staff functions and data migrations.
 
 -- Paths: same rule as challenges_select (published; drafts for testers whose track and category can see them).
 create policy paths_select on paths for select to authenticated

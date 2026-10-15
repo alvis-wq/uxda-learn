@@ -552,6 +552,79 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          email: string
+          field: string
+          id: number
+          new_value: string | null
+          note: string | null
+          old_value: string | null
+          source: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          email: string
+          field: string
+          id?: never
+          new_value?: string | null
+          note?: string | null
+          old_value?: string | null
+          source: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          email?: string
+          field?: string
+          id?: never
+          new_value?: string | null
+          note?: string | null
+          old_value?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_titles: {
+        Row: {
+          email: string
+          job_title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          email: string
+          job_title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          email?: string
+          job_title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_titles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submission_drafts: {
         Row: {
           answers: Json
@@ -795,6 +868,11 @@ export type Database = {
         Args: { a: Database["public"]["Enums"]["audience"][] }
         Returns: boolean
       }
+      rename_staff_email: {
+        Args: { p_actor: string; p_new: string; p_old: string }
+        Returns: boolean
+      }
+      require_admin_actor: { Args: { p_actor: string }; Returns: undefined }
       set_challenge_setting: {
         Args: {
           p_actor?: string
@@ -817,6 +895,23 @@ export type Database = {
       }
       set_user_tester: {
         Args: { p_actor: string; p_user: string; p_value: boolean }
+        Returns: boolean
+      }
+      set_staff_title: {
+        Args: {
+          p_actor?: string
+          p_email: string
+          p_source: string
+          p_title: string
+        }
+        Returns: boolean
+      }
+      set_user_track: {
+        Args: {
+          p_actor: string
+          p_track: Database["public"]["Enums"]["track"]
+          p_user: string
+        }
         Returns: boolean
       }
       undo_import: {
