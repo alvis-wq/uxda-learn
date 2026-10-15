@@ -50,4 +50,6 @@ For each Figma file — Arcnine Desktop, Arcnine Mobile, DIB Components, DIB Tok
 - **Template** — the UXDA Design System Template: [open it in Figma](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82)
 
 ### What to send
-A screenshot of each health status.
+A screenshot of each health status. Your Health tab should look like this:
+
+![Example Health tab of the UXDA Design System Cheatsheet plugin for the Template file: a health score of 78 (Governed), with scores for Tokens, Components, Documentation and Accessibility](/challenges/figma-health-plugin.png "side")
