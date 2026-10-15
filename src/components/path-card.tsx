@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, FlaskConical, Lock, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
+import { RequiredBadges } from "@/components/required-badge";
 import { TimeEstimate } from "@/components/time-estimate";
 import { Progress } from "@/components/ui/progress";
 import type { CardPath } from "@/lib/data/learner";
@@ -14,17 +15,20 @@ import { cn } from "@/lib/utils";
  * path (`requires`) says what it waits for in place of the CTA; it still opens its page, where nothing can be started.
  * A path in a chain (paths linked by `requires`) says which step it is ("Step 1 of 3"). A tester on a draft sees the
  * same lock, plus "Open as tester": its page lets them open every draft milestone. Its time is its milestones' added up.
+ * A required path shows "Required" and its due / overdue badge above the CTA, or above the lock ("Unlocks after …").
  */
 export function PathCard({
   path: p,
   subheading,
   body,
   headingLevel,
+  now,
 }: {
   path: CardPath;
   subheading?: string | null;
   body?: string | null;
   headingLevel: 2 | 3 | 4;
+  now?: Date;
 }) {
   const Heading = `h${headingLevel}` as const;
   const percent = p.progress.total ? Math.round((p.progress.done / p.progress.total) * 100) : 0;
@@ -69,6 +73,8 @@ export function PathCard({
         </p>
         <Progress value={percent} aria-label={`${p.title}: ${p.progress.done} of ${p.progress.total} milestones done`} />
       </div>
+      {/* Required / due: a path's due date is met once every milestone is submitted. Shown next to a lock too. */}
+      <RequiredBadges required={p.required} dueAt={p.due_at} done={p.progress.allSubmitted} now={now} />
       <div className="flex flex-wrap items-center gap-2">
         {p.lockedBy ? (
           <>

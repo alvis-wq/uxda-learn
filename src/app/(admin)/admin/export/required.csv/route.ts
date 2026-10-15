@@ -5,7 +5,7 @@ import { toCsv } from "@/lib/csv";
 import { loadProgressInput } from "@/lib/data/admin-progress";
 import { isTrack } from "@/lib/tracks";
 
-/** CSV of required-challenge progress: one row per (user, required challenge). Admins only. */
+/** CSV of required progress: one row per (user, required challenge or path), with an item_type column. Admins only. */
 export async function GET(request: NextRequest) {
   const admin = await getAdminOrNull();
   if (!admin) return new NextResponse("Forbidden", { status: 403 });

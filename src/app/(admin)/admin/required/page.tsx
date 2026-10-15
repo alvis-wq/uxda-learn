@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Download, Flag, Users } from "lucide-react";
+import { Download, Flag, Route, Users } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { RequiredStateBadge } from "@/components/required-state-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildRequiredProgress } from "@/lib/admin/required-progress";
 import { REQUIRED_STATE_LABEL, type RequiredState } from "@/lib/challenges/required";
@@ -20,7 +21,7 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
   const now = new Date();
   const input = await loadProgressInput(now);
   const rows = buildRequiredProgress(input, track);
-  const anyRequired = input.challenges.some((c) => c.required_for.length > 0);
+  const anyRequired = input.challenges.some((c) => c.required_for.length > 0) || (input.paths ?? []).some((p) => p.required_for.length > 0);
   const totals = Object.fromEntries(
     STATES.map((s) => [s, rows.reduce((n, r) => n + r.counts[s], 0)]),
   ) as Record<RequiredState, number>;
@@ -36,7 +37,8 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
             Required progress
           </h1>
           <p className="text-muted-foreground mt-1">
-            Per person: required challenges that are done, awaiting review, not done or overdue.
+            Per person: required challenges and paths that are done, awaiting review, not done or overdue. A path is
+            one item, done when every milestone has a published score.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -70,8 +72,8 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
       {!anyRequired ? (
         <EmptyState
           icon={Flag}
-          title="No required challenges yet"
-          description="Add required_for to a challenge's frontmatter and run content:sync."
+          title="Nothing required yet"
+          description="Set “Required for” on a challenge or path in Admin → Content."
         />
       ) : rows.length === 0 ? (
         <EmptyState icon={Users} title="No one on this track yet" />
@@ -119,10 +121,18 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
                   {items.length > 0 && (
                     <ul className="grid gap-2 border-t px-4 py-3">
                       {items.map((i) => (
-                        <li key={i.slug} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                          <Link href={`/challenges/${i.slug}`} className="min-w-0 hover:underline">
-                            {i.title}
-                          </Link>
+                        <li key={`${i.kind}-${i.slug}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                          <span className="flex min-w-0 items-center gap-2">
+                            {i.kind === "path" && (
+                              <Badge variant="outline" data-testid="required-path-item">
+                                <Route aria-hidden />
+                                Path
+                              </Badge>
+                            )}
+                            <Link href={i.kind === "path" ? `/paths/${i.slug}` : `/challenges/${i.slug}`} className="min-w-0 hover:underline">
+                              {i.title}
+                            </Link>
+                          </span>
                           <span className="text-muted-foreground text-meta flex flex-wrap items-center gap-2">
                             {i.completedAt
                               ? `Completed ${formatDate(i.completedAt, now)}`

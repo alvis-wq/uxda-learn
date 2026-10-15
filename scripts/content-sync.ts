@@ -32,7 +32,7 @@ async function main() {
     db.from("categories").select("slug,title,description,audiences,sort_order,archived,image"),
     db.from("challenges").select("*"),
     db.from("challenge_keys").select("challenge_slug,answer_key,grader_notes"),
-    db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,requires,before_you_start,before_you_submit,status"),
+    db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,requires,before_you_start,before_you_submit,status,required_for,due_at"),
   ]);
   check(cats, "read categories");
   check(chs, "read challenges");
@@ -55,7 +55,11 @@ async function main() {
 
   for (const { row, action } of plan.categoryUpserts) console.log(`  category ${action}: ${row.slug}`);
   for (const w of plan.pathWrites) {
-    console.log(w.action === "create" ? `  path create: ${w.row.slug} (${w.status})` : `  path update: ${w.row.slug} (status kept from the DB)`);
+    console.log(
+      w.action === "create"
+        ? `  path create: ${w.row.slug} (${w.settings.status})`
+        : `  path update: ${w.row.slug} (status, required_for and due_at kept from the DB)`,
+    );
   }
   for (const w of plan.challengeWrites) {
     console.log(
@@ -79,9 +83,9 @@ async function main() {
     console.log("Settings managed in the admin panel (file values ignored, DB wins):");
     for (const d of plan.settingsDrift) console.log(`  ${d.slug}: ${d.field} — file says ${d.file}, DB has ${d.db}`);
   }
-  if (plan.pathStatusDrift.length) {
-    console.log("Path status managed in the admin panel (file value ignored, DB wins):");
-    for (const d of plan.pathStatusDrift) console.log(`  ${d.slug}: status — file says ${d.file}, DB has ${d.db}`);
+  if (plan.pathSettingsDrift.length) {
+    console.log("Path settings managed in the admin panel (file values ignored, DB wins):");
+    for (const d of plan.pathSettingsDrift) console.log(`  ${d.slug}: ${d.field} — file says ${d.file}, DB has ${d.db}`);
   }
   if (dryRun) {
     console.log(`Dry run: ${total} change(s) would be applied.`);
@@ -95,7 +99,7 @@ async function main() {
   // Paths before challenges: a challenge's path_slug references its path.
   for (const w of plan.pathWrites) {
     const row = { ...w.row, updated_at: now };
-    if (w.action === "create") check(await db.from("paths").insert({ ...row, status: w.status }), `create path ${w.row.slug}`);
+    if (w.action === "create") check(await db.from("paths").insert({ ...row, ...w.settings }), `create path ${w.row.slug}`);
     else check(await db.from("paths").update(row).eq("slug", w.row.slug), `update path ${w.row.slug}`);
   }
   for (const w of plan.challengeWrites) {

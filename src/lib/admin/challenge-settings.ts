@@ -142,6 +142,30 @@ export function describeAudit(row: AuditRow): { change: string; who: string } {
 /** A learning path's status change (Admin → Content). Publishing also publishes its draft milestones. */
 export const pathStatusChangeSchema = z.strictObject({ slug, value: challengeStatusSchema });
 
+/** A learning path's required_for or due_at change (Admin → Content → set_path_setting, audited). */
+export const pathSettingChangeSchema = z.discriminatedUnion("field", [
+  z.strictObject({ slug, field: z.literal("required_for"), value: requiredForSchema }),
+  z.strictObject({ slug, field: z.literal("due_at"), value: z.iso.datetime({ offset: true }).nullable() }),
+]);
+export type PathSettingChange = z.infer<typeof pathSettingChangeSchema>;
+
+/** Why a (schema-valid) path setting change isn't allowed, or null: required only for tracks that can see the path. */
+export function pathSettingChangeError(
+  change: PathSettingChange,
+  path: { audiences: Audience[] },
+  category: { audiences: Audience[] } | null,
+): string | null {
+  if (change.field !== "required_for" || change.value.length === 0) return null;
+  if (!category) return "This path's category is missing.";
+  const visible = visibleTracks(category.audiences, path.audiences);
+  const blind = audienceTracks(change.value).filter((t) => !visible.includes(t));
+  if (!blind.length) return null;
+  const who = blind.map((t) => TRACK_LABEL[t]).join(", ");
+  return change.value.includes("all")
+    ? `Can't require it for everyone: ${who} can't see this path. Pick the tracks instead.`
+    : `Can't require it for ${who}: they can't see this path (check the audiences of the path and its category).`;
+}
+
 /**
  * Why a path can't be published, or null: placeholders in the path itself or in any milestone that publishing would
  * publish (its drafts), and at least one milestone that isn't archived.

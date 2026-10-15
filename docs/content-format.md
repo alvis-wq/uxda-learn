@@ -167,6 +167,8 @@ before_you_start: >-               # optional markdown (≤ 600 characters) in a
   You need the **uxda-design-systems** plugin in Claude Code. Ask Alvis if it's missing.
 before_you_submit:                 # optional, up to 8 short lines in a "Before you submit" box on the path page
   - Make every frame 360 px wide.
+required_for: [designer]           # initial value* — optional: all | [track, ...]; omitted = optional
+due_at: 2026-12-01T17:00:00Z       # initial value* — optional deadline (ISO 8601 with offset)
 status: draft                      # initial value* — draft | published | archived
 ```
 
@@ -191,9 +193,17 @@ path: auto-layout-homework
   card shows "2 of 7 · 40/160 pts" and Start / Continue / View.
 - **Rules** (`content:validate`): every listed slug exists, says `path: <this path>`, is listed once and in one path
   only; every challenge with `path:` is listed in that path; a milestone has the same category and audiences as its
-  path; it can't be `acknowledge`, and it has no `required_for` or `due_at` of its own. A path that says
+  path; it can't be `acknowledge`, and it has no `required_for` or `due_at` of its own (its path can have them). A path that says
   `status: published` can't list a milestone that isn't published or contain a `TODO…` placeholder.
-- **Status** works like a challenge's: the file sets it on creation, then Admin → Content owns it (audited).
+- **Required and due date:** a path can be required (`required_for`, only for tracks that can see it) with a
+  `due_at`. It then counts as **one required item** everywhere required challenges count (home "Required: x of y",
+  the filter's "required left", Admin → Required progress and its CSV, `item_type: path`). It's **done** when every
+  milestone has a published score, **awaiting review** when all are submitted and the rest only wait for a review,
+  **overdue** when past due and some milestone has no attempt yet. The path card, the path page and each milestone's
+  page show its Required / due badges (a locked path shows Required next to "Unlocks after …"). Milestones are never
+  required or due on their own. A draft path is never required, not even for a tester.
+- **Status, required and due date** work like a challenge's: the file sets them on creation, then Admin → Content owns
+  them (audited; content:sync never overwrites them and only reports where the file disagrees).
   Publishing a path there also publishes its draft milestones, after checking none has placeholders. Removing the
   file archives the path. `path:`, like `image`, is display-only: moving a challenge into a path never bumps its version.
 - **Testers** see a draft path (and its draft milestones) under "Drafts — testing"; their attempts are test attempts.

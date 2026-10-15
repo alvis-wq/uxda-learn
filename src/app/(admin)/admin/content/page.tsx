@@ -11,7 +11,7 @@ import { getContentOverview } from "@/lib/data/admin-content";
 import { audienceLabel } from "@/lib/tracks";
 import { AuditHistory } from "./audit-history";
 import { FeedbackList } from "./feedback-list";
-import { ChallengeSettingsControls, PathStatusSelect } from "./settings-controls";
+import { ChallengeSettingsControls, PathSettingsControls } from "./settings-controls";
 
 export const metadata: Metadata = { title: "Content · Admin · UXDA Learn" };
 
@@ -58,11 +58,14 @@ export default async function AdminContentPage() {
                       </Button>
                     </CardHeader>
                     <CardContent className="grid gap-4 px-4">
-                      <PathStatusSelect
+                      <PathSettingsControls
                         slug={p.slug}
                         title={p.title}
                         status={p.status}
                         draftMilestones={p.milestones.filter((m) => m.status === "draft").length}
+                        requiredFor={p.required_for}
+                        dueAt={p.due_at}
+                        visibleTracks={p.visibleTracks}
                       />
                       <ol className="text-meta grid list-decimal gap-1 pl-5">
                         {p.milestones.map((m) => (

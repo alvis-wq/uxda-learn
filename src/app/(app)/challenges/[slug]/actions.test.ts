@@ -161,7 +161,7 @@ describe("submitChallenge on a path milestone", () => {
   });
   const path = (over: Row = {}): Row => ({
     slug: "alh", title: "Auto Layout", category_slug: "wf", status: "published", audiences: ["strategist"],
-    sequential: true, milestones: ["m1", "m2", "m3"], requires: [], ...over,
+    sequential: true, milestones: ["m1", "m2", "m3"], requires: [], required_for: [], due_at: null, ...over,
   });
   function setupPath(
     submissions: Row[],

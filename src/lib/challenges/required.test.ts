@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countStates, isOverdue, requiredFirst, requiredState, sortByUrgency } from "./required";
+import { countStates, isOverdue, requiredFirst, requiredState, sortByUrgency, summarizeRequired } from "./required";
 
 const now = new Date("2026-10-09T12:00:00Z");
 const past = "2026-10-01T09:00:00Z";
@@ -67,5 +67,19 @@ describe("ordering", () => {
 
   it("countStates", () => {
     expect(countStates(["done", "overdue", "done", "pending"])).toEqual({ done: 2, pending: 1, missing: 0, overdue: 1 });
+  });
+});
+
+describe("summarizeRequired", () => {
+  it("counts required challenges and paths alike, one item each, and what's left", () => {
+    const items = [
+      { kind: "challenge", required: true, done: true, requiredState: "done" as const },
+      { kind: "challenge", required: true, done: false, requiredState: "overdue" as const },
+      { kind: "path", required: true, done: false, requiredState: "overdue" as const },
+      { kind: "path", required: true, done: true, requiredState: "done" as const },
+      { kind: "path", required: false, done: false, requiredState: "overdue" as const }, // optional: never counted
+    ];
+    expect(summarizeRequired(items)).toEqual({ total: 4, done: 2, overdue: 2, left: 2 });
+    expect(summarizeRequired([])).toEqual({ total: 0, done: 0, overdue: 0, left: 0 });
   });
 });

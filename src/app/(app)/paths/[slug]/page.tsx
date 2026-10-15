@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { getPathPage } from "@/lib/data/learner";
+import { isTestChallenge } from "@/lib/submissions/testing";
+import { isRequiredFor } from "@/lib/tracks";
 import { PathView } from "./path-view";
 
 export const metadata: Metadata = { title: "Path · UXDA Learn" };
@@ -12,6 +14,14 @@ export default async function PathPage({ params }: PageProps<"/paths/[slug]">) {
   const data = await getPathPage(profile, slug);
   if (!data) notFound();
   return (
-    <PathView path={data.path} category={data.category} states={data.states} summary={data.summary} lockedBy={data.lockedBy} />
+    <PathView
+      path={data.path}
+      category={data.category}
+      states={data.states}
+      summary={data.summary}
+      lockedBy={data.lockedBy}
+      // A draft a tester is trying is never required.
+      required={!isTestChallenge(data.path.status) && isRequiredFor(data.path.required_for, profile.track)}
+    />
   );
 }

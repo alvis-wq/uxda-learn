@@ -425,7 +425,9 @@ export type Database = {
           before_you_submit: string[]
           category_slug: string
           created_at: string
+          due_at: string | null
           milestones: string[]
+          required_for: Database["public"]["Enums"]["audience"][]
           requires: string[]
           sequential: boolean
           slug: string
@@ -440,7 +442,9 @@ export type Database = {
           before_you_submit?: string[]
           category_slug: string
           created_at?: string
+          due_at?: string | null
           milestones: string[]
+          required_for?: Database["public"]["Enums"]["audience"][]
           requires?: string[]
           sequential?: boolean
           slug: string
@@ -455,7 +459,9 @@ export type Database = {
           before_you_submit?: string[]
           category_slug?: string
           created_at?: string
+          due_at?: string | null
           milestones?: string[]
+          required_for?: Database["public"]["Enums"]["audience"][]
           requires?: string[]
           sequential?: boolean
           slug?: string
@@ -877,6 +883,16 @@ export type Database = {
       }
       require_admin_actor: { Args: { p_actor: string }; Returns: undefined }
       set_challenge_setting: {
+        Args: {
+          p_actor?: string
+          p_field: string
+          p_slug: string
+          p_source: string
+          p_value: Json
+        }
+        Returns: boolean
+      }
+      set_path_setting: {
         Args: {
           p_actor?: string
           p_field: string

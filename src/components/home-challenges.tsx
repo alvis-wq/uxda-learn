@@ -31,7 +31,7 @@ export function HomeChallenges({
 }: {
   categories: CategoryProgress[];
   overall: { done: number; total: number };
-  /** Required challenges not done, across everything (the "All" option's "required left"). */
+  /** Required challenges and paths not done, across everything (the "All" option's "required left"). */
   requiredLeft: number;
   /** Challenges and paths (a path is one item); never drafts, never a path's milestones. */
   challenges: HomeCard[];

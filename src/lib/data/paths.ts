@@ -16,7 +16,7 @@ import {
   type RequiredPath,
 } from "@/lib/paths/progress";
 import { isTestChallenge } from "@/lib/submissions/testing";
-import type { Track } from "@/lib/tracks";
+import { isRequiredFor, type Track } from "@/lib/tracks";
 
 type Client = SupabaseClient<Database>;
 
@@ -202,5 +202,16 @@ export async function loadMilestonePlace(
   if (!challenge.path_slug) return null;
   const progress = await loadPathProgress(client, challenge.path_slug, viewer);
   if (!progress) return "hidden";
-  return milestonePlace(progress.path, progress.states, challenge.slug, progress.lockedBy) ?? "hidden";
+  const place = milestonePlace(progress.path, progress.states, challenge.slug, progress.lockedBy);
+  if (!place) return "hidden";
+  // A draft path a tester is trying is never required, like a draft challenge.
+  const draft = isTestChallenge(progress.path.status);
+  return {
+    ...place,
+    pathRequirement: {
+      required: !draft && isRequiredFor(progress.path.required_for, viewer.track),
+      dueAt: draft ? null : progress.path.due_at,
+      allSubmitted: progress.summary.allSubmitted,
+    },
+  };
 }

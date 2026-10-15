@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ClipboardCheck, FlaskConical, Info, Lock, Route } from "lucide-react";
 import { DraftBadge } from "@/components/draft-badge";
 import { Markdown } from "@/components/markdown";
+import { RequiredBadges } from "@/components/required-badge";
 import { Roadmap } from "@/components/roadmap";
 import { TimeEstimate } from "@/components/time-estimate";
 import { SECTION_LABEL_CLASS } from "@/components/section-label";
@@ -13,7 +14,8 @@ import { isTestChallenge } from "@/lib/submissions/testing";
 /**
  * A learning path: its progress, then a vertical roadmap of milestones (each an ordinary challenge) joined by a
  * track that fills as they are done, and a short "Before you submit" checklist from the path file. Data-free so it
- * can be rendered on its own. A locked path (`requires`) says which path comes first; every milestone is locked.
+ * can be rendered on its own. A locked path (`requires`) says which path comes first; every milestone is locked. A
+ * required path shows "Required" and its due / overdue badge under the title.
  */
 export function PathView({
   path,
@@ -21,6 +23,7 @@ export function PathView({
   states,
   summary,
   lockedBy = null,
+  required = false,
 }: {
   path: {
     title: string;
@@ -29,11 +32,14 @@ export function PathView({
     sequential: boolean;
     before_you_start: string | null;
     before_you_submit: string[];
+    due_at: string | null;
   };
   category: { slug: string; title: string };
   states: MilestoneState[];
   summary: PathSummary;
   lockedBy?: PathLock | null;
+  /** Required for the learner's track (one required item, done when every milestone has a published score). */
+  required?: boolean;
 }) {
   const testing = isTestChallenge(path.status);
   const percent = summary.total ? Math.round((summary.done / summary.total) * 100) : 0;
@@ -59,6 +65,8 @@ export function PathView({
         </div>
         <p className="text-muted-foreground mt-2 text-lg">{path.summary}</p>
         {summary.time && <TimeEstimate time={summary.time} className="text-muted-foreground text-meta mt-3 flex" />}
+        {/* The due date is met once every milestone is submitted. A draft (tester) has no due date. */}
+        <RequiredBadges required={required} dueAt={testing ? null : path.due_at} done={summary.allSubmitted} className="mt-3" />
       </div>
 
       {testing && (

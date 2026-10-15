@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { categorySchema, challengeFrontmatterSchema, loadAndValidate } from "./index";
+import { categorySchema, challengeFrontmatterSchema, loadAndValidate, pathFileSchema } from "./index";
 import { planSync, countChanges } from "./sync-plan";
 import { contentWarnings, validateContent } from "./validate";
 import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows, toPathRow } from "./transform";
@@ -151,6 +151,32 @@ describe("learning paths", () => {
       before_you_submit: ["Frames are 360 px wide."],
       requires: [], // the default
       status: "draft",
+    });
+  });
+
+  describe("required_for and due_at (starting values, like status)", () => {
+    const withSettings = (required_for: ("all" | "strategist" | "designer")[] | undefined, due_at?: string) => {
+      const { content } = loadAndValidate(path.join(FIXTURES, "paths"));
+      content.paths[0].data.required_for = required_for;
+      content.paths[0].data.due_at = due_at;
+      return validateContent(content).map((e) => e.message);
+    };
+
+    it("accepts tracks that can see the path, and a due date", () => {
+      expect(withSettings(["strategist"], "2026-12-01T17:00:00Z")).toEqual([]);
+      expect(withSettings(undefined)).toEqual([]);
+    });
+
+    it("rejects a track that can't see the path (\"all\" included)", () => {
+      expect(withSettings(["designer"])).toContain("required_for: Designer can't see this path (check audiences of the path and its category)");
+      expect(withSettings(["all"])).toContain("required_for: Designer can't see this path (check audiences of the path and its category)");
+    });
+
+    it("parses them from the file", () => {
+      const base = { slug: "p", title: "P", category: "c", summary: "S", milestones: ["a", "b"] };
+      expect(pathFileSchema.safeParse({ ...base, required_for: ["designer"], due_at: "2026-12-01T17:00:00Z" }).success).toBe(true);
+      expect(pathFileSchema.safeParse({ ...base, due_at: "next week" }).success).toBe(false);
+      expect(pathFileSchema.safeParse({ ...base, required_for: ["all", "designer"] }).success).toBe(false);
     });
   });
 
@@ -608,12 +634,19 @@ describe("planSync for learning paths", () => {
       due_at: settings.due_at,
     })),
     keys: disk.challenges.map(({ key }) => ({ ...key })),
-    paths: disk.paths.map(({ row, status }) => ({ ...row, status: status as string })),
+    paths: disk.paths.map(({ row, settings }) => ({
+      ...row,
+      status: settings.status as string,
+      required_for: [...settings.required_for] as string[],
+      due_at: settings.due_at,
+    })),
   });
 
   it("creates the path with the file's status and its milestones with path_slug", () => {
     const plan = planSync(disk, { categories: [], challenges: [], keys: [], paths: [] });
-    expect(plan.pathWrites).toEqual([{ action: "create", row: disk.paths[0].row, status: "draft" }]);
+    expect(plan.pathWrites).toEqual([
+      { action: "create", row: disk.paths[0].row, settings: { status: "draft", required_for: [], due_at: null } },
+    ]);
     expect(disk.paths[0].row).toMatchObject({ audiences: ["strategist"], milestones: ["step-one", "step-two"], sequential: true });
     expect(plan.challengeWrites.map((w) => w.row.path_slug)).toEqual(["two-steps", "two-steps"]);
   });
@@ -628,7 +661,34 @@ describe("planSync for learning paths", () => {
     const plan = planSync(disk, db);
     expect(plan.pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
     expect(plan.pathWrites[0]).not.toHaveProperty("status");
-    expect(plan.pathStatusDrift).toEqual([{ slug: "two-steps", file: "draft", db: "published" }]);
+    expect(plan.pathSettingsDrift).toEqual([{ slug: "two-steps", field: "status", file: "draft", db: "published" }]);
+  });
+
+  it("creates a path with the file's required_for and due_at, then never writes them (reported as drift)", () => {
+    const withSettings = {
+      ...disk,
+      paths: disk.paths.map((p) => ({ ...p, settings: { ...p.settings, required_for: ["strategist" as const], due_at: "2026-12-01T17:00:00.000Z" } })),
+    };
+    const created = planSync(withSettings, { categories: [], challenges: [], keys: [], paths: [] });
+    expect(created.pathWrites[0]).toMatchObject({ action: "create", settings: { required_for: ["strategist"], due_at: "2026-12-01T17:00:00.000Z" } });
+
+    const db = synced(); // the panel made it optional with no due date
+    const plan = planSync(withSettings, db);
+    expect(plan.pathWrites).toEqual([]);
+    expect(countChanges(plan)).toBe(0);
+    expect(plan.pathSettingsDrift).toEqual([
+      { slug: "two-steps", field: "required_for", file: "[strategist]", db: "optional" },
+      { slug: "two-steps", field: "due_at", file: "2026-12-01T17:00:00.000Z", db: "none" },
+    ]);
+  });
+
+  it("an older database without the path settings columns reads as optional with no due date", () => {
+    const db = synced();
+    for (const p of db.paths) {
+      delete (p as { required_for?: unknown }).required_for;
+      delete (p as { due_at?: unknown }).due_at;
+    }
+    expect(planSync(disk, db).pathSettingsDrift).toEqual([]);
   });
 
   it("writes a changed path_slug without bumping the version, and keeps it out of the content hash", () => {
