@@ -893,10 +893,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      set_user_tester: {
-        Args: { p_actor: string; p_user: string; p_value: boolean }
-        Returns: boolean
-      }
       set_staff_title: {
         Args: {
           p_actor?: string
@@ -904,6 +900,10 @@ export type Database = {
           p_source: string
           p_title: string
         }
+        Returns: boolean
+      }
+      set_user_tester: {
+        Args: { p_actor: string; p_user: string; p_value: boolean }
         Returns: boolean
       }
       set_user_track: {
