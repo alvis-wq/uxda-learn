@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionLabel } from "@/components/section-label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
+import { getJobTitle } from "@/lib/data/staff-titles";
 import { createClient } from "@/lib/supabase/server";
 import { inProgressChallenges } from "@/lib/submissions/in-progress";
 import { groupAttemptHistory, summarizeScores } from "@/lib/submissions/rules";
@@ -19,6 +20,7 @@ export const metadata: Metadata = { title: "Profile · UXDA Learn" };
 export default async function ProfilePage() {
   const profile = await requireOnboardedProfile();
   const supabase = await createClient();
+  const jobTitle = await getJobTitle(profile.email);
   const { data: subs, error } = await supabase
     .from("submissions")
     .select("id,challenge_slug,attempt,status,final_score,max_score,feedback,submitted_at,published_at")
@@ -78,6 +80,7 @@ export default async function ProfilePage() {
     <main className="mx-auto grid w-full max-w-5xl gap-8 px-4 py-10">
       <PageHeader
         title={profile.full_name ?? profile.email}
+        subtitle={jobTitle}
         description={`${profile.email}${profile.track ? ` · ${TRACK_LABEL[profile.track]}` : ""}`}
       />
 

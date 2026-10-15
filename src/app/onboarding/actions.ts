@@ -5,11 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TRACK_VALUES } from "@/lib/tracks";
+import { SELECTABLE_TRACK_VALUES } from "@/lib/tracks";
 
 export type OnboardingState = { error?: string };
 
-const schema = z.object({ track: z.enum(TRACK_VALUES) });
+// Only the tracks on offer: a hidden track (kept in the enum for old data) can't be chosen by posting it.
+const schema = z.object({ track: z.enum(SELECTABLE_TRACK_VALUES) });
 
 /** Set the signed-in user's track. Only allowed while it's still empty; admins change it later. */
 export async function chooseTrack(_prev: OnboardingState, formData: FormData): Promise<OnboardingState> {

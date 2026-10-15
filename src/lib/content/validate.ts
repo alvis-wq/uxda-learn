@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type { ContentError, LoadedContent } from "./load";
-import { audienceTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
+import { audienceTracks, onlyHiddenTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
 import { briefImageErrors } from "./images";
 import { challengeParts, describePlaceholders, findPlaceholders } from "./placeholders";
 import { needsReview } from "./schema";
@@ -256,4 +256,30 @@ function validatePaths(
     if (c.required_for) err(file, "required_for: a path milestone can't be required on its own");
     if (c.due_at) err(file, "due_at: a path milestone can't have its own due date");
   }
+}
+
+/**
+ * Not errors, but worth a look: content aimed only at tracks that are no longer offered (account manager, marketing
+ * assistant). Nobody can be put on those tracks, so nobody new would see it or have it required.
+ */
+export function contentWarnings(content: LoadedContent): ContentError[] {
+  const warnings: ContentError[] = [];
+  const hiddenOnly = (list: readonly Audience[] | undefined) =>
+    list !== undefined && onlyHiddenTracks(list) ? list.map((a) => TRACK_LABEL[a as Track] ?? a).join(", ") : undefined;
+
+  for (const c of content.categories) {
+    const names = hiddenOnly(c.audiences);
+    if (names) warnings.push({ file: "categories.yaml", message: `category "${c.slug}" is only for ${names}, which nobody can choose any more` });
+  }
+  for (const { file, data: c } of content.challenges) {
+    const names = hiddenOnly(c.audiences);
+    if (names) warnings.push({ file, message: `audiences: only ${names}, which nobody can choose any more` });
+    const required = hiddenOnly(c.required_for);
+    if (required) warnings.push({ file, message: `required_for: only ${required}, which nobody can choose any more` });
+  }
+  for (const { file, data: p } of content.paths) {
+    const names = hiddenOnly(p.audiences);
+    if (names) warnings.push({ file, message: `audiences: only ${names}, which nobody can choose any more` });
+  }
+  return warnings;
 }

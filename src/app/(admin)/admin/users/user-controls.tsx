@@ -4,7 +4,7 @@ import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { TRACKS } from "@/lib/tracks";
+import { SELECTABLE_TRACKS, TRACK_LABEL, isSelectableTrack, isTrack } from "@/lib/tracks";
 import { setUserAdmin, setUserTester, setUserTrack } from "../actions";
 
 export function TrackSelect({ userId, name, track }: { userId: string; name: string; track: string | null }) {
@@ -27,11 +27,17 @@ export function TrackSelect({ userId, name, track }: { userId: string; name: str
         <SelectValue placeholder="Not chosen" />
       </SelectTrigger>
       <SelectContent>
-        {TRACKS.map((t) => (
+        {SELECTABLE_TRACKS.map((t) => (
           <SelectItem key={t.value} value={t.value}>
             {t.label}
           </SelectItem>
         ))}
+        {/* A hidden track still shows its name, but can't be picked again. */}
+        {isTrack(track) && !isSelectableTrack(track) && (
+          <SelectItem value={track} disabled>
+            {TRACK_LABEL[track]}
+          </SelectItem>
+        )}
       </SelectContent>
     </Select>
   );

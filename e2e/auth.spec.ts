@@ -23,8 +23,14 @@ test.describe("auth", () => {
 
     await expect(page).toHaveURL(/\/onboarding$/);
     await expect(page.getByRole("heading", { name: /Welcome, Test/ })).toBeVisible();
-    for (const track of ["Strategist", "Designer", "Motion Designer", "Account Manager", "Marketing Assistant", "Management"]) {
+    // Only the four tracks on offer; Account Manager and Marketing Assistant are hidden.
+    await expect(page.getByRole("radio")).toHaveCount(4);
+    for (const track of ["Strategist", "Designer", "Motion Designer", "Management"]) {
       await expect(page.getByRole("radio", { name: new RegExp(`^${track}\\b`) })).toHaveCount(1);
+    }
+    await expect(page.getByRole("radio", { name: /Founders, executives and assistants/ })).toHaveCount(1);
+    for (const hidden of ["Account Manager", "Marketing Assistant"]) {
+      await expect(page.getByRole("radio", { name: new RegExp(hidden) })).toHaveCount(0);
     }
     await page.getByText("Strategist", { exact: true }).click();
     await page.getByRole("button", { name: "Continue" }).click();

@@ -97,3 +97,21 @@ export async function switchTheme(page: Page, scheme: "light" | "dark") {
     document.documentElement.style.colorScheme = s;
   }, scheme);
 }
+
+/** A not-signed-in email for the "Not signed in yet" list on Admin → Users. */
+export const PENDING_TITLE_EMAIL = "e2e-not-signed-in@example.com";
+
+/** Set (or with "" remove) a job title as the seed script would; audited in staff_audit. */
+export async function setTitle(email: string, title: string) {
+  const { error } = await adminDb().rpc("set_staff_title", { p_email: email, p_title: title, p_source: "seed" });
+  if (error) throw new Error(`setTitle(${email}): ${error.message}`);
+}
+
+/** Remove the test users' and the pending email's titles and their audit rows (test-only state). */
+export async function clearTitles() {
+  const emails = [...Object.values(TEST_EMAILS), PENDING_TITLE_EMAIL, PENDING_TITLE_EMAIL.replace("e2e-", "e2e-fixed-")].map(
+    (e) => e.toLowerCase(),
+  );
+  await adminDb().from("staff_titles").delete().in("email", emails);
+  await adminDb().from("staff_audit").delete().in("email", emails).neq("field", "track");
+}

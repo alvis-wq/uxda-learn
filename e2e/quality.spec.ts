@@ -2,12 +2,28 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { cleanTestUserData } from "./fixtures";
-import { loginAs, stepButtons, chooseTheme, type Role } from "./helpers";
+import {
+  chooseTheme,
+  clearTitles,
+  loginAs,
+  PENDING_TITLE_EMAIL,
+  setTitle,
+  stepButtons,
+  TEST_EMAILS,
+  type Role,
+} from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
 test.describe.configure({ mode: "serial" });
 test.beforeAll(cleanTestUserData);
+// A job title under the strategist's name (home, profile) and a row in "Not signed in yet" (Admin → Users).
+test.beforeAll(async () => {
+  await clearTitles();
+  await setTitle(TEST_EMAILS.strategist, "Senior UX Strategist");
+  await setTitle(PENDING_TITLE_EMAIL, "UX/UI Designer");
+});
+test.afterAll(clearTitles);
 
 const LEARNER_PAGES = [
   "/",

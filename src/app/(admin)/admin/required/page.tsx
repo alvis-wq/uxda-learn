@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { buildRequiredProgress } from "@/lib/admin/required-progress";
 import { REQUIRED_STATE_LABEL, type RequiredState } from "@/lib/challenges/required";
 import { loadProgressInput } from "@/lib/data/admin-progress";
-import { isTrack, TRACK_LABEL, TRACKS } from "@/lib/tracks";
+import { isTrack, SELECTABLE_TRACKS, TRACK_LABEL } from "@/lib/tracks";
 import { cn, formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Required progress · Admin · UXDA Learn" };
@@ -26,7 +26,7 @@ export default async function AdminRequiredPage({ searchParams }: PageProps<"/ad
   ) as Record<RequiredState, number>;
   const csvHref = `/admin/export/required.csv${track ? `?track=${track}` : ""}`;
 
-  const filters = [{ value: undefined, label: "All tracks" }, ...TRACKS.map((t) => ({ value: t.value, label: t.label }))];
+  const filters = [{ value: undefined, label: "All tracks" }, ...SELECTABLE_TRACKS.map((t) => ({ value: t.value, label: t.label }))];
 
   return (
     <section aria-labelledby="required-heading" className="grid gap-6">

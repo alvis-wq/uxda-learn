@@ -19,6 +19,9 @@
  *  9. Paths: drafts only for testers whose track can see them; users can't write paths; set_path_status audits and can
  *     publish the milestones with the path; import_submission needs an admin actor and a published path, numbers the
  *     attempt, refuses past full points and is audited; undo_import removes it; users can't call either.
+ * 10. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
+ *     rename_staff_email and set_user_track need an admin actor (seed excepted), are audited in staff_audit (none for a
+ *     no-op), and users can't call them or read the audit.
  */
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -45,10 +48,15 @@ const EXPECTED_TABLES = [
   "paths",
   "path_settings_audit",
   "submission_import_audit",
+  "staff_titles",
+  "staff_audit",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
 const SENTINEL_PATH = "zz-check-db-path";
+
+const SENTINEL_TITLE_EMAIL = `zz-check-db-${randomBytes(4).toString("hex")}@example.com`;
+const SENTINEL_TITLE_RENAMED = SENTINEL_TITLE_EMAIL.replace("zz-check-db-", "zz-check-db-renamed-");
 
 let failures = 0;
 function pass(msg: string) {
@@ -85,7 +93,9 @@ type PrivateTable =
   | "profile_flag_audit"
   | "challenge_feedback"
   | "path_settings_audit"
-  | "submission_import_audit";
+  | "submission_import_audit"
+  | "staff_titles"
+  | "staff_audit";
 
 async function expectNoRows(client: Client, table: PrivateTable, who: string) {
   const { data, error } = await client.from(table).select("*");
@@ -430,6 +440,71 @@ async function main() {
       fail(`undo_import: ${undone.error?.message ?? JSON.stringify({ gone, importAudit })}`);
     }
 
+    console.log("Staff titles & tracks");
+    await admin.from("profiles").update({ is_admin: false, track: "designer" }).eq("id", userId);
+    const seeded = await admin.rpc("set_staff_title", { p_email: SENTINEL_TITLE_EMAIL, p_title: "Sentinel", p_source: "seed" });
+    const seededAgain = await admin.rpc("set_staff_title", { p_email: SENTINEL_TITLE_EMAIL, p_title: "Sentinel", p_source: "seed" });
+    const { data: titleAudit } = await admin.from("staff_audit").select("field,old_value,new_value,source").eq("email", SENTINEL_TITLE_EMAIL);
+    if (seeded.data === true && seededAgain.data === false && titleAudit?.length === 1 && titleAudit[0].old_value === null &&
+        titleAudit[0].new_value === "Sentinel" && titleAudit[0].source === "seed") {
+      pass("set_staff_title (seed) writes the title and one audit row (none for a no-op)");
+    } else {
+      fail(`set_staff_title: ${seeded.error?.message ?? JSON.stringify({ seededAgain: seededAgain.data, titleAudit })}`);
+    }
+    await expectNoRows(anonClient(), "staff_titles", "anon");
+    const { data: titleSeen } = await authed.from("staff_titles").select("job_title").eq("email", SENTINEL_TITLE_EMAIL);
+    if (titleSeen?.length === 1) pass("a signed-in user can read job titles");
+    else fail("a signed-in user cannot read job titles");
+    const { error: titleWriteErr } = await authed.from("staff_titles").update({ job_title: "Hacked" }).eq("email", SENTINEL_TITLE_EMAIL);
+    const { error: titleInsertErr } = await authed.from("staff_titles").insert({ email: email.toLowerCase(), job_title: "Hacked" });
+    const { data: titleAfter } = await admin.from("staff_titles").select("job_title").eq("email", SENTINEL_TITLE_EMAIL).single();
+    if (titleWriteErr && titleInsertErr && titleAfter?.job_title === "Sentinel") pass("a user cannot write job titles directly");
+    else fail("a user COULD write job titles");
+    const { error: userTitleRpc } = await authed.rpc("set_staff_title", {
+      p_email: SENTINEL_TITLE_EMAIL, p_title: "Hacked", p_source: "admin", p_actor: userId,
+    });
+    if (userTitleRpc) pass(`user cannot call set_staff_title (${userTitleRpc.code ?? userTitleRpc.message})`);
+    else fail("user COULD call set_staff_title");
+    const titleNotAdmin = await admin.rpc("set_staff_title", {
+      p_email: SENTINEL_TITLE_EMAIL, p_title: "Hacked", p_source: "admin", p_actor: userId,
+    });
+    const renameNotAdmin = await admin.rpc("rename_staff_email", { p_old: SENTINEL_TITLE_EMAIL, p_new: SENTINEL_TITLE_RENAMED, p_actor: userId });
+    const trackNotAdmin = await admin.rpc("set_user_track", { p_user: userId, p_track: "management", p_actor: userId });
+    if (titleNotAdmin.error && renameNotAdmin.error && trackNotAdmin.error) {
+      pass("set_staff_title, rename_staff_email and set_user_track refuse an actor who is not an admin");
+    } else {
+      fail("a staff function ACCEPTED a non-admin actor");
+    }
+    const { error: userTrackRpc } = await authed.rpc("set_user_track", { p_user: userId, p_track: "management", p_actor: userId });
+    if (userTrackRpc) pass(`user cannot call set_user_track (${userTrackRpc.code ?? userTrackRpc.message})`);
+    else fail("user COULD call set_user_track");
+    await expectNoRows(authed, "staff_audit", "authenticated user");
+
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const renamed = await admin.rpc("rename_staff_email", { p_old: SENTINEL_TITLE_EMAIL, p_new: SENTINEL_TITLE_RENAMED, p_actor: userId });
+    const { data: renamedRow } = await admin.from("staff_titles").select("job_title").eq("email", SENTINEL_TITLE_RENAMED);
+    const { data: renameAudit } = await admin.from("staff_audit").select("old_value,changed_by").eq("email", SENTINEL_TITLE_RENAMED).eq("field", "email");
+    if (renamed.data === true && renamedRow?.length === 1 && renameAudit?.length === 1 && renameAudit[0].old_value === SENTINEL_TITLE_EMAIL &&
+        renameAudit[0].changed_by === userId) {
+      pass("rename_staff_email moves the title to the fixed email and is audited");
+    } else {
+      fail(`rename_staff_email: ${renamed.error?.message ?? JSON.stringify({ renamedRow, renameAudit })}`);
+    }
+    const renameSignedIn = await admin.rpc("rename_staff_email", { p_old: email.toLowerCase(), p_new: SENTINEL_TITLE_EMAIL, p_actor: userId });
+    if (renameSignedIn.error) pass("rename_staff_email refuses the email of someone who has signed in");
+    else fail("rename_staff_email RENAMED a signed-in person's email");
+    const tracked = await admin.rpc("set_user_track", { p_user: userId, p_track: "management", p_actor: userId });
+    const trackedAgain = await admin.rpc("set_user_track", { p_user: userId, p_track: "management", p_actor: userId });
+    const { data: trackAudit } = await admin.from("staff_audit").select("old_value,new_value,changed_by").eq("field", "track").eq("email", email.toLowerCase());
+    const { data: onTrack } = await admin.from("profiles").select("track").eq("id", userId).single();
+    if (tracked.data === true && trackedAgain.data === false && onTrack?.track === "management" && trackAudit?.length === 1 &&
+        trackAudit[0].old_value === "designer" && trackAudit[0].new_value === "management" && trackAudit[0].changed_by === userId) {
+      pass("set_user_track changes the track and writes one audit row (none for a no-op)");
+    } else {
+      fail(`set_user_track: ${tracked.error?.message ?? JSON.stringify({ trackedAgain: trackedAgain.data, onTrack, trackAudit })}`);
+    }
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -440,6 +515,8 @@ async function main() {
       if (outsider.user) await admin.auth.admin.deleteUser(outsider.user.id);
     }
   } finally {
+    await admin.from("staff_titles").delete().in("email", [SENTINEL_TITLE_EMAIL, SENTINEL_TITLE_RENAMED]);
+    await admin.from("staff_audit").delete().in("email", [SENTINEL_TITLE_EMAIL, SENTINEL_TITLE_RENAMED, email.toLowerCase()]);
     await admin.from("submission_import_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     await admin.from("challenges").update({ path_slug: null }).eq("slug", SENTINEL_CHALLENGE);
     await admin.from("paths").delete().eq("slug", SENTINEL_PATH); // its audit rows cascade

@@ -6,10 +6,15 @@ import {
   groupById,
   groupForTrack,
   isRequiredFor,
+  isSelectableTrack,
   isTrack,
   isVisibleToTrack,
   LEADERBOARD_GROUPS,
+  onlyHiddenTracks,
+  SELECTABLE_TRACK_VALUES,
+  SELECTABLE_TRACKS,
   TRACK_LABEL,
+  TRACKS,
   TRACK_VALUES,
   visibleTracks,
 } from "./tracks";
@@ -32,6 +37,22 @@ describe("tracks", () => {
     expect(audienceLabel(["account_manager", "assistant"])).toBe("Account Manager, Marketing Assistant");
   });
 
+  it("offer only Strategist, Designer, Motion Designer and Management", () => {
+    expect(SELECTABLE_TRACKS.map((t) => t.label)).toEqual(["Strategist", "Designer", "Motion Designer", "Management"]);
+    expect(SELECTABLE_TRACK_VALUES).toEqual(["strategist", "designer", "motion_designer", "management"]);
+    expect(isSelectableTrack("account_manager")).toBe(false);
+    expect(isSelectableTrack("assistant")).toBe(false);
+    expect(isSelectableTrack("management")).toBe(true);
+    expect(isSelectableTrack("all")).toBe(false);
+  });
+
+  it("describe Management as founders, executives and assistants", () => {
+    expect(TRACKS.find((t) => t.value === "management")).toMatchObject({
+      label: "Management",
+      description: "Founders, executives and assistants.",
+    });
+  });
+
   it("isTrack only accepts known tracks", () => {
     expect(isTrack("motion_designer")).toBe(true);
     expect(isTrack("all")).toBe(false);
@@ -41,27 +62,43 @@ describe("tracks", () => {
 });
 
 describe("leaderboard groups", () => {
-  it("put every track in exactly one group", () => {
+  it("put every selectable track in exactly one group, and hidden tracks in none", () => {
     for (const t of TRACK_VALUES) {
-      expect(LEADERBOARD_GROUPS.filter((g) => (g.tracks as readonly string[]).includes(t)), t).toHaveLength(1);
+      expect(LEADERBOARD_GROUPS.filter((g) => (g.tracks as readonly string[]).includes(t)), t).toHaveLength(
+        isSelectableTrack(t) ? 1 : 0,
+      );
     }
   });
 
-  it("are Strategists / Designers (+ motion) / Team (AM + assistant + management)", () => {
+  it("are Strategists / Designers (+ motion) / Team (management)", () => {
     expect(LEADERBOARD_GROUPS.map((g) => [g.id, g.label, [...g.tracks]])).toEqual([
       ["strategists", "Strategists", ["strategist"]],
       ["designers", "Designers", ["designer", "motion_designer"]],
-      ["team", "Team", ["account_manager", "assistant", "management"]],
+      ["team", "Team", ["management"]],
     ]);
   });
 
   it("look up by track and by id", () => {
     expect(groupForTrack("motion_designer")?.id).toBe("designers");
-    expect(groupForTrack("assistant")?.id).toBe("team");
+    expect(groupForTrack("assistant")).toBeUndefined();
     expect(groupForTrack("management")?.id).toBe("team");
     expect(groupForTrack(null)).toBeUndefined();
     expect(groupById("team")?.label).toBe("Team");
     expect(groupById("nope")).toBeUndefined();
+  });
+});
+
+describe("onlyHiddenTracks", () => {
+  it("flags lists that name only tracks nobody can choose", () => {
+    expect(onlyHiddenTracks(["assistant"])).toBe(true);
+    expect(onlyHiddenTracks(["account_manager", "assistant"])).toBe(true);
+  });
+
+  it("is fine with all, a selectable track, or an empty list", () => {
+    expect(onlyHiddenTracks(["all"])).toBe(false);
+    expect(onlyHiddenTracks(["assistant", "management"])).toBe(false);
+    expect(onlyHiddenTracks(["designer"])).toBe(false);
+    expect(onlyHiddenTracks([])).toBe(false);
   });
 });
 

@@ -323,3 +323,9 @@
 - The bypass is per milestone, on draft milestones only (the ones a tester's attempts are tests on): a published milestone inside a draft path still follows the locks, so a tester can never skip ahead for real points.
 - A bypassed milestone keeps the "locked" status (what learners see) with a separate `testerOverride` flag, so testers can still check the lock wording, and every server gate reads the same `unlocked` value.
 - Track `assistant` shown as "Marketing Assistant" — label only (`src/lib/tracks.ts`); the enum value stays `assistant`, so no migration and existing profiles, content audiences and `required_for` are unchanged.
+- Job titles keyed by lowercase email in their own table (`staff_titles`), not a profile column — titles can be set before someone's first sign-in and a wrong seeded email can be fixed without touching profiles.
+- Title writes go through SQL functions (`set_staff_title`, `rename_staff_email`) that write the `staff_audit` row in the same transaction, like `set_user_tester` — not a trigger, so each row knows its source (admin / seed) and actor.
+- One `staff_audit` table (text old/new) for titles, title emails and track changes, including the migration that moved account managers and assistants to management (`source = 'migration'`, `note` names it).
+- Account manager and Marketing Assistant are hidden (`selectable: false`), not removed: the enum values stay, so old content, history and audit rows keep their labels and no enum migration is needed. The server refuses them on onboarding and Admin → Users; leaderboard groups only hold selectable tracks.
+- A seeded email can only be renamed while nobody has signed in with it (checked in SQL): a signed-in person's email comes from Google.
+- `content:validate` only warns (never fails) on content aimed only at hidden tracks: it's harmless, just never seen.

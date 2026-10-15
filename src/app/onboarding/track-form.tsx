@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { AlertCircle, Briefcase, Clapperboard, ClipboardList, Compass, Crown, PenTool, type LucideIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SubmitButton } from "@/components/submit-button";
-import { TRACKS, type Track } from "@/lib/tracks";
+import { SELECTABLE_TRACKS, type Track } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { chooseTrack } from "./actions";
 
@@ -23,7 +23,7 @@ export function TrackForm() {
     <form action={action} className="grid gap-4">
       <fieldset className="grid gap-3 sm:grid-cols-2">
         <legend className="sr-only">Your track</legend>
-        {TRACKS.map(({ value, label, description }) => {
+        {SELECTABLE_TRACKS.map(({ value, label, description }) => {
           const Icon = ICONS[value];
           return (
             <label
