@@ -48,14 +48,16 @@ test.describe("required challenges and acknowledgements", () => {
 
     await page.goto("/");
     await expect(page.getByTestId("required-summary")).toContainText("Required: 1 of 1 done");
-    // Completed challenges go last, with their status.
+    // Completed items leave the home list (the count above still has it); the profile lists it as read & confirmed.
     const cards = page.getByTestId("challenges-section").getByTestId("challenge-card");
-    await expect(cards.last()).toContainText("[E2E] Read the rules");
-    await expect(cards.last()).toContainText("Acknowledged");
+    await expect(cards.filter({ hasText: "[E2E] Read the rules" })).toHaveCount(0);
 
     await page.goto("/profile");
     await expect(page.getByTestId("stat-total")).toHaveText("0");
     await expect(page.getByTestId("stat-completed")).toHaveText("0");
+    const confirmed = page.getByTestId("confirmed-item").filter({ hasText: "[E2E] Read the rules" });
+    await expect(confirmed).toContainText("Confirmed");
+    await expect(confirmed.getByRole("link", { name: /View result/ })).toHaveAttribute("href", "/challenges/e2e-ack");
   });
 
   test("admin sees who has and hasn't acknowledged, and required progress per track", async ({ page }) => {

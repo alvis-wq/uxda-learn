@@ -33,7 +33,9 @@ describe("home filter (source rules)", () => {
 
   it("the drafts option exists only for testers, and drafts are never grouped under All", () => {
     expect(list).toContain("...(tester ? [{ key: DRAFTS_FILTER");
-    expect(list).toContain("groupByCategory(challenges, categories)"); // `challenges` never holds drafts (learner.ts)
+    // `challenges` never holds drafts (learner.ts); All groups `open`, which is `challenges` minus the completed ones.
+    expect(list).toContain("const open = challenges.filter(");
+    expect(list).toContain("groupByCategory(open, categories)");
     expect(list).not.toMatch(/groupByCategory\([^)]*drafts/);
   });
 
@@ -49,4 +51,16 @@ describe("home filter (source rules)", () => {
     expect(card).toContain("bg-muted");
     expect(card).toContain("<DraftBadge />");
   });
+
+  it("leaves completed items off the list but not out of the counts, and says so when nothing is left", () => {
+    expect(list).toContain("challenges.filter((c) => !isCompletedOnHome(c))");
+    expect(list).toContain("groupByCategory(open, categories)");
+    expect(list).toContain("filterByCategory(open, selected)");
+    // The menu's done/total come from the categories, untouched.
+    expect(list).toContain("completed: c.completed, total: c.total");
+    expect(list).toContain('title="All done here."');
+    expect(list).toContain('description="Your completed challenges are in your profile."');
+    expect(list).toMatch(/href="\/profile[^"]*"/);
+  });
 });
+

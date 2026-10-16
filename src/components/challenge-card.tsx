@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ARTWORK_SIZE, CardArtwork } from "@/components/card-artwork";
+import { ARTWORK_SIZE, ARTWORK_TEXT_WIDTH, CardArtwork } from "@/components/card-artwork";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
@@ -23,8 +23,8 @@ const GRID_SPAN: Record<CardSpan, string> = {
  * subheading, muted body, a violet CTA pill and a compact meta row. The whole card is one link (the heading's), so the
  * accessible name stays the challenge title; the CTA is decoration for that link.
  *
- * Optional artwork is a true background in the bottom-right corner (CardArtwork): it never changes the layout, which
- * is the same with or without it, and fades towards the top-left so text crossing it stays readable.
+ * Optional artwork is a true background in the bottom-right corner (CardArtwork): it never changes the layout, except
+ * that on a full-width card the text block keeps to 60–70% so it never runs over it (ARTWORK_TEXT_WIDTH).
  */
 export function ChallengeCard({
   challenge: ch,
@@ -65,7 +65,7 @@ export function ChallengeCard({
       {ch.imageUrl && <CardArtwork src={ch.imageUrl} span={span} tuning={ch.imageTuning} />}
       <div className="grid min-w-0 flex-1 px-[var(--pad)] pt-[var(--pad)]">
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="grid gap-2">
+          <div className={cn("grid gap-2", hasImage && ARTWORK_TEXT_WIDTH[span])}>
             <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">
               <Link
                 href={`/challenges/${ch.slug}`}
@@ -76,7 +76,7 @@ export function ChallengeCard({
             </Heading>
             {subheading && <p className="text-brand-text line-clamp-2 font-medium">{subheading}</p>}
           </div>
-          {body && <p className="text-muted-foreground line-clamp-3">{body}</p>}
+          {body && <p className={cn("text-muted-foreground line-clamp-3", hasImage && ARTWORK_TEXT_WIDTH[span])}>{body}</p>}
 
           <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
             <span
