@@ -3,6 +3,7 @@ title: Build a screen with the template
 category: design-systems
 audiences: [designer]
 summary: Make your own Sandbox space and build a screen that works in light and dark mode.
+image: build-with-the-template.png
 sequential: true
 milestones:
   - bwt-1-sandbox-folder

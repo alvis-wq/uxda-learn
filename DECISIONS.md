@@ -341,3 +341,6 @@
 - Required progress CSV: path rows reuse the challenge_slug / challenge_title columns, plus an `item_type` column (challenge | path) added last so existing imports keep working.
 - A milestone's page shows its path's Required / due badges (inherited, display only); a milestone still never counts on its own.
 - A draft path is never required, not even for a tester trying it (like a draft challenge).
+- Card artwork goes through next/image (`CardArtwork`, shared by challenge and path cards) with per-span `sizes`, so an 800 px PNG is sent at 256–640 px as WebP; default lazy loading covers "below the fold" (cards sit under the hero, so none is the LCP).
+- `images.localPatterns` limits the optimiser to `/challenges/**` without a query string: `/_next/image` is outside the auth proxy, so it can't be used to resize anything else.
+- A path's card image falls back to its category's image, like a challenge's; the path card keeps all its text in the left column and the artwork bleeds off the bottom-right corner (no meta strip painted over it, unlike a challenge card).

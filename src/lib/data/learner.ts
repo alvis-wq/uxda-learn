@@ -271,6 +271,8 @@ export type CardPath = {
   required: boolean;
   requiredState: RequiredState;
   due_at: string | null;
+  /** Public URL of the card artwork (the path's own, else its category's), or null. */
+  imageUrl: string | null;
 };
 
 /** What the home page and a category page list. */
@@ -288,12 +290,13 @@ type PathSource = {
   requires: string[];
   required_for: Challenge["required_for"];
   due_at: string | null;
+  image: string | null;
 };
 
 /** A path's card (not locked yet, see `withLock`) and its milestone states, or null when the learner sees none of its milestones. */
 function pathCardOf(
   path: PathSource,
-  category: { title: string; archived: boolean; audiences: Challenge["audiences"] },
+  category: { title: string; archived: boolean; audiences: Challenge["audiences"]; image: string | null },
   rows: readonly (MilestoneRow & { slug: string })[],
   viewer: { track: Track | null; is_tester: boolean },
   subs: readonly (SubmissionLite & { is_test: boolean })[],
@@ -333,6 +336,7 @@ function pathCardOf(
     required: !isDraft && isRequiredFor(path.required_for, viewer.track),
     requiredState: requiredPathState(states, isDraft ? null : path.due_at, now),
     due_at: isDraft ? null : path.due_at,
+    imageUrl: resolveCardImage(path.image, category.image),
   };
   return { card, states };
 }
@@ -406,7 +410,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     group ? supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] }) : Promise.resolve(null),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at,image")
       .in("status", listedStatuses(profile)),
     profile.is_tester ? myTestAttempts(profile.id) : Promise.resolve([]),
   ]);
@@ -523,7 +527,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     myDrafts(profile.id),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at,image")
       .eq("category_slug", slug)
       .eq("status", "published") // like challenges: draft paths only under the tester's filter on home
       .order("title"),

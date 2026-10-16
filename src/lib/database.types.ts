@@ -426,6 +426,7 @@ export type Database = {
           category_slug: string
           created_at: string
           due_at: string | null
+          image: string | null
           milestones: string[]
           required_for: Database["public"]["Enums"]["audience"][]
           requires: string[]
@@ -443,6 +444,7 @@ export type Database = {
           category_slug: string
           created_at?: string
           due_at?: string | null
+          image?: string | null
           milestones: string[]
           required_for?: Database["public"]["Enums"]["audience"][]
           requires?: string[]
@@ -460,6 +462,7 @@ export type Database = {
           category_slug?: string
           created_at?: string
           due_at?: string | null
+          image?: string | null
           milestones?: string[]
           required_for?: Database["public"]["Enums"]["audience"][]
           requires?: string[]

@@ -158,6 +158,7 @@ title: Auto Layout homework
 category: wireframing              # must exist in categories.yaml
 audiences: [strategist]            # optional, defaults to the category's; may narrow it, never widen it
 summary: Seven Figma tasks to make your layouts easy to edit and resize.   # one sentence (≤ 160 characters)
+image: auto-layout-homework.png    # optional card artwork in public/challenges/ (overrides the category's)
 sequential: true                   # default true: each milestone unlocks once the one before it is SUBMITTED
 milestones:                        # challenge slugs, in order (2 or more)
   - alh-1-edit-auto-layout-card
@@ -179,6 +180,8 @@ path: auto-layout-homework
 ```
 
 - **Points:** a path has none of its own; its total is the sum of its milestones.
+- **Card artwork** (`image`): works like a challenge's — a file in `public/challenges/` (else the category's image,
+  else none), in the card's bottom-right corner, never under its text. Display only, synced every time.
 - **Unlocking** (`sequential: true`): milestone 1 is open; each next one opens as soon as the one before it has any
   attempt — awaiting review, changes requested and done all count, so nobody waits for a review to go on. A locked
   milestone can't be opened or submitted (checked on the server). `sequential: false` opens them all.

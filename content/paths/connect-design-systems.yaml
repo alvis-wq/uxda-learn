@@ -3,6 +3,7 @@ title: Connect our design systems
 category: design-systems
 audiences: [designer]
 summary: Set up our five design system files in Claude Code and check their health in Figma.
+image: connect-design-systems.png
 sequential: true
 milestones:
   - cds-1-project-folders

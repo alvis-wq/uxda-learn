@@ -7,6 +7,7 @@ difficulty: 2
 points: 20
 estimated_minutes: 35
 status: draft
+image: wf-4-claude-design-to-figma.png
 tip: >-
   Ask Claude Design for the whole flow in one go, then fix it with follow-up messages. It's
   faster than starting over each time.

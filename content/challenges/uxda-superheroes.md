@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 3
 status: draft
+image: uxda-superheroes.png
 tip: >-
   Stuck? The hero portraits are in [this Google Drive folder](https://drive.google.com/drive/folders/1VmVrJWG4kRV_OcHPEfLUS-7_uWGTqDEG). Search for a colleague's name and you'll find their picture.
 questions:

@@ -125,6 +125,8 @@ export type PathRow = {
   requires: string[];
   before_you_start: string | null;
   before_you_submit: string[];
+  /** Card artwork in public/challenges/ (else the category's). Display only. */
+  image: string | null;
 };
 
 /** A path's admin-owned settings: the same three as a challenge's, set from the file only when the path is created. */
@@ -143,6 +145,7 @@ export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; 
       requires: p.requires,
       before_you_start: p.before_you_start ?? null,
       before_you_submit: p.before_you_submit,
+      image: p.image ?? null,
     },
     settings: { status: p.status, required_for: p.required_for ?? [], due_at: normalizeTimestamp(p.due_at) },
   };

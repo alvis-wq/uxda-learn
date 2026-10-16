@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { ARTWORK_COLUMN, CardArtwork } from "@/components/card-artwork";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
@@ -10,13 +11,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { cardCta, isPathCard, listSpans, showTryAgain, type CardSpan } from "@/lib/challenges/card";
 import type { CardChallenge, HomeCard } from "@/lib/data/learner";
 import { cn } from "@/lib/utils";
-
-/** Image column width per card size (see globals.css for the rest): narrower cards shrink the image instead of dropping it. */
-const IMAGE_WIDTH: Record<CardSpan, string> = {
-  wide: "[--img-w:5rem] md:[--img-w:clamp(8rem,34%,15rem)]",
-  full: "[--img-w:5rem] md:[--img-w:clamp(8rem,34%,15rem)]",
-  narrow: "[--img-w:5rem] md:[--img-w:clamp(4.5rem,24%,7.5rem)]",
-};
 
 const GRID_SPAN: Record<CardSpan, string> = {
   wide: "lg:col-span-7",
@@ -66,7 +60,7 @@ export function ChallengeCard({
         "hover:border-primary has-[a:focus-visible]:ring-ring/50 has-[a:focus-visible]:ring-[3px]",
         // A draft a tester can try: dashed border and a muted surface, so it can't be mistaken for a real challenge.
         ch.isDraft ? "bg-muted border-muted-foreground/50 border-dashed" : "bg-tile",
-        IMAGE_WIDTH[span],
+        ARTWORK_COLUMN[span],
       )}
     >
       <div className={cn("grid min-w-0 flex-1 gap-x-4 px-[var(--pad)] pt-[var(--pad)] sm:gap-x-6", hasImage ? "grid-cols-[minmax(0,1fr)_var(--img-w)]" : "grid-cols-1")}>
@@ -106,18 +100,7 @@ export function ChallengeCard({
           </div>
         </div>
 
-        {hasImage && (
-          <div aria-hidden className="pointer-events-none relative self-stretch">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static artwork from public/challenges */}
-            <img
-              src={ch.imageUrl!}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="absolute bottom-[calc(-1*var(--pad)-1rem)] left-0 h-auto w-[calc(100%+var(--pad)+1.25rem)] max-w-none"
-            />
-          </div>
-        )}
+        {ch.imageUrl && <CardArtwork src={ch.imageUrl} span={span} />}
       </div>
       {/* The meta rows span the whole card (below the artwork's column, which they are painted over), so they are
           two rows at every width. Positioned without a z-index: above the artwork (it comes first), below the
@@ -170,6 +153,7 @@ export function ChallengeCardGrid({
           {isPathCard(ch) ? (
             <PathCard
               path={ch}
+              span={spans[i]}
               headingLevel={headingLevel}
               subheading={detail === "category" ? ch.categoryTitle : ch.summary}
               body={detail === "category" ? ch.summary : null}

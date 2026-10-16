@@ -154,6 +154,25 @@ describe("learning paths", () => {
     });
   });
 
+  it("checks a path's card image like a challenge's: a plain file name that exists in public/challenges", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "path-images-"));
+    writeFileSync(path.join(dir, "exists.png"), "");
+    const withImage = (image?: string) => {
+      const { content } = loadAndValidate(path.join(FIXTURES, "paths"));
+      content.paths[0].data.image = image;
+      return validateContent(content, dir).map((e) => `${e.file}: ${e.message}`);
+    };
+    expect(withImage("exists.png")).toEqual([]);
+    expect(withImage()).toEqual([]);
+    expect(withImage("nope.png")).toEqual(['paths/two-steps.yaml: image: "nope.png" not found in public/challenges/']);
+
+    const { content } = loadAndValidate(path.join(FIXTURES, "paths"));
+    const file = content.paths[0].data;
+    expect(pathFileSchema.safeParse({ ...file, image: "dir/a.png" }).success).toBe(false);
+    expect(toPathRow({ ...file, image: "exists.png" }, content.categories).row.image).toBe("exists.png");
+    expect(toPathRow({ ...file, image: undefined }, content.categories).row.image).toBeNull();
+  });
+
   describe("required_for and due_at (starting values, like status)", () => {
     const withSettings = (required_for: ("all" | "strategist" | "designer")[] | undefined, due_at?: string) => {
       const { content } = loadAndValidate(path.join(FIXTURES, "paths"));
@@ -705,6 +724,12 @@ describe("planSync for learning paths", () => {
   it("writes a changed 'Before you start' box as a path content update", () => {
     const db = synced();
     db.paths[0] = { ...db.paths[0], before_you_start: null };
+    expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
+  });
+
+  it("writes a changed card image as a path content update", () => {
+    const db = synced();
+    db.paths[0] = { ...db.paths[0], image: "old.png" };
     expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
   });
 

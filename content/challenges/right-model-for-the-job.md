@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 4
 status: draft
+image: right-model-for-the-job.png
 questions:
   - id: q1
     kind: single

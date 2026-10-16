@@ -11,7 +11,8 @@ const nonEmpty = z.string().trim().min(1, "must not be empty");
 
 /**
  * Card artwork: a file name in public/challenges/ (no folders). The file's existence is checked in validate.ts.
- * Keep the pattern in step with the check constraint in supabase/migrations/20261012090000_challenge_images.sql.
+ * Keep the pattern in step with the check constraints in supabase/migrations/20261012090000_challenge_images.sql and
+ * 20261021090000_path_images.sql.
  */
 export const IMAGE_FILE_PATTERN = /^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$/;
 const imageFile = z
@@ -164,6 +165,7 @@ export const pathFileSchema = z.strictObject({
   category: slug,
   audiences: audiencesSchema.optional(), // defaults to the category's audiences
   summary: nonEmpty.max(160, "keep the summary to one short sentence (at most 160 characters)"),
+  image: imageFile.optional(), // card artwork; overrides the category's image
   sequential: z.boolean().default(true),
   milestones: z.array(slug).min(2, "a path needs at least 2 milestones"),
   /** Paths that come first: this one stays locked until each has every milestone submitted. */

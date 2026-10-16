@@ -156,7 +156,7 @@ export function validateContent(
     }
   }
 
-  validatePaths(content, categoriesBySlug, err);
+  validatePaths(content, categoriesBySlug, missingImage, err);
   return errors;
 }
 
@@ -192,6 +192,7 @@ function sameAudiences(a: readonly Audience[], b: readonly Audience[]): boolean 
 function validatePaths(
   content: LoadedContent,
   categoriesBySlug: Map<string, LoadedContent["categories"][number]>,
+  missingImage: (image: string | undefined) => boolean,
   err: (file: string, message: string) => void,
 ) {
   for (const slug of duplicates(content.paths.map((p) => p.data.slug))) {
@@ -206,6 +207,7 @@ function validatePaths(
 
   for (const { file, data: p } of content.paths) {
     if (file !== `paths/${p.slug}.yaml`) err(file, `slug "${p.slug}" must match the filename (paths/${p.slug}.yaml)`);
+    if (missingImage(p.image)) err(file, `image: "${p.image}" not found in public/challenges/`);
     const category = categoriesBySlug.get(p.category);
     if (!category) err(file, `unknown category "${p.category}"`);
     if (category && p.audiences && !p.audiences.includes("all")) {
