@@ -2,43 +2,57 @@ import Image from "next/image";
 import type { CardSpan } from "@/lib/challenges/card";
 
 /**
- * Width of the artwork's grid column per card size (the card sets `--img-w` with one of these): narrower cards shrink
- * the image instead of dropping it.
+ * Sets `--art`, the illustration's width, on a card. The card must be a size container (`@container`): the width is
+ * a share of the card's own width (`cqw`), so it follows the card, not the viewport.
+ *
+ * - Large cards (full width on desktop, and every card from md to lg, where the grid is one column): 18.25rem.
+ * - Grid cards (lg+): about half the card, so the object reads clearly: 48% of a wide card, 45% of a narrow one.
+ * - Mobile (one column, below md): a third of the card.
+ *
+ * Whatever the target, it is capped so the text column (`--text-min`) always fits beside it: on a card too narrow for
+ * both, the illustration shrinks, never the text into it.
  */
-export const ARTWORK_COLUMN: Record<CardSpan, string> = {
-  wide: "[--img-w:5rem] md:[--img-w:clamp(8rem,34%,15rem)]",
-  full: "[--img-w:5rem] md:[--img-w:clamp(8rem,34%,15rem)]",
-  narrow: "[--img-w:5rem] md:[--img-w:clamp(4.5rem,24%,7.5rem)]",
+export const ARTWORK_SIZE: Record<CardSpan, string> = {
+  wide: "[--art-target:34cqw] md:[--art-target:18.25rem] lg:[--art-target:48cqw]",
+  narrow: "[--art-target:34cqw] md:[--art-target:18.25rem] lg:[--art-target:45cqw]",
+  full: "[--art-target:34cqw] md:[--art-target:18.25rem]",
 };
 
+/** Shared by every span: the gap between text and illustration, the narrowest the text may get, and `--art` itself. */
+export const ARTWORK_VARS =
+  "[--art-gap:0.75rem] [--text-min:11rem] [--art:min(var(--art-target),calc(100cqw_-_var(--pad)_-_var(--art-gap)_-_var(--text-min)))]";
+
+/** Right padding for a card's content when it has an illustration: everything stays left of it. */
+export const ARTWORK_CLEARANCE = "pr-[calc(var(--art)_+_var(--art-gap))]";
+
 /**
- * How wide the image is drawn, for `sizes`: its column at the largest width ARTWORK_COLUMN allows, plus the bleed
- * (`--pad`, 2rem from sm, and 1.25rem past the edge). Keeps the 800 px source from being sent to an 80 px column.
+ * Largest width the image is drawn at, for `sizes` (see ARTWORK_SIZE): 18.25rem from md (a wide grid card's 48% is
+ * less), 45% of a narrow grid card (≤ 11.5rem), and a third of the card below md.
  */
 const SIZES: Record<CardSpan, string> = {
-  wide: "(min-width: 768px) 18.25rem, 8.25rem",
-  full: "(min-width: 768px) 18.25rem, 8.25rem",
-  narrow: "(min-width: 768px) 10.75rem, 8.25rem",
+  wide: "(min-width: 768px) 18.25rem, 34vw",
+  narrow: "(min-width: 1024px) 11.5rem, (min-width: 768px) 18.25rem, 34vw",
+  full: "(min-width: 768px) 18.25rem, 34vw",
 };
 
 /**
- * Card artwork in the card's right-hand grid column: it starts at the column's left edge and grows rightwards and
- * downwards through the card's padding (`--pad`) and past its edge, so it bleeds off the bottom-right corner while the
- * text, in the other column, never sits under it. Decorative (the title says what the card is), served resized by
- * next/image and lazy-loaded, so cards below the fold cost nothing until they scroll into view.
+ * A card's illustration as a background layer: flush with the card's bottom and right edges, so the 800×800 frame
+ * (drawn to be cropped there) bleeds off both and is clipped by the rounded corner, and underneath everything else
+ * (`-z-10` inside the card's `isolate`). The card keeps its content left of it with ARTWORK_CLEARANCE. Decorative
+ * (the title says what the card is), served resized by next/image and lazy-loaded.
  */
 export function CardArtwork({ src, span }: { src: string; span: CardSpan }) {
   return (
-    <div aria-hidden className="pointer-events-none relative self-stretch" data-testid="card-artwork">
-      <Image
-        src={src}
-        alt=""
-        width={800}
-        height={800}
-        sizes={SIZES[span]}
-        draggable={false}
-        className="absolute bottom-[calc(-1*var(--pad)-1rem)] left-0 h-auto w-[calc(100%+var(--pad)+1.25rem)] max-w-none"
-      />
-    </div>
+    <Image
+      src={src}
+      alt=""
+      aria-hidden
+      width={800}
+      height={800}
+      sizes={SIZES[span]}
+      draggable={false}
+      data-testid="card-artwork"
+      className="pointer-events-none absolute right-0 bottom-0 -z-10 h-auto w-[var(--art)] max-w-none select-none"
+    />
   );
 }

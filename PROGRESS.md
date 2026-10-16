@@ -884,3 +884,10 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Both cards render artwork with next/image (`src/components/card-artwork.tsx`): resized per card size, lazy-loaded. `next.config.ts` restricts the optimiser to `/challenges/**`.
 - Migration: `20261021090000_path_images.sql` (paths.image). `database.types.ts` edited by hand to match — NOT yet applied (`db:push`, then `db:types`); apply it before deploying and before the next content:sync.
 - Checks (Node 22): `npm run check` ✅ · `npm run build` ✅ · `content:validate` ✅ (content:sync not run). Real cards rendered on a temporary page with fixture data: dark + light at 375 and 1280 px, no text over artwork (measured), no horizontal scroll, no image requested before it scrolls near the viewport. E2E not run: no test project.
+
+## Card art as a background layer (`feat/card-art-background`)
+
+- Challenge and path cards: the illustration is a background layer flush with the card's bottom and right edges (clipped by the rounded corner), under all content; the separate image column is gone. Content keeps left of it (`ARTWORK_CLEARANCE`).
+- Size: 18.25rem on full-width cards (as before), ~half of grid cards (48% wide, 45% narrow), 34% on mobile; capped so the text column keeps ≥ 11rem. `sizes` updated to match.
+- `ChallengeMeta`'s card row (`compact`) wraps instead of clipping.
+- Checks (Node 22): `npm run check` ✅ · `npm run build` ✅. Real cards on a temporary page (longest titles, three status badges + best score, waiting time, the art that reaches its frame's left edge): dark + light at 375 / 1024 / 1280 px — art flush with both edges, no element box touches the art frame (measured), nothing overflows the text column, no horizontal scroll. E2E not run: no test project.
