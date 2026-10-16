@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  * A required path shows "Required" and its due / overdue badge above the CTA, or above the lock ("Unlocks after …").
  *
  * Optional artwork is a true background in the bottom-right corner, as on a challenge card: the layout is the same
- * with or without it, except that on a full-width card the text block keeps to 70% (ARTWORK_TEXT_WIDTH).
+ * with or without it, except that on a full-width card the text block keeps to 60–70% (ARTWORK_TEXT_WIDTH).
  */
 export function PathCard({
   path: p,

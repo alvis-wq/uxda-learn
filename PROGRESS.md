@@ -894,7 +894,7 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 ## Opaque card art, completed items off home (`feat/home-hide-completed`)
 
-- Card illustrations: the fade (mask) is removed. Full-width cards (lg+) keep the title, subtitle and description to 70% of the width; grid cards and mobile unchanged.
+- Card illustrations: the fade (mask) is removed. Full-width cards keep the title, subtitle and description to 70% of the width on desktop (lg+) and 60% from 768 to 1023px (every card is full width there); grid cards and mobile unchanged.
 - Home "Challenges": completed challenges, acknowledged items and fully published paths are hidden (in progress, awaiting review and resubmission requested stay, also on a retry). Chains keep their remaining paths with their step numbers. Counts unchanged. "All done here." empty state with a link to the profile.
 - Profile "Your challenges": View result / Continue and Try again on each history card; a "Read & confirmed" list for acknowledged items.
-- Tests: `isCompletedOnHome` (incl. chains), `historyTryAgain`, home list source rules, card art (opaque, 70% only on full cards); E2E specs updated (required: ack off home and on the profile; dashboard: scored quiz off home, profile actions).
+- Tests: `isCompletedOnHome` (incl. chains), `historyTryAgain`, home list source rules, card art (opaque, 60% md–lg, 70% only on full cards at lg+); E2E specs updated (required: ack off home and on the profile; dashboard: scored quiz off home, profile actions).

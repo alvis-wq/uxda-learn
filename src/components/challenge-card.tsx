@@ -24,7 +24,7 @@ const GRID_SPAN: Record<CardSpan, string> = {
  * accessible name stays the challenge title; the CTA is decoration for that link.
  *
  * Optional artwork is a true background in the bottom-right corner (CardArtwork): it never changes the layout, except
- * that on a full-width card the text block keeps to 70% so it never runs over it (ARTWORK_TEXT_WIDTH).
+ * that on a full-width card the text block keeps to 60–70% so it never runs over it (ARTWORK_TEXT_WIDTH).
  */
 export function ChallengeCard({
   challenge: ch,

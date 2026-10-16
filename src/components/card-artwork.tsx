@@ -27,13 +27,15 @@ const SIZES: Record<CardSpan, string> = {
 };
 
 /**
- * On a full-width card (desktop), the text block (title, subtitle, description) keeps to 70% of the card's content
- * width, so it never runs over the illustration (18.25rem in the corner). Grid cards and mobile have no limit.
+ * On a full-width card the text block (title, subtitle, description) keeps clear of the illustration (18.25rem in the
+ * corner) by limiting its share of the card's content width: 60% from md to lg, where every card is full width (the
+ * grid is one column; at 768px the illustration starts at ~61%), and 70% on desktop's full-width cards. Grid cards
+ * (lg+) and mobile have no limit.
  */
 export const ARTWORK_TEXT_WIDTH: Record<CardSpan, string | undefined> = {
-  wide: undefined,
-  narrow: undefined,
-  full: "lg:max-w-[70%]",
+  wide: "md:max-w-[60%] lg:max-w-none",
+  narrow: "md:max-w-[60%] lg:max-w-none",
+  full: "md:max-w-[60%] lg:max-w-[70%]",
 };
 
 /** `sizes` for a tuned illustration: every width multiplied by its scale. */

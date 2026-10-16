@@ -19,8 +19,12 @@ describe("card illustrations", () => {
     expect(source).not.toMatch(/mask-?image|maskImage|opacity/i);
   });
 
-  it("narrow the text block only on full-width cards, on desktop", () => {
-    expect(ARTWORK_TEXT_WIDTH).toEqual({ wide: undefined, narrow: undefined, full: "lg:max-w-[70%]" });
+  it("narrow the text block only on full-width cards: 60% from md to lg (all cards), 70% on desktop's full-width cards", () => {
+    expect(ARTWORK_TEXT_WIDTH).toEqual({
+      wide: "md:max-w-[60%] lg:max-w-none",
+      narrow: "md:max-w-[60%] lg:max-w-none",
+      full: "md:max-w-[60%] lg:max-w-[70%]",
+    });
   });
 });
 
