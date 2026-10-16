@@ -71,7 +71,7 @@ async function main() {
   for (const u of plan.challengeHashRefreshes) console.log(`  challenge hash refresh: ${u.slug} (version unchanged)`);
   for (const u of plan.challengeDisplayUpdates) {
     console.log(
-      `  challenge display: ${u.slug} (image ${u.image ?? "none"} ×${u.image_scale} ${u.image_offset_x}%/${u.image_offset_y}%, tip ${u.tip ? "set" : "none"}, path ${u.path_slug ?? "none"}; version unchanged)`,
+      `  challenge display: ${u.slug} (image ${u.image ?? "none"} ×${u.image_scale} ${u.image_offset_x}%/${u.image_offset_y}%, tip ${u.tip ? "set" : "none"}, help link ${u.help_link ? "set" : "none"}, path ${u.path_slug ?? "none"}; version unchanged)`,
     );
   }
   for (const slug of plan.challengeArchives) console.log(`  challenge archived: ${slug}`);

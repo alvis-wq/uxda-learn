@@ -361,3 +361,6 @@
 - Match answers are `item=category` pairs in a string list — keeps the answer, draft and key types unchanged.
 - One item per category is derived from the pairs (every category used exactly once), not a separate field — authors can't contradict it.
 - After an instant dialog closes, focus goes to the question heading (next one if right, same one if wrong) — Continue is disabled after a wrong answer until it changes, so it can't take focus.
+- `help_link` is display only (not in content_hash), like `tip` — fixing a link shouldn't make earlier attempts "outdated".
+- A help link outside instant mode is a warning, not an error — harmless, but nothing shows it.
+- The help link replaces the wrong-answer dialog's "Close this to answer the same question again." line — one short line under the title, as asked; without a link the old line stays.

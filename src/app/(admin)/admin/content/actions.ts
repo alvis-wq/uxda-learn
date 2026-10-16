@@ -28,7 +28,7 @@ export async function updateChallengeSetting(raw: unknown): Promise<ActionResult
   const db = createAdminClient();
   const { data: challenge } = await db
     .from("challenges")
-    .select("slug,title,summary,body_md,audiences,questions,submission_spec,rubric,category_slug,path_slug")
+    .select("slug,title,summary,body_md,tip,help_link,audiences,questions,submission_spec,rubric,category_slug,path_slug")
     .eq("slug", change.slug)
     .maybeSingle();
   if (!challenge) return { ok: false, error: "Challenge not found." };
@@ -75,7 +75,7 @@ export async function updatePathStatus(raw: unknown): Promise<ActionResult> {
     const [{ data: rows }, { data: keys }] = await Promise.all([
       db
         .from("challenges")
-        .select("slug,title,summary,body_md,tip,audiences,questions,submission_spec,rubric,status")
+        .select("slug,title,summary,body_md,tip,help_link,audiences,questions,submission_spec,rubric,status")
         .in("slug", path.milestones),
       db.from("challenge_keys").select("challenge_slug,grader_notes").in("challenge_slug", path.milestones),
     ]);

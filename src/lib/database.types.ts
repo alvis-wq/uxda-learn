@@ -230,6 +230,7 @@ export type Database = {
           due_at: string | null
           estimated_minutes: number | null
           feedback_mode: string
+          help_link: Json | null
           image: string | null
           image_offset_x: number
           image_offset_y: number
@@ -259,6 +260,7 @@ export type Database = {
           due_at?: string | null
           estimated_minutes?: number | null
           feedback_mode?: string
+          help_link?: Json | null
           image?: string | null
           image_offset_x?: number
           image_offset_y?: number
@@ -288,6 +290,7 @@ export type Database = {
           due_at?: string | null
           estimated_minutes?: number | null
           feedback_mode?: string
+          help_link?: Json | null
           image?: string | null
           image_offset_x?: number
           image_offset_y?: number

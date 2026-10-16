@@ -30,6 +30,26 @@ const imageTuning = {
   image_offset_y: z.number().min(-50, "must be between -50 and 50 (% of the illustration)").max(50, "must be between -50 and 50 (% of the illustration)").optional(),
 };
 
+/** An https link with no spaces (what a help link may point at). Keep in step with 20261024090000_help_link.sql. */
+export function isHttpsUrl(value: string): boolean {
+  if (!/^https:\/\/\S+$/.test(value)) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A link to the challenge's source material. Instant mode offers it in the wrong-answer dialog: "Not sure? Refresh
+ * your memory in <label>." Display only (not part of content_hash).
+ */
+export const helpLinkSchema = z.strictObject({
+  url: z.string().trim().max(2000, "keep the link under 2000 characters").refine(isHttpsUrl, "must be an https:// link"),
+  label: nonEmpty.max(120, "keep the label short (at most 120 characters)"),
+});
+export type HelpLink = z.infer<typeof helpLinkSchema>;
+
 export const trackSchema = z.enum(TRACK_VALUES);
 
 /**
@@ -202,6 +222,7 @@ export const challengeFrontmatterSchema = z.strictObject({
   ...imageTuning,
   due_at: z.iso.datetime({ offset: true }).optional(),
   tip: z.string().trim().min(1, "must not be empty").max(1000, "keep the tip short (at most 1000 characters)").optional(), // markdown hint above the questions
+  help_link: helpLinkSchema.optional(), // source material, offered after a wrong answer in instant mode
   questions: z.array(questionSchema).default([]),
   submission: submissionSpecSchema.optional(),
   rubric: z.array(rubricCriterionSchema).default([]),

@@ -84,6 +84,9 @@ waiting_minutes: 30                # optional — part of estimated_minutes spen
                                    # (needs estimated_minutes, at most it); hands-on time = the difference
 image: three-tools.webp            # optional card artwork in public/challenges/ (overrides the category's)
 tip: Start with the brief's last paragraph; it lists what is scored.   # optional hint above the questions (markdown, up to 1000 chars)
+help_link:                         # optional, instant mode: source material offered after a wrong answer
+  url: https://www.figma.com/design/…   # https only, no spaces, up to 2000 characters
+  label: the UXDA Playbook         # read as "Not sure? Refresh your memory in the UXDA Playbook." (up to 120 chars)
 status: draft                      # initial value* — draft | published | archived
 questions:                         # optional
   - id: q1
@@ -172,6 +175,12 @@ Only for a `quiz` whose questions are all `single`, `multi`, `order` or `match` 
 - When the last question is right, the attempt is published and the result page opens (each question shows its try
   and points).
 - **One real attempt**: the first completed run is final, no "Try again". Testers' test attempts stay unlimited.
+- **Help link** (`help_link: { url, label }`, optional): the wrong-answer dialog adds "Not sure? Refresh your memory in
+  <label>." under "Not quite — try again.", the label linking to `url` in a new tab with the external-link icon (like
+  links in a brief). Write the label to fit that sentence ("the UXDA Playbook"). The right-answer dialog never shows
+  it. `content:validate` fails a link that isn't `https://` (or has spaces) and warns when the challenge isn't instant
+  mode, since nothing else shows it. Display only, like `tip`: changing it never bumps the `version`, and it can't
+  contain a `TODO…` placeholder in a published challenge.
 - Changing `feedback_mode` bumps the `version`.
 
 `submission.screenshots.min: 0` makes the screenshots optional (the Stepper shows "Optional"); use it when the

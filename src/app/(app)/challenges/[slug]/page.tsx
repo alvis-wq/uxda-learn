@@ -269,6 +269,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                 questions={questions}
                 initialRun={instantRun}
                 tip={tip}
+                helpLink={challenge.help_link}
                 attemptNumber={attemptNumber}
                 maxAttempts={maxAttempts}
               />

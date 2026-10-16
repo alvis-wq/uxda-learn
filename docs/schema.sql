@@ -116,6 +116,11 @@ create table challenges (
   image_offset_y numeric not null default 0 check (image_offset_y between -50 and 50),
   -- Short markdown hint above the questions; display only, not part of content_hash.
   tip text check (tip is null or char_length(tip) <= 1000),
+  -- {url, label}: source material offered after a wrong answer in instant mode (https only); display only, not part
+  -- of content_hash. Full check: supabase/migrations/20261024090000_help_link.sql.
+  help_link jsonb check (help_link is null or (jsonb_typeof(help_link) = 'object' and help_link - 'url' - 'label' = '{}'::jsonb
+    and help_link ->> 'url' ~ '^https://[^[:space:]]+$' and char_length(help_link ->> 'url') <= 2000
+    and char_length(help_link ->> 'label') between 1 and 120)),
   -- The path this challenge is a milestone of (listed only inside it); display only, not part of content_hash.
   path_slug text references paths(slug),
   updated_at timestamptz not null default now()

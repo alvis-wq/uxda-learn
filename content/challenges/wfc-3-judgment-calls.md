@@ -7,8 +7,11 @@ path: wireframe-framework-check
 type: quiz
 feedback_mode: instant
 difficulty: 1
-points: 20
+points: 16
 estimated_minutes: 10
+help_link:
+  url: "https://www.figma.com/design/LGZoFgcZNZPl72DDRv9n0A/UXDA-Playbook?node-id=2482-30725"
+  label: "the UXDA Playbook"
 status: draft
 questions:
   - id: q11
@@ -65,28 +68,6 @@ questions:
       - { id: d, label: "Correct or delete it, since annotations must describe what the screen actually does" }
     answer: d
     explanation: "Annotations describe what the screen really does."
-    points: 2
-  - id: q16
-    kind: single
-    prompt: "/wf-review flags an issue you disagree with after checking the screen. What do you do?"
-    options:
-      - { id: a, label: "Fix it anyway, since Claude flagged it" }
-      - { id: b, label: "Leave it unfixed and note why in the review notes, so the Senior/Lead sees your reasoning" }
-      - { id: c, label: "Ignore it without noting anything" }
-      - { id: d, label: "Run the review again until it disappears" }
-    answer: b
-    explanation: "AI reviews can exaggerate. You decide, but your reasoning stays visible."
-    points: 2
-  - id: q17
-    kind: single
-    prompt: "The client asks to change a button label on ACC-3. The same button appears on ACC-6 and ACC-9. What do you do?"
-    options:
-      - { id: a, label: "Change it only on ACC-3, as asked" }
-      - { id: b, label: "Create ACC-3 V2 with the new label" }
-      - { id: c, label: "Change it on ACC-3, ACC-6, and ACC-9, and tell the client" }
-      - { id: d, label: "Wait for feedback on the other screens first" }
-    answer: c
-    explanation: "Check connected screens before applying feedback."
     points: 2
   - id: q18
     kind: single

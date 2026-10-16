@@ -304,7 +304,8 @@ function validatePaths(
 
 /**
  * Not errors, but worth a look: content aimed only at tracks that are no longer offered (account manager, marketing
- * assistant). Nobody can be put on those tracks, so nobody new would see it or have it required.
+ * assistant). Nobody can be put on those tracks, so nobody new would see it or have it required. And a help link on a
+ * challenge that isn't instant mode, where nothing shows it.
  */
 export function contentWarnings(content: LoadedContent): ContentError[] {
   const warnings: ContentError[] = [];
@@ -320,6 +321,10 @@ export function contentWarnings(content: LoadedContent): ContentError[] {
     if (names) warnings.push({ file, message: `audiences: only ${names}, which nobody can choose any more` });
     const required = hiddenOnly(c.required_for);
     if (required) warnings.push({ file, message: `required_for: only ${required}, which nobody can choose any more` });
+    // Only the instant wrong-answer dialog shows it; anywhere else it's never seen.
+    if (c.help_link && c.feedback_mode !== "instant") {
+      warnings.push({ file, message: "help_link: only shown in instant mode (feedback_mode: instant), so nobody will see it here" });
+    }
   }
   for (const { file, data: p } of content.paths) {
     const names = hiddenOnly(p.audiences);

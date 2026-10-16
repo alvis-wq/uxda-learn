@@ -2,11 +2,13 @@ import { z } from "zod";
 import type { Database } from "@/lib/database.types";
 import {
   feedbackModeSchema,
+  helpLinkSchema,
   needsReview,
   publicQuestionSchema,
   rubricCriterionSchema,
   submissionSpecSchema,
   type FeedbackMode,
+  type HelpLink,
   type PublicQuestion,
   type RubricCriterion,
   type SubmissionSpec,
@@ -17,8 +19,9 @@ import { isVisibleToTrack, type Audience, type Track } from "@/lib/tracks";
 export type ChallengeRow = Database["public"]["Tables"]["challenges"]["Row"];
 export type { Audience, Track };
 
-export type Challenge = Omit<ChallengeRow, "questions" | "submission_spec" | "rubric" | "feedback_mode"> & {
+export type Challenge = Omit<ChallengeRow, "questions" | "submission_spec" | "rubric" | "feedback_mode" | "help_link"> & {
   feedback_mode: FeedbackMode;
+  help_link: HelpLink | null;
   questions: PublicQuestion[];
   submission_spec: SubmissionSpec;
   rubric: RubricCriterion[];
@@ -29,6 +32,8 @@ export function parseChallenge(row: ChallengeRow): Challenge {
   return {
     ...row,
     feedback_mode: feedbackModeSchema.catch("final").parse(row.feedback_mode),
+    // Display only: a malformed stored link is dropped, never shown.
+    help_link: helpLinkSchema.nullable().catch(null).parse(row.help_link ?? null),
     questions: z.array(publicQuestionSchema).parse(row.questions ?? []),
     submission_spec: submissionSpecSchema.parse(row.submission_spec ?? {}),
     rubric: z.array(rubricCriterionSchema).parse(row.rubric ?? []),

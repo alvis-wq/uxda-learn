@@ -136,20 +136,6 @@ Why: Assumptions are marked so you can quickly correct them.
 - D. Correct or delete it, since annotations must describe what the screen actually does ✅
 Why: Annotations describe what the screen really does.
 
-### Q16 (SCENARIO) /wf-review flags an issue you disagree with after checking the screen. What do you do?
-- A. Fix it anyway, since Claude flagged it
-- B. Leave it unfixed and note why in the review notes, so the Senior/Lead sees your reasoning ✅
-- C. Ignore it without noting anything
-- D. Run the review again until it disappears
-Why: AI reviews can exaggerate. You decide, but your reasoning stays visible.
-
-### Q17 (SCENARIO) The client asks to change a button label on ACC-3. The same button appears on ACC-6 and ACC-9. What do you do?
-- A. Change it only on ACC-3, as asked
-- B. Create ACC-3 V2 with the new label
-- C. Change it on ACC-3, ACC-6, and ACC-9, and tell the client ✅
-- D. Wait for feedback on the other screens first
-Why: Check connected screens before applying feedback.
-
 ### Q18 (SCENARIO) During handover, one element is still waiting on client input. What do you do?
 - A. Leave it out of the brief
 - B. Make your own decision and hand over

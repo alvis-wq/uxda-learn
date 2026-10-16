@@ -68,6 +68,12 @@ test("checks each answer as you go, scores by tries and allows one attempt", asy
   await continueButton(page).click();
   await expect(dialog(page)).toContainText("Not quite — try again.");
   await expect(dialog(page)).not.toContainText(/second letter|guides|responsible/); // no explanation, no answer
+  // The nudge to the source material, opening in a new tab like a brief's links.
+  await expect(page.getByTestId("help-link")).toHaveText("Not sure? Refresh your memory in the E2E Playbook (opens in a new tab).");
+  const help = dialog(page).getByRole("link", { name: /the E2E Playbook/ });
+  await expect(help).toHaveAttribute("href", "https://example.com/playbook");
+  await expect(help).toHaveAttribute("target", "_blank");
+  await expect(help).toHaveAttribute("rel", "noopener noreferrer");
   expect(await axe(page), "wrong-answer dialog").toEqual([]);
   await page.keyboard.press("Escape");
   await expect(dialog(page)).toBeHidden();
@@ -87,6 +93,7 @@ test("checks each answer as you go, scores by tries and allows one attempt", asy
   await answer(page, first, true);
   await continueButton(page).click();
   await expect(dialog(page)).toContainText("Correct!");
+  await expect(page.getByTestId("help-link")).toHaveCount(0); // the right-answer dialog stays as it is
   expect(await axe(page), "right-answer dialog").toEqual([]);
   await dialog(page).getByRole("button", { name: "Continue" }).click();
   await expect(page.getByTestId("instant-progress")).toHaveText("1 of 3 done");

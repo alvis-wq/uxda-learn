@@ -19,6 +19,7 @@ export type DbChallenge = Omit<PublicChallengeContent, "feedback_mode"> & {
   feedback_mode?: string; // undefined until the instant quiz migration has been applied
   image?: string | null; // undefined until the image migration has been applied
   tip?: string | null; // undefined until the drafts migration has been applied
+  help_link?: unknown; // undefined until the help link migration has been applied
   path_slug?: string | null; // undefined until the paths migration has been applied
   image_scale?: number; // these three: undefined until the image tuning migration has been applied
   image_offset_x?: number;
@@ -49,8 +50,14 @@ export type SyncPlan = {
   )[];
   /** Same content, but the stored hash is stale (e.g. after a format change). Never bumps the version. */
   challengeHashRefreshes: { slug: string; content_hash: string }[];
-  /** Only display fields changed (card image and its tuning, tip, path): written without bumping the version (not in the content hash). */
-  challengeDisplayUpdates: ({ slug: string; image: string | null; tip: string | null; path_slug: string | null } & ImageTuning)[];
+  /** Only display fields changed (card image and its tuning, tip, help link, path): written without bumping the version (not in the content hash). */
+  challengeDisplayUpdates: ({
+    slug: string;
+    image: string | null;
+    tip: string | null;
+    help_link: ChallengeRow["help_link"];
+    path_slug: string | null;
+  } & ImageTuning)[];
   challengeArchives: string[];
   /** File and DB disagree on an admin-owned setting. Informational only: the DB wins, nothing is written. */
   settingsDrift: { slug: string; field: SettingField; file: string; db: string }[];
@@ -145,7 +152,7 @@ function drift(
  * - Changed public content or keys → content write with version + 1. Settings are left alone.
  * - Stored hash differs but the DB row's public fields hash the same as disk (e.g. after a
  *   format change) → hash refresh, no version bump.
- * - Only the card image, tip or path differs → display update, no version bump (display only).
+ * - Only the card image, tip, help link or path differs → display update, no version bump (display only).
  * - Paths: created with the file's status, required_for and due_at; afterwards only their content columns are
  *   written (settings drift reported like a challenge's). Removed → archived.
  * - Settings that differ between file and DB → reported as drift, never written (DB wins).
@@ -219,6 +226,7 @@ export function planSync(
     const displayChanged =
       (existing.image ?? null) !== (challenge.image ?? null) ||
       (existing.tip ?? null) !== (challenge.tip ?? null) ||
+      canonicalJson(existing.help_link ?? null) !== canonicalJson(challenge.help_link) ||
       (existing.path_slug ?? null) !== (challenge.path_slug ?? null) ||
       !sameImageTuning(challenge, existing);
     if (!contentWritten && displayChanged) {
@@ -229,6 +237,7 @@ export function planSync(
         image_offset_x: challenge.image_offset_x,
         image_offset_y: challenge.image_offset_y,
         tip: challenge.tip ?? null,
+        help_link: challenge.help_link,
         path_slug: challenge.path_slug ?? null,
       });
     }
