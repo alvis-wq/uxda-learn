@@ -33,8 +33,10 @@ describe("home filter (source rules)", () => {
 
   it("the drafts option exists only for testers, and drafts are never grouped under All", () => {
     expect(list).toContain("...(tester ? [{ key: DRAFTS_FILTER");
-    // `challenges` never holds drafts (learner.ts); All groups `open`, which is `challenges` minus the completed ones.
-    expect(list).toContain("const open = challenges.filter(");
+    // `challenges` never holds drafts (learner.ts); All groups `open`, which is `challenges` minus the completed ones
+    // (and minus the featured ones, which are in "Featured" instead: also never drafts).
+    expect(list).toContain("const { featured, rest: open } = splitFeatured(challenges.filter(");
+    expect(list).not.toMatch(/splitFeatured\([^)]*drafts/);
     expect(list).toContain("groupByCategory(open, categories)");
     expect(list).not.toMatch(/groupByCategory\([^)]*drafts/);
   });

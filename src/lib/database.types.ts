@@ -229,6 +229,8 @@ export type Database = {
           difficulty: number
           due_at: string | null
           estimated_minutes: number | null
+          featured_at: string | null
+          featured_for: Database["public"]["Enums"]["audience"][]
           feedback_mode: string
           help_link: Json | null
           image: string | null
@@ -259,6 +261,8 @@ export type Database = {
           difficulty: number
           due_at?: string | null
           estimated_minutes?: number | null
+          featured_at?: string | null
+          featured_for?: Database["public"]["Enums"]["audience"][]
           feedback_mode?: string
           help_link?: Json | null
           image?: string | null
@@ -289,6 +293,8 @@ export type Database = {
           difficulty?: number
           due_at?: string | null
           estimated_minutes?: number | null
+          featured_at?: string | null
+          featured_for?: Database["public"]["Enums"]["audience"][]
           feedback_mode?: string
           help_link?: Json | null
           image?: string | null
@@ -444,6 +450,8 @@ export type Database = {
           category_slug: string
           created_at: string
           due_at: string | null
+          featured_at: string | null
+          featured_for: Database["public"]["Enums"]["audience"][]
           image: string | null
           image_offset_x: number
           image_offset_y: number
@@ -465,6 +473,8 @@ export type Database = {
           category_slug: string
           created_at?: string
           due_at?: string | null
+          featured_at?: string | null
+          featured_for?: Database["public"]["Enums"]["audience"][]
           image?: string | null
           image_offset_x?: number
           image_offset_y?: number
@@ -486,6 +496,8 @@ export type Database = {
           category_slug?: string
           created_at?: string
           due_at?: string | null
+          featured_at?: string | null
+          featured_for?: Database["public"]["Enums"]["audience"][]
           image?: string | null
           image_offset_x?: number
           image_offset_y?: number
@@ -909,6 +921,15 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_tester: { Args: never; Returns: boolean }
+      move_featured: {
+        Args: {
+          p_actor: string
+          p_direction: string
+          p_kind: string
+          p_slug: string
+        }
+        Returns: boolean
+      }
       my_track_sees: {
         Args: { a: Database["public"]["Enums"]["audience"][] }
         Returns: boolean

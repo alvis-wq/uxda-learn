@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { TRACK_VALUES } from "@/lib/tracks";
 import {
+  defaultFeaturedFor,
   describeAudit,
+  featuredMoveSchema,
   pathSettingChangeError,
   pathSettingChangeSchema,
   formatSettingValue,
@@ -146,5 +149,59 @@ describe("path settings (required_for, due_at)", () => {
     expect(pathSettingChangeError(req(["all"]), path, category)).toMatch(/^Can't require it for everyone/);
     expect(pathSettingChangeError(req(["designer"]), path, null)).toBe("This path's category is missing.");
     expect(pathSettingChangeError({ slug: "p", field: "due_at", value: null }, path, null)).toBeNull();
+  });
+});
+
+describe("featuring (featured_for)", () => {
+  const feature = (value: string[]) => settingChangeSchema.parse({ slug: "spot-the-plant", field: "featured_for", value });
+
+  it("takes the same shape as required_for", () => {
+    expect(settingChangeSchema.safeParse({ slug: "a", field: "featured_for", value: ["all", "designer"] }).success).toBe(false);
+    expect(settingChangeSchema.safeParse({ slug: "a", field: "featured_for", value: ["designer", "designer"] }).success).toBe(false);
+    expect(pathSettingChangeSchema.safeParse({ slug: "a", field: "featured_for", value: [] }).success).toBe(true);
+  });
+
+  it("only for tracks that can see it; turning it off is always fine", () => {
+    expect(settingChangeError(feature(["designer"]), ctx())).toBeNull();
+    expect(settingChangeError(feature(["strategist"]), ctx())).toBe(
+      "Can't feature it for Strategist: they can't see this challenge (check the audiences of the challenge and its category).",
+    );
+    expect(settingChangeError(feature(["all"]), ctx())).toMatch(/^Can't feature it for everyone: .*Pick the tracks instead\.$/);
+    expect(settingChangeError(feature([]), ctx({ audiences: ["strategist"] }, { audiences: ["designer"] }))).toBeNull();
+  });
+
+  it("never a milestone on its own", () => {
+    expect(settingChangeError(feature(["designer"]), ctx({ path_slug: "alh" }))).toBe(
+      "A path milestone can't be featured on its own. Feature its path instead.",
+    );
+    expect(settingChangeError(feature([]), ctx({ path_slug: "alh" }))).toBeNull();
+  });
+
+  it("a path: only for tracks that can see it", () => {
+    const change = pathSettingChangeSchema.parse({ slug: "alh", field: "featured_for", value: ["designer"] });
+    expect(pathSettingChangeError(change, { audiences: ["strategist"] }, { audiences: ["all"] })).toBe(
+      "Can't feature it for Designer: they can't see this path (check the audiences of the path and its category).",
+    );
+    expect(pathSettingChangeError(change, { audiences: ["designer"] }, { audiences: ["all"] })).toBeNull();
+  });
+
+  it("starts with everyone who can see it, leaving out tracks nobody can choose any more", () => {
+    expect(defaultFeaturedFor([...TRACK_VALUES])).toEqual(["all"]);
+    expect(defaultFeaturedFor(["designer", "account_manager", "motion_designer"])).toEqual(["designer", "motion_designer"]);
+  });
+
+  it("reads well in the history and toasts", () => {
+    expect(formatSettingValue("featured_for", [])).toBe("Not featured");
+    expect(formatSettingValue("featured_for", ["all"])).toBe("Everyone");
+    const base = { id: 1, changed_at: "", actor: "Alvis", source: "admin" };
+    expect(describeAudit({ ...base, field: "featured_for", old_value: [], new_value: ["designer"] }).change).toBe("Featured for: Not featured → Designer");
+    expect(describeAudit({ ...base, field: "featured_order", old_value: 3, new_value: 2 }).change).toBe("Featured order: #3 → #2");
+  });
+
+  it("move: kind, slug and direction only", () => {
+    expect(featuredMoveSchema.safeParse({ kind: "path", slug: "alh", direction: "up" }).success).toBe(true);
+    expect(featuredMoveSchema.safeParse({ kind: "category", slug: "alh", direction: "up" }).success).toBe(false);
+    expect(featuredMoveSchema.safeParse({ kind: "path", slug: "alh", direction: "left" }).success).toBe(false);
+    expect(featuredMoveSchema.safeParse({ kind: "path", slug: "../x", direction: "up" }).success).toBe(false);
   });
 });

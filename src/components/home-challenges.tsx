@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, CircleCheckBig, FlaskConical } from "lucide-react";
+import { BookOpen, CircleCheckBig, FlaskConical, Star } from "lucide-react";
 import { ChallengeCardGrid } from "@/components/challenge-card";
 import { EmptyState } from "@/components/empty-state";
 import { FilterMenu, type FilterOption } from "@/components/filter-menu";
@@ -15,6 +15,7 @@ import {
   isCompletedOnHome,
   parseHomeFilter,
 } from "@/lib/challenges/home-order";
+import { splitFeatured } from "@/lib/challenges/featured";
 import type { CategoryProgress, HomeCard } from "@/lib/data/learner";
 
 const PARAM = "category";
@@ -31,6 +32,10 @@ const PARAM = "category";
  * Completed items are left out (isCompletedOnHome): they stay on their category page and in the profile, and every count
  * (the menu's done/total, the group labels) still includes them. A path chain loses its completed paths but keeps the
  * rest in order, each with its own "Step N of M". A filter with nothing left to do says so and points to the profile.
+ *
+ * Above it all, "Featured": the items an admin featured for the learner's track that are still on the list (not
+ * completed, never drafts), in the featured order (splitFeatured). It ignores the filter, is left out when empty, and
+ * its items aren't listed again below; the counts don't change.
  */
 export function HomeChallenges({
   categories,
@@ -75,58 +80,78 @@ export function HomeChallenges({
   };
 
   const label = options.find((o) => o.key === selected)?.label ?? "All";
-  const open = challenges.filter((c) => !isCompletedOnHome(c));
+  const { featured, rest: open } = splitFeatured(challenges.filter((c) => !isCompletedOnHome(c)));
   const shown = selected === DRAFTS_FILTER ? drafts : filterByCategory(open, selected);
   const groups = groupByCategory(open, categories);
-  // Something there, all of it completed (as opposed to nothing for this track at all).
+  // What's left here is all in "Featured" (as opposed to all completed, or nothing for this track at all).
+  const allFeatured = selected !== DRAFTS_FILTER && filterByCategory(featured, selected).length > 0;
+  // Something there, all of it completed.
   const allDone = selected !== DRAFTS_FILTER && filterByCategory(challenges, selected).length > 0;
+  const nothingLeft = allFeatured ? <AllFeatured /> : allDone ? <AllDone /> : null;
 
   return (
-    <section aria-labelledby="challenges-heading" className="mt-12 grid gap-5" data-testid="challenges-section">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <SectionLabel id="challenges-heading">Challenges</SectionLabel>
-        <FilterMenu options={options} selected={selected} onSelect={select} />
-      </div>
-      {/* Said once per change, since nothing else on the page moves when a filter is chosen. */}
-      <p role="status" aria-live="polite" className="sr-only" data-testid="filter-status">
-        {selected === ALL_CATEGORIES ? "Showing all" : `Showing ${label}:`} {shown.length} {shown.length === 1 ? "challenge" : "challenges"}
-      </p>
+    <>
+      {featured.length > 0 && (
+        <section aria-labelledby="featured-heading" className="mt-12 grid gap-5" data-testid="featured-section">
+          <SectionLabel id="featured-heading">Featured</SectionLabel>
+          <ChallengeCardGrid items={featured} headingLevel={3} now={now} detail="category" />
+        </section>
+      )}
+      <section aria-labelledby="challenges-heading" className="mt-12 grid gap-5" data-testid="challenges-section">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <SectionLabel id="challenges-heading">Challenges</SectionLabel>
+          <FilterMenu options={options} selected={selected} onSelect={select} />
+        </div>
+        {/* Said once per change, since nothing else on the page moves when a filter is chosen. */}
+        <p role="status" aria-live="polite" className="sr-only" data-testid="filter-status">
+          {selected === ALL_CATEGORIES ? "Showing all" : `Showing ${label}:`} {shown.length} {shown.length === 1 ? "challenge" : "challenges"}
+        </p>
 
-      {/* Re-keyed per filter so the list fades in; no animation with reduced motion. */}
-      <div key={selected} className="animate-in fade-in grid gap-10 duration-200 motion-reduce:animate-none" data-testid="challenge-list">
-        {selected === ALL_CATEGORIES ? (
-          groups.length === 0 ? (
-            allDone ? <AllDone /> : <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />
+        {/* Re-keyed per filter so the list fades in; no animation with reduced motion. */}
+        <div key={selected} className="animate-in fade-in grid gap-10 duration-200 motion-reduce:animate-none" data-testid="challenge-list">
+          {selected === ALL_CATEGORIES ? (
+            groups.length === 0 ? (
+              (nothingLeft ?? <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />)
+            ) : (
+              groups.map((g) => (
+                <section key={g.slug} aria-labelledby={`group-${g.slug}`} className="grid gap-4" data-testid="category-group" data-slug={g.slug}>
+                  <h3 id={`group-${g.slug}`} className="text-meta flex items-baseline gap-2 font-bold">
+                    {g.title}
+                    <span aria-hidden className="text-foreground/80 font-normal tabular-nums" data-testid="group-count">
+                      {g.completed}/{g.total}
+                    </span>
+                    <span className="sr-only">
+                      {" "}
+                      — {g.completed} of {g.total} completed
+                    </span>
+                  </h3>
+                  <ChallengeCardGrid items={g.items} headingLevel={4} now={now} detail="category" />
+                </section>
+              ))
+            )
+          ) : shown.length === 0 ? (
+            selected === DRAFTS_FILTER ? (
+              <EmptyState icon={FlaskConical} title="No drafts to test" description="Draft challenges your track can see will show up here." />
+            ) : nothingLeft ? (
+              nothingLeft
+            ) : (
+              <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />
+            )
           ) : (
-            groups.map((g) => (
-              <section key={g.slug} aria-labelledby={`group-${g.slug}`} className="grid gap-4" data-testid="category-group" data-slug={g.slug}>
-                <h3 id={`group-${g.slug}`} className="text-meta flex items-baseline gap-2 font-bold">
-                  {g.title}
-                  <span aria-hidden className="text-foreground/80 font-normal tabular-nums" data-testid="group-count">
-                    {g.completed}/{g.total}
-                  </span>
-                  <span className="sr-only">
-                    {" "}
-                    — {g.completed} of {g.total} completed
-                  </span>
-                </h3>
-                <ChallengeCardGrid items={g.items} headingLevel={4} now={now} detail="category" />
-              </section>
-            ))
-          )
-        ) : shown.length === 0 ? (
-          selected === DRAFTS_FILTER ? (
-            <EmptyState icon={FlaskConical} title="No drafts to test" description="Draft challenges your track can see will show up here." />
-          ) : allDone ? (
-            <AllDone />
-          ) : (
-            <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />
-          )
-        ) : (
-          <ChallengeCardGrid items={shown} headingLevel={3} now={now} detail="category" />
-        )}
-      </div>
-    </section>
+            <ChallengeCardGrid items={shown} headingLevel={3} now={now} detail="category" />
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
+/** A filter (or All) whose remaining items are all featured: they are in the section above. */
+function AllFeatured() {
+  return (
+    <div data-testid="all-featured">
+      <EmptyState icon={Star} title="Everything left is in Featured above." description="Completed challenges are in your profile." />
+    </div>
   );
 }
 
