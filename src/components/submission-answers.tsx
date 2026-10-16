@@ -1,6 +1,7 @@
 import { CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
-import { choicesOf, type PublicQuestion } from "@/lib/content/schema";
+import { choicesOf, parseMatchPairs, type PublicQuestion } from "@/lib/content/schema";
+import { tryLabel } from "@/lib/submissions/instant";
 import { tryAgainMessage, type AnswerReveal, type QuestionResult } from "@/lib/submissions/results";
 
 /** An order answer, one item per line with its position. */
@@ -11,6 +12,20 @@ function NumberedItems({ labels }: { labels: string[] }) {
         <li key={i}>{l}</li>
       ))}
     </ol>
+  );
+}
+
+/** A match answer: each item with the category it was put on, in the question's item order. */
+function MatchedItems({ q, pairs }: { q: Extract<PublicQuestion, { kind: "match" }>; pairs: string[] }) {
+  const placed = parseMatchPairs(pairs);
+  return (
+    <ul className="mt-1 grid gap-0.5">
+      {q.items.map((item) => (
+        <li key={item.id}>
+          {item.label} → {q.categories.find((c) => c.id === placed.get(item.id))?.label ?? "not placed"}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -60,15 +75,19 @@ export function SubmissionAnswers({
             let shown: ReactNode;
             if (q.kind === "text") shown = typeof a === "string" ? a : "—";
             else if (q.kind === "order") shown = ids.length ? <NumberedItems labels={ids.map(label)} /> : "—";
+            else if (q.kind === "match") shown = ids.length ? <MatchedItems q={q} pairs={ids} /> : "—";
             else shown = ids.map(label).join("; ") || "—";
             const result = q.kind === "text" ? undefined : resultFor.get(q.id);
             const rightIds = result?.correctOptionIds ?? null;
             const rightAnswer = rightIds
               ? q.kind === "order"
                 ? <NumberedItems labels={rightIds.map(label)} />
-                : rightIds.map(label).join("; ")
+                : q.kind === "match"
+                  ? <MatchedItems q={q} pairs={rightIds} />
+                  : rightIds.map(label).join("; ")
               : null;
-            const rightTitle = q.kind === "order" ? "Correct order:" : rightIds && rightIds.length > 1 ? "Correct answers:" : "Correct answer:";
+            const rightTitle =
+              q.kind === "order" ? "Correct order:" : q.kind === "match" ? "Correct matches:" : rightIds && rightIds.length > 1 ? "Correct answers:" : "Correct answer:";
             return (
               <div key={q.id} className="grid gap-1" data-testid="answer" data-result={result ? (result.correct ? "correct" : "incorrect") : undefined}>
                 <p className="text-sm font-medium">
@@ -78,6 +97,11 @@ export function SubmissionAnswers({
                   <div className="text-muted-foreground min-w-0 flex-1 basis-48 text-sm whitespace-pre-line">{shown}</div>
                   {result && <ResultMark correct={result.correct} />}
                 </div>
+                {result?.instant && (
+                  <p className="text-muted-foreground text-meta" data-testid="question-tries">
+                    {tryLabel(result.instant.tries)} · {result.instant.points} / {result.instant.max} pts
+                  </p>
+                )}
                 {result && !result.correct && rightAnswer && (
                   <div className="text-sm" data-testid="right-answer">
                     <span className="font-medium">{rightTitle}</span> {rightAnswer}
@@ -86,6 +110,11 @@ export function SubmissionAnswers({
                 {result && !result.correct && !rightAnswer && reveal && !reveal.reveal && (
                   <p className="text-muted-foreground text-sm" data-testid="try-again">
                     {tryAgainMessage(reveal.attemptsLeft)}
+                  </p>
+                )}
+                {result?.explanation && (
+                  <p className="text-muted-foreground text-sm" data-testid="explanation">
+                    <span className="text-foreground font-medium">Why:</span> {result.explanation}
                   </p>
                 )}
               </div>

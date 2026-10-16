@@ -1,4 +1,4 @@
-import type { PublicQuestion, SubmissionSpec } from "@/lib/content/schema";
+import { matchPair, parseMatchPairs, type PublicQuestion, type SubmissionSpec } from "@/lib/content/schema";
 import { isOwnImagePath } from "@/lib/submissions/input";
 
 /**
@@ -23,6 +23,8 @@ export type DraftRow = {
   image_paths: string[];
   current_step: number;
   updated_at: string;
+  /** Instant mode: the run in progress (see instant.ts); written only by the server. */
+  instant_tries?: unknown;
 };
 
 type Restorable = { slug: string; version: number; questions: readonly PublicQuestion[]; submission_spec: SubmissionSpec };
@@ -69,6 +71,23 @@ export function restoreDraft(row: DraftRow, challenge: Restorable, userId: strin
     if (q.kind === "text") {
       if (typeof value === "string") answers[q.id] = value.slice(0, MAX_TEXT);
       else dropped++;
+    } else if (q.kind === "match") {
+      // Keep the pairs that still fit: known item and category, each item once, one item per category if so.
+      const list = Array.isArray(value) ? value : [];
+      const items = new Set(q.items.map((i) => i.id));
+      const categories = new Set(q.categories.map((c) => c.id));
+      const usedItems = new Set<string>();
+      const usedCategories = new Set<string>();
+      const kept: string[] = [];
+      for (const [item, category] of parseMatchPairs(list.filter((v): v is string => typeof v === "string"))) {
+        if (!items.has(item) || !categories.has(category) || usedItems.has(item)) continue;
+        if (q.one_per_category && usedCategories.has(category)) continue;
+        usedItems.add(item);
+        usedCategories.add(category);
+        kept.push(matchPair(item, category));
+      }
+      if (kept.length > 0) answers[q.id] = kept;
+      if (kept.length < list.length || !Array.isArray(value)) dropped++;
     } else {
       const known = new Set((q.kind === "order" ? q.items : q.options).map((o) => o.id));
       if (q.kind === "order") {

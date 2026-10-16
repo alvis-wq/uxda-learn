@@ -31,7 +31,7 @@ async function main() {
   const [cats, chs, keys, paths] = await Promise.all([
     db.from("categories").select("slug,title,description,audiences,sort_order,archived,image"),
     db.from("challenges").select("*"),
-    db.from("challenge_keys").select("challenge_slug,answer_key,grader_notes"),
+    db.from("challenge_keys").select("challenge_slug,answer_key,explanations,grader_notes"),
     db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,requires,before_you_start,before_you_submit,image,image_scale,image_offset_x,image_offset_y,status,required_for,due_at"),
   ]);
   check(cats, "read categories");

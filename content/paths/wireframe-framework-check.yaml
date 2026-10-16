@@ -1,0 +1,13 @@
+slug: wireframe-framework-check
+title: "Wireframe Creation Framework: Learning Check"
+category: wireframing
+audiences: [strategist]
+summary: "Check that you know how the wireframe framework works and can use its skills well."
+image: wireframe-framework-check.png
+sequential: true
+milestones:
+  - wfc-1-know-the-system
+  - wfc-2-work-with-the-skills
+  - wfc-3-judgment-calls
+before_you_start: "This path has 3 parts, about 10 minutes each. You'll see right away if each answer is right. A wrong answer? Try again. Full points on the first try, half on the second."
+status: draft

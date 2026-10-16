@@ -77,8 +77,8 @@ describe("questionResults", () => {
 
   it("carries the right answer for wrong questions only once revealed", () => {
     const r = questionResults(questions, key, { q1: "a", q2: ["a", "c"] }, REVEAL_ALL);
-    expect(r[0]).toEqual({ questionId: "q1", correct: false, correctOptionIds: ["b"] });
-    expect(r[1]).toEqual({ questionId: "q2", correct: true, correctOptionIds: null });
+    expect(r[0]).toEqual({ questionId: "q1", correct: false, correctOptionIds: ["b"], explanation: null, instant: null });
+    expect(r[1]).toEqual({ questionId: "q2", correct: true, correctOptionIds: null, explanation: null, instant: null });
   });
 
   it("treats a missing or malformed answer as wrong", () => {

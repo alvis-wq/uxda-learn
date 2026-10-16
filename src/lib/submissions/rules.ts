@@ -2,6 +2,14 @@ import type { Database } from "@/lib/database.types";
 
 export const MAX_ATTEMPTS = 3;
 
+/**
+ * Real attempts allowed on a challenge: 3, or 1 for an instant-feedback quiz (the learner already saw every answer
+ * confirmed on the way, so the first completed run is final). Test attempts on a draft have no limit (testing.ts).
+ */
+export function maxAttemptsFor(feedbackMode: string | null | undefined): number {
+  return feedbackMode === "instant" ? 1 : MAX_ATTEMPTS;
+}
+
 export type SubmissionStatus = Database["public"]["Enums"]["submission_status"];
 
 export type AttemptSummary = {
@@ -20,7 +28,7 @@ export type AttemptState = {
 };
 
 /** What the user may do next on a challenge, given their attempts so far. */
-export function attemptState(attempts: AttemptSummary[]): AttemptState {
+export function attemptState(attempts: AttemptSummary[], maxAttempts = MAX_ATTEMPTS): AttemptState {
   const sorted = [...attempts].sort((a, b) => a.attempt - b.attempt);
   const latest = sorted.at(-1) ?? null;
   const published = sorted.filter((a) => a.status === "published" && a.final_score !== null);
@@ -30,8 +38,8 @@ export function attemptState(attempts: AttemptSummary[]): AttemptState {
   let reason: string | null = null;
   if (latest && (latest.status === "submitted" || latest.status === "ai_reviewed")) {
     reason = "Your submission is awaiting review.";
-  } else if (attemptsUsed >= MAX_ATTEMPTS) {
-    reason = `You've used all ${MAX_ATTEMPTS} attempts.`;
+  } else if (attemptsUsed >= maxAttempts) {
+    reason = maxAttempts === 1 ? "This quiz has one attempt, and you've completed it." : `You've used all ${maxAttempts} attempts.`;
   } else if (latest && bestScore !== null && bestScore >= latest.max_score) {
     reason = "You already have full points.";
   }

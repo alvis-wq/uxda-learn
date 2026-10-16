@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isBlankDraft } from "@/lib/submissions/draft";
 import { draftInputSchema } from "@/lib/submissions/input";
-import { attemptState } from "@/lib/submissions/rules";
+import { attemptState, maxAttemptsFor } from "@/lib/submissions/rules";
 import { isTestChallenge, testingState } from "@/lib/submissions/testing";
 import { planSteps } from "@/lib/submissions/steps";
 
@@ -40,6 +40,8 @@ export async function saveDraft(slugInput: string, rawInput: unknown): Promise<S
   const locked = await milestoneGate(admin, row, { id: user.id, track: profile.track, is_tester: profile.is_tester });
   if (locked) return { ok: false, error: locked };
   const challenge = parseChallenge(row);
+  // An instant-feedback run is saved by checkInstantAnswer as each answer is checked; there is nothing else to keep.
+  if (challenge.feedback_mode === "instant") return { ok: false, error: "This quiz saves your progress as you go." };
 
   const sent = (rawInput as { version?: unknown } | null)?.version;
   if (sent !== challenge.version) {
@@ -53,7 +55,7 @@ export async function saveDraft(slugInput: string, rawInput: unknown): Promise<S
     .eq("challenge_slug", challenge.slug)
     .eq("is_test", isTestChallenge(row.status));
   if (prevError) return { ok: false, error: "Couldn't save your progress." };
-  const state = isTestChallenge(row.status) ? testingState(previous) : attemptState(previous);
+  const state = isTestChallenge(row.status) ? testingState(previous) : attemptState(previous, maxAttemptsFor(challenge.feedback_mode));
   if (!state.canSubmit) return { ok: false, error: state.reason ?? "You can't submit right now." };
 
   const plan = planSteps(challenge);

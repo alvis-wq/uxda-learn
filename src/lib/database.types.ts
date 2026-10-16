@@ -147,16 +147,19 @@ export type Database = {
         Row: {
           answer_key: Json
           challenge_slug: string
+          explanations: Json
           grader_notes: string | null
         }
         Insert: {
           answer_key?: Json
           challenge_slug: string
+          explanations?: Json
           grader_notes?: string | null
         }
         Update: {
           answer_key?: Json
           challenge_slug?: string
+          explanations?: Json
           grader_notes?: string | null
         }
         Relationships: [
@@ -226,6 +229,7 @@ export type Database = {
           difficulty: number
           due_at: string | null
           estimated_minutes: number | null
+          feedback_mode: string
           image: string | null
           image_offset_x: number
           image_offset_y: number
@@ -254,6 +258,7 @@ export type Database = {
           difficulty: number
           due_at?: string | null
           estimated_minutes?: number | null
+          feedback_mode?: string
           image?: string | null
           image_offset_x?: number
           image_offset_y?: number
@@ -282,6 +287,7 @@ export type Database = {
           difficulty?: number
           due_at?: string | null
           estimated_minutes?: number | null
+          feedback_mode?: string
           image?: string | null
           image_offset_x?: number
           image_offset_y?: number
@@ -663,6 +669,7 @@ export type Database = {
           current_step: number
           figma_url: string | null
           image_paths: string[]
+          instant_tries: Json | null
           reflection: string | null
           updated_at: string
           user_id: string
@@ -674,6 +681,7 @@ export type Database = {
           current_step?: number
           figma_url?: string | null
           image_paths?: string[]
+          instant_tries?: Json | null
           reflection?: string | null
           updated_at?: string
           user_id: string
@@ -685,6 +693,7 @@ export type Database = {
           current_step?: number
           figma_url?: string | null
           image_paths?: string[]
+          instant_tries?: Json | null
           reflection?: string | null
           updated_at?: string
           user_id?: string
@@ -791,6 +800,7 @@ export type Database = {
           is_test: boolean
           max_score: number
           published_at: string | null
+          question_tries: Json | null
           reflection: string | null
           status: Database["public"]["Enums"]["submission_status"]
           submitted_at: string
@@ -813,6 +823,7 @@ export type Database = {
           is_test?: boolean
           max_score: number
           published_at?: string | null
+          question_tries?: Json | null
           reflection?: string | null
           status?: Database["public"]["Enums"]["submission_status"]
           submitted_at?: string
@@ -835,6 +846,7 @@ export type Database = {
           is_test?: boolean
           max_score?: number
           published_at?: string | null
+          question_tries?: Json | null
           reflection?: string | null
           status?: Database["public"]["Enums"]["submission_status"]
           submitted_at?: string
@@ -897,6 +909,17 @@ export type Database = {
       my_track_sees: {
         Args: { a: Database["public"]["Enums"]["audience"][] }
         Returns: boolean
+      }
+      record_instant_try: {
+        Args: {
+          p_challenge: string
+          p_correct: boolean
+          p_is_test: boolean
+          p_question: string
+          p_user: string
+          p_version: number
+        }
+        Returns: Json
       }
       rename_staff_email: {
         Args: { p_actor: string; p_new: string; p_old: string }

@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { PublicQuestion } from "@/lib/content/schema";
 import { countWords } from "@/lib/submissions/input";
+import { MatchField } from "./match-field";
 import { OrderField } from "./order-field";
 
 export function FieldError({ id, message }: { id: string; message?: string }) {
@@ -107,6 +108,24 @@ export function QuestionField({
         <OrderField
           questionId={q.id}
           items={q.items}
+          value={Array.isArray(value) ? value : undefined}
+          onChange={onChange}
+          disabled={disabled}
+        />
+        <FieldError id={errId} message={error} />
+      </fieldset>
+    );
+  }
+
+  if (q.kind === "match") {
+    return (
+      <fieldset aria-labelledby={labelledBy} aria-describedby={error ? errId : undefined} aria-invalid={!!error}>
+        {legend}
+        <MatchField
+          questionId={q.id}
+          items={q.items}
+          categories={q.categories}
+          onePerCategory={q.one_per_category}
           value={Array.isArray(value) ? value : undefined}
           onChange={onChange}
           disabled={disabled}

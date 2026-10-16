@@ -1,6 +1,6 @@
 import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
 import { isChallengeVisible, type Audience, type Track } from "@/lib/challenges/model";
-import { attemptState, type AttemptSummary } from "@/lib/submissions/rules";
+import { attemptState, maxAttemptsFor, type AttemptSummary } from "@/lib/submissions/rules";
 
 export type InProgressChallenge = {
   slug: string;
@@ -30,6 +30,7 @@ export function inProgressChallenges(input: {
     audiences: readonly Audience[];
     questions: unknown;
     submission_spec: unknown;
+    feedback_mode?: string;
   }[];
   categories: { slug: string; title: string; archived: boolean; audiences: readonly Audience[] }[];
   track: Track | null | undefined;
@@ -41,7 +42,7 @@ export function inProgressChallenges(input: {
     if (!challenge || !isChallengeVisible(challenge, category, input.track)) continue;
 
     const attempts = input.attempts.filter((a) => a.challenge_slug === challenge.slug);
-    const state = attemptState(attempts);
+    const state = attemptState(attempts, maxAttemptsFor(challenge.feedback_mode));
     if (!state.canSubmit) continue;
 
     // The attempt that counts is the best published one (the earliest on a tie), as everywhere else.

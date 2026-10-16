@@ -19,3 +19,6 @@ export const removePathFixture = () => shared.removePathFixture(adminDb(), PATH_
 const PATH_ORDER_FIXTURE_DIR = path.join(__dirname, "fixtures", "path-order-content");
 export const installPathOrderFixture = () => shared.installFixtures(adminDb(), PATH_ORDER_FIXTURE_DIR);
 export const removePathOrderFixture = () => shared.removePathFixture(adminDb(), PATH_ORDER_FIXTURE_DIR);
+const INSTANT_FIXTURE_DIR = path.join(__dirname, "fixtures", "instant-content");
+export const installInstantFixture = () => shared.installFixtures(adminDb(), INSTANT_FIXTURE_DIR);
+export const removeInstantFixture = () => shared.removeChallenges(adminDb(), ["e2e-instant"]);

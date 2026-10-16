@@ -102,6 +102,8 @@ create table challenges (
   questions jsonb not null default '[]',        -- WITHOUT answers
   submission_spec jsonb not null default '{}',
   rubric jsonb not null default '[]',           -- criteria shown to users
+  -- final: results after submit. instant: each answer checked on the server as the learner goes (one real attempt).
+  feedback_mode text not null default 'final' check (feedback_mode in ('final', 'instant')),
   version int not null default 1,
   content_hash text not null,
   status text not null default 'published' check (status in ('draft','published','archived')),
@@ -119,10 +121,13 @@ create table challenges (
   updated_at timestamptz not null default now()
 );
 
--- Private: answers + grader notes. No RLS policies => service role only.
+-- Private: answers, explanations + grader notes. No RLS policies => service role only.
 create table challenge_keys (
   challenge_slug text primary key references challenges(slug) on delete cascade,
   answer_key jsonb not null default '{}',
+  -- Question id -> why the right answer is right; shown only once the learner has it right (or may see the key).
+  explanations jsonb not null default '{}'
+    check (jsonb_typeof(explanations) = 'object' and octet_length(explanations::text) <= 200000),
   grader_notes text
 );
 
@@ -150,6 +155,9 @@ create table submissions (
   is_imported boolean not null default false,
   imported_by uuid references profiles(id) on delete set null,
   imported_at timestamptz,
+  -- Instant mode: tries per question id behind the score ({"q1": 1, "q2": 3}); null in final mode.
+  question_tries jsonb
+    check (question_tries is null or (jsonb_typeof(question_tries) = 'object' and octet_length(question_tries::text) <= 50000)),
   constraint submissions_imported_not_test check (not (is_imported and is_test)),
   constraint submissions_imported_at check (is_imported = (imported_at is not null)),
   constraint submissions_attempt_range check (attempt >= 1 and (is_test or attempt <= 3)),
@@ -183,7 +191,7 @@ create table acknowledgements (
 );
 
 -- A learner's in-progress answers (Stepper state), so they can continue later from any device. Deleted on submit.
--- Written by the user's own session under RLS (own rows only; admins have no access).
+-- Written by the user's own session under RLS (own rows only; admins have no access), except instant_tries.
 create table submission_drafts (
   user_id uuid not null references profiles(id) on delete cascade,
   challenge_slug text not null references challenges(slug),
@@ -194,6 +202,10 @@ create table submission_drafts (
   image_paths text[] not null default '{}',
   current_step int not null default 1,
   updated_at timestamptz not null default now(),
+  -- Instant mode: the run in progress, {"test": bool, "questions": {"<id>": {"tries": n, "solved": bool}}}. Written
+  -- only by record_instant_try (service role): the learner can't write it or delete a row that has it.
+  instant_tries jsonb
+    check (instant_tries is null or (jsonb_typeof(instant_tries) = 'object' and octet_length(instant_tries::text) <= 50000)),
   primary key (user_id, challenge_slug),
   check (jsonb_typeof(answers) = 'object' and octet_length(answers::text) <= 200000),
   check (current_step between 1 and 100),
@@ -385,6 +397,10 @@ $$;
 --   attempt on a published milestone of a published path, flagged is_imported; actor must be an admin; same limits as
 --   a submit (nothing awaiting review, an attempt left, not at full points); audited.
 -- undo_import(p_submission, p_source, p_actor): deletes an imported attempt that is the user's latest; audited.
+-- record_instant_try(p_user, p_challenge, p_version, p_question, p_correct, p_is_test) returns jsonb: counts one check
+--   of one question in the learner's instant run (atomic; a solved question is never counted again; a run of the other
+--   kind, test or real, is discarded first). Service role only.
+--   Body: supabase/migrations/20261023090000_instant_quiz.sql.
 
 -- RLS ----------------------------------------------------------------------
 alter table admin_allowlist enable row level security;   -- no policies
@@ -489,9 +505,16 @@ create policy submission_drafts_select on submission_drafts for select to authen
 create policy submission_drafts_insert on submission_drafts for insert to authenticated with check (user_id = auth.uid());
 create policy submission_drafts_update on submission_drafts for update to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
-create policy submission_drafts_delete on submission_drafts for delete to authenticated using (user_id = auth.uid());
+-- A draft holding an instant run can't be deleted by its owner (that would reset the tries).
+create policy submission_drafts_delete on submission_drafts for delete to authenticated
+  using (user_id = auth.uid() and instant_tries is null);
 revoke all on submission_drafts from anon, authenticated;
-grant select, insert, update, delete on submission_drafts to authenticated;
+-- Every column but instant_tries.
+grant select, delete on submission_drafts to authenticated;
+grant insert (user_id, challenge_slug, challenge_version, answers, figma_url, reflection, image_paths, current_step, updated_at)
+  on submission_drafts to authenticated;
+grant update (user_id, challenge_slug, challenge_version, answers, figma_url, reflection, image_paths, current_step, updated_at)
+  on submission_drafts to authenticated;
 
 -- Storage ------------------------------------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

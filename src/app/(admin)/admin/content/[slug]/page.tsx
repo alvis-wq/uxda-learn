@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatSettingValue } from "@/lib/admin/challenge-settings";
 import { describePlaceholders } from "@/lib/content/placeholders";
+import { parseMatchPairs } from "@/lib/content/schema";
 import { getChallengePreview } from "@/lib/data/admin-content";
 import { audienceLabel } from "@/lib/tracks";
 import { formatDateTime } from "@/lib/utils";
@@ -105,6 +106,24 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
                     Free text{q.min_words ? `, at least ${q.min_words} words` : ""} — reviewed against the rubric and
                     grader notes.
                   </p>
+                ) : q.kind === "match" ? (
+                  <>
+                    <p className="text-muted-foreground text-meta">
+                      Match each item to its category ({q.one_per_category ? "one item per category" : "a category can take several"};
+                      learners see the items shuffled)
+                    </p>
+                    <ul className="grid gap-1" data-testid="preview-match">
+                      {q.items.map((item) => {
+                        const category = parseMatchPairs(q.correct ?? []).get(item.id);
+                        return (
+                          <li key={item.id} className="font-medium">
+                            {item.label} → {q.categories.find((c) => c.id === category)?.label ?? "—"}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {!q.correct && <p className="text-warning text-meta">No answer key stored for this question.</p>}
+                  </>
                 ) : q.kind === "order" ? (
                   <>
                     <p className="text-muted-foreground text-meta">Put in this order (learners see them shuffled)</p>
@@ -147,6 +166,11 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
                     </ul>
                     {!q.correct && <p className="text-warning text-meta">No answer key stored for this question.</p>}
                   </>
+                )}
+                {q.explanation && (
+                  <p className="text-muted-foreground text-meta" data-testid="preview-explanation">
+                    <span className="text-foreground font-medium">Explanation:</span> {q.explanation}
+                  </p>
                 )}
               </li>
             ))}

@@ -2,11 +2,14 @@ import "server-only";
 import type { Challenge } from "@/lib/challenges/model";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { maxAttemptsFor } from "@/lib/submissions/rules";
 import type { AnswerKey } from "@/lib/submissions/grading";
 import {
   answerReveal,
   questionResults,
   REVEAL_ALL,
+  toExplanations,
+  toQuestionTries,
   type AnswerReveal,
   type QuestionResult,
 } from "@/lib/submissions/results";
@@ -24,6 +27,8 @@ type SubmissionForResults = {
   answers: unknown;
   /** A tester's attempt on a draft: the answer key is always shown, to let them check it. */
   is_test: boolean;
+  /** Instant mode: tries per question id; null in final mode. */
+  question_tries?: unknown;
 };
 
 async function build(sub: SubmissionForResults, challenge: Challenge | null, reveal: () => Promise<AnswerReveal>) {
@@ -31,7 +36,7 @@ async function build(sub: SubmissionForResults, challenge: Challenge | null, rev
   if (challenge.version !== sub.challenge_version) return { state: "outdated" } as const;
   const [{ data: keyRow, error }, revealState] = await Promise.all([
     // The key table has no RLS policies: only the service role reads it, and only here on the server.
-    createAdminClient().from("challenge_keys").select("answer_key").eq("challenge_slug", sub.challenge_slug).maybeSingle(),
+    createAdminClient().from("challenge_keys").select("answer_key,explanations").eq("challenge_slug", sub.challenge_slug).maybeSingle(),
     reveal(),
   ]);
   if (error || !keyRow) return { state: "none" } as const;
@@ -40,6 +45,7 @@ async function build(sub: SubmissionForResults, challenge: Challenge | null, rev
     keyRow.answer_key as AnswerKey,
     (sub.answers ?? {}) as Record<string, unknown>,
     revealState,
+    { explanations: toExplanations(keyRow.explanations), questionTries: toQuestionTries(sub.question_tries) },
   );
   return { state: "ready", results, reveal: revealState } as const;
 }
@@ -63,7 +69,7 @@ export function getLearnerAttemptResults(
       .eq("user_id", userId)
       .eq("challenge_slug", sub.challenge_slug)
       .eq("is_test", false); // test attempts neither open the key nor use up attempts
-    return answerReveal(data ?? []);
+    return answerReveal(data ?? [], maxAttemptsFor(challenge?.feedback_mode));
   });
 }
 
