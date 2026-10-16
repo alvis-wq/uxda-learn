@@ -227,6 +227,9 @@ export type Database = {
           due_at: string | null
           estimated_minutes: number | null
           image: string | null
+          image_offset_x: number
+          image_offset_y: number
+          image_scale: number
           path_slug: string | null
           points: number
           questions: Json
@@ -252,6 +255,9 @@ export type Database = {
           due_at?: string | null
           estimated_minutes?: number | null
           image?: string | null
+          image_offset_x?: number
+          image_offset_y?: number
+          image_scale?: number
           path_slug?: string | null
           points: number
           questions?: Json
@@ -277,6 +283,9 @@ export type Database = {
           due_at?: string | null
           estimated_minutes?: number | null
           image?: string | null
+          image_offset_x?: number
+          image_offset_y?: number
+          image_scale?: number
           path_slug?: string | null
           points?: number
           questions?: Json
@@ -427,6 +436,9 @@ export type Database = {
           created_at: string
           due_at: string | null
           image: string | null
+          image_offset_x: number
+          image_offset_y: number
+          image_scale: number
           milestones: string[]
           required_for: Database["public"]["Enums"]["audience"][]
           requires: string[]
@@ -445,6 +457,9 @@ export type Database = {
           created_at?: string
           due_at?: string | null
           image?: string | null
+          image_offset_x?: number
+          image_offset_y?: number
+          image_scale?: number
           milestones: string[]
           required_for?: Database["public"]["Enums"]["audience"][]
           requires?: string[]
@@ -463,6 +478,9 @@ export type Database = {
           created_at?: string
           due_at?: string | null
           image?: string | null
+          image_offset_x?: number
+          image_offset_y?: number
+          image_scale?: number
           milestones?: string[]
           required_for?: Database["public"]["Enums"]["audience"][]
           requires?: string[]

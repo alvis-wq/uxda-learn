@@ -19,6 +19,17 @@ const imageFile = z
   .string()
   .regex(IMAGE_FILE_PATTERN, "must be a file name in public/challenges/ ending in .png, .jpg, .webp or .avif (lowercase, no folders)");
 
+/**
+ * Hand tuning of a card illustration (needs `image` in the same file; checked in validate.ts). Scale multiplies its
+ * width, anchored bottom-right; offsets move it by a % of its own size (x right, y down). Keep the ranges in step with
+ * supabase/migrations/20261022090000_image_tuning.sql.
+ */
+const imageTuning = {
+  image_scale: z.number().min(0.5, "must be at least 0.5").max(2, "must be at most 2").optional(),
+  image_offset_x: z.number().min(-50, "must be between -50 and 50 (% of the illustration)").max(50, "must be between -50 and 50 (% of the illustration)").optional(),
+  image_offset_y: z.number().min(-50, "must be between -50 and 50 (% of the illustration)").max(50, "must be between -50 and 50 (% of the illustration)").optional(),
+};
+
 export const trackSchema = z.enum(TRACK_VALUES);
 
 /**
@@ -149,6 +160,7 @@ export const challengeFrontmatterSchema = z.strictObject({
   status: challengeStatusSchema.default("draft"),
   summary: z.string().trim().max(300).optional(),
   image: imageFile.optional(), // overrides the category's image
+  ...imageTuning,
   due_at: z.iso.datetime({ offset: true }).optional(),
   tip: z.string().trim().min(1, "must not be empty").max(1000, "keep the tip short (at most 1000 characters)").optional(), // markdown hint above the questions
   questions: z.array(questionSchema).default([]),
@@ -166,6 +178,7 @@ export const pathFileSchema = z.strictObject({
   audiences: audiencesSchema.optional(), // defaults to the category's audiences
   summary: nonEmpty.max(160, "keep the summary to one short sentence (at most 160 characters)"),
   image: imageFile.optional(), // card artwork; overrides the category's image
+  ...imageTuning,
   sequential: z.boolean().default(true),
   milestones: z.array(slug).min(2, "a path needs at least 2 milestones"),
   /** Paths that come first: this one stays locked until each has every milestone submitted. */

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { categorySchema, challengeFrontmatterSchema, loadAndValidate, pathFileSchema } from "./index";
 import { planSync, countChanges } from "./sync-plan";
 import { contentWarnings, validateContent } from "./validate";
-import { deriveSummary, hashPublicContent, toCategoryRow, toChallengeRows, toPathRow } from "./transform";
+import { deriveSummary, hashPublicContent, NO_IMAGE_TUNING, toCategoryRow, toChallengeRows, toPathRow } from "./transform";
 
 const FIXTURES = path.resolve(__dirname, "../../../tests/fixtures/content");
 
@@ -576,14 +576,14 @@ describe("card images", () => {
       const plan = planSync(rowsFor("new.webp"), dbFrom(rowsFor("old.webp")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null, path_slug: null }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null, path_slug: null, ...NO_IMAGE_TUNING }]);
       expect(countChanges(plan)).toBe(1);
     });
 
     it("adding and removing an image are both detected", () => {
       expect(planSync(rowsFor("a.webp"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
       expect(planSync(rowsFor(), dbFrom(rowsFor("a.webp"))).challengeDisplayUpdates).toEqual([
-        { slug: content.challenges[0].data.slug, image: null, tip: null, path_slug: null },
+        { slug: content.challenges[0].data.slug, image: null, tip: null, path_slug: null, ...NO_IMAGE_TUNING },
       ]);
     });
 
@@ -600,9 +600,9 @@ describe("card images", () => {
       const plan = planSync(rowsFor(undefined, "new"), dbFrom(rowsFor(undefined, "old")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new", path_slug: null }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new", path_slug: null, ...NO_IMAGE_TUNING }]);
       expect(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
-      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null, path_slug: null }]);
+      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null, path_slug: null, ...NO_IMAGE_TUNING }]);
       expect(countChanges(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor(undefined, "t"))))).toBe(0);
     });
 
@@ -624,6 +624,61 @@ describe("card images", () => {
       expect(plan.challengeWrites).toHaveLength(1);
       expect(plan.challengeWrites[0].row.image).toBe("new.webp");
       expect(plan.challengeDisplayUpdates).toEqual([]);
+    });
+
+    describe("illustration tuning (image_scale, image_offset_x, image_offset_y)", () => {
+      const slug = content.challenges[0].data.slug;
+      const tuned = (t: { image_scale?: number; image_offset_x?: number; image_offset_y?: number }, image = "a.webp") => ({
+        categories: content.categories.map(toCategoryRow),
+        challenges: content.challenges.map((c, i) => toChallengeRows(i === 0 ? { ...c, data: { ...c.data, image, ...t } } : c, content.categories)),
+      });
+
+      it("defaults to no tuning and stays out of content_hash", () => {
+        const plain = tuned({}).challenges[0].challenge;
+        const moved = tuned({ image_scale: 1.2, image_offset_x: -10, image_offset_y: 5 }).challenges[0].challenge;
+        expect(plain).toMatchObject(NO_IMAGE_TUNING);
+        expect(moved).toMatchObject({ image_scale: 1.2, image_offset_x: -10, image_offset_y: 5 });
+        expect(moved.content_hash).toBe(plain.content_hash);
+      });
+
+      it("a changed tuning alone is a version-neutral display write, carrying it", () => {
+        const plan = planSync(tuned({ image_offset_y: 8 }), dbFrom(tuned({})));
+        expect(plan.challengeWrites).toEqual([]);
+        expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: "a.webp", tip: null, path_slug: null, ...NO_IMAGE_TUNING, image_offset_y: 8 }]);
+        expect(countChanges(planSync(tuned({ image_scale: 1.5 }), dbFrom(tuned({ image_scale: 1.5 }))))).toBe(0);
+      });
+
+      it("reads numeric columns returned as strings, and an older database without the columns as untuned", () => {
+        const db = dbFrom(tuned({ image_scale: 1.5 }));
+        db.challenges[0] = { ...db.challenges[0], image_scale: "1.5" as unknown as number };
+        expect(countChanges(planSync(tuned({ image_scale: 1.5 }), db))).toBe(0);
+        const old = dbFrom(tuned({}));
+        for (const c of old.challenges) for (const f of ["image_scale", "image_offset_x", "image_offset_y"]) delete (c as Record<string, unknown>)[f];
+        expect(countChanges(planSync(tuned({}), old))).toBe(0);
+      });
+
+      it("schema: scale 0.5–2, offsets -50–50 (% of the illustration)", () => {
+        const base = content.challenges[0].data;
+        const ok = (t: object) => challengeFrontmatterSchema.safeParse({ ...base, image: "a.webp", ...t }).success;
+        expect(ok({ image_scale: 0.5, image_offset_x: -50, image_offset_y: 50 })).toBe(true);
+        expect(ok({ image_scale: 2.01 })).toBe(false);
+        expect(ok({ image_scale: 0.4 })).toBe(false);
+        expect(ok({ image_offset_x: 51 })).toBe(false);
+        expect(ok({ image_offset_y: -51 })).toBe(false);
+      });
+
+      it("validation: tuning needs the file's own image", () => {
+        const dir = mkdtempSync(path.join(tmpdir(), "tuning-"));
+        writeFileSync(path.join(dir, "a.webp"), "");
+        const { content: c } = loadAndValidate(path.join(FIXTURES, "valid"));
+        c.challenges[0].data.image_scale = 1.2;
+        const file = c.challenges[0].file;
+        expect(validateContent(c, dir).map((e) => `${e.file}: ${e.message}`)).toContain(
+          `${file}: image_scale: tunes this file's own illustration, so it needs \`image\` here too`,
+        );
+        c.challenges[0].data.image = "a.webp";
+        expect(validateContent(c, dir)).toEqual([]);
+      });
     });
 
     it("a category image change updates the category", () => {
@@ -715,7 +770,7 @@ describe("planSync for learning paths", () => {
     db.challenges[0] = { ...db.challenges[0], path_slug: null };
     const plan = planSync(disk, db);
     expect(plan.challengeWrites).toEqual([]);
-    expect(plan.challengeDisplayUpdates).toEqual([{ slug: "step-one", image: null, tip: null, path_slug: "two-steps" }]);
+    expect(plan.challengeDisplayUpdates).toEqual([{ slug: "step-one", image: null, tip: null, path_slug: "two-steps", ...NO_IMAGE_TUNING }]);
     const ch = content.challenges[0];
     const moved = { ...ch, data: { ...ch.data, path: undefined } };
     expect(toChallengeRows(moved, content.categories).challenge.content_hash).toBe(disk.challenges[0].challenge.content_hash);
@@ -731,6 +786,15 @@ describe("planSync for learning paths", () => {
     const db = synced();
     db.paths[0] = { ...db.paths[0], image: "old.png" };
     expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
+  });
+
+  it("writes a changed illustration tuning as a path content update", () => {
+    const db = synced();
+    db.paths[0] = { ...db.paths[0], image_scale: 1.3 };
+    expect(planSync(disk, db).pathWrites).toEqual([{ action: "update", row: disk.paths[0].row }]);
+    expect(disk.paths[0].row).toMatchObject(NO_IMAGE_TUNING);
+    const file = { ...content.paths[0].data, image: "p.png", image_offset_x: 12 };
+    expect(toPathRow(file, content.categories).row).toMatchObject({ image_scale: 1, image_offset_x: 12, image_offset_y: 0 });
   });
 
   it("writes a changed `requires` as a path content update", () => {

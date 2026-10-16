@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ARTWORK_CLEARANCE, ARTWORK_SIZE, ARTWORK_VARS, CardArtwork } from "@/components/card-artwork";
+import { ARTWORK_SIZE, CardArtwork } from "@/components/card-artwork";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
@@ -23,8 +23,8 @@ const GRID_SPAN: Record<CardSpan, string> = {
  * subheading, muted body, a violet CTA pill and a compact meta row. The whole card is one link (the heading's), so the
  * accessible name stays the challenge title; the CTA is decoration for that link.
  *
- * Optional artwork is a background layer in the bottom-right corner (CardArtwork). Everything else (text, buttons, meta
- * rows, badges) keeps to the left of it (ARTWORK_CLEARANCE), so nothing runs over the illustration.
+ * Optional artwork is a true background in the bottom-right corner (CardArtwork): it never changes the layout, which
+ * is the same with or without it, and fades towards the top-left so text crossing it stays readable.
  */
 export function ChallengeCard({
   challenge: ch,
@@ -59,50 +59,53 @@ export function ChallengeCard({
         "hover:border-primary has-[a:focus-visible]:ring-ring/50 has-[a:focus-visible]:ring-[3px]",
         // A draft a tester can try: dashed border and a muted surface, so it can't be mistaken for a real challenge.
         ch.isDraft ? "bg-muted border-muted-foreground/50 border-dashed" : "bg-tile",
-        ARTWORK_VARS,
         ARTWORK_SIZE[span],
       )}
     >
-      {ch.imageUrl && <CardArtwork src={ch.imageUrl} span={span} />}
-      <div className={cn("flex min-w-0 flex-1 flex-col gap-4 p-[var(--pad)]", hasImage && ARTWORK_CLEARANCE)}>
-        <div className="grid gap-2">
-          <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">
-            <Link
-              href={`/challenges/${ch.slug}`}
-              className="outline-none after:absolute after:inset-0 after:z-10 after:content-['']"
-            >
-              {ch.title}
-            </Link>
-          </Heading>
-          {subheading && <p className="text-brand-text line-clamp-2 font-medium">{subheading}</p>}
-        </div>
-        {body && <p className="text-muted-foreground line-clamp-3">{body}</p>}
+      {ch.imageUrl && <CardArtwork src={ch.imageUrl} span={span} tuning={ch.imageTuning} />}
+      <div className="grid min-w-0 flex-1 px-[var(--pad)] pt-[var(--pad)]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="grid gap-2">
+            <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">
+              <Link
+                href={`/challenges/${ch.slug}`}
+                className="outline-none after:absolute after:inset-0 after:z-10 after:content-['']"
+              >
+                {ch.title}
+              </Link>
+            </Heading>
+            {subheading && <p className="text-brand-text line-clamp-2 font-medium">{subheading}</p>}
+          </div>
+          {body && <p className="text-muted-foreground line-clamp-3">{body}</p>}
 
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-          <span
-            aria-hidden
-            className="bg-primary text-primary-foreground inline-flex h-10 w-fit items-center gap-2 rounded-full px-5 text-sm font-medium"
-          >
-            {cta}
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
-          {tryAgain && (
-            // A real link above the card-wide one (z-20 over its z-10): same page, but straight to the form.
-            <Link
-              href={`/challenges/${ch.slug}#submit`}
-              data-testid="card-try-again"
-              className={cn(buttonVariants({ variant: "outline" }), "relative z-20 h-10 px-5")}
+          <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+            <span
+              aria-hidden
+              className="bg-primary text-primary-foreground inline-flex h-10 w-fit items-center gap-2 rounded-full px-5 text-sm font-medium"
             >
-              Try again
-              <span className="sr-only"> — {ch.title}</span>
-            </Link>
-          )}
+              {cta}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+            {tryAgain && (
+              // A real link above the card-wide one (z-20 over its z-10): same page, but straight to the form.
+              <Link
+                href={`/challenges/${ch.slug}#submit`}
+                data-testid="card-try-again"
+                className={cn(buttonVariants({ variant: "outline" }), "relative z-20 h-10 px-5")}
+              >
+                Try again
+                <span className="sr-only"> — {ch.title}</span>
+              </Link>
+            )}
+          </div>
         </div>
-
-        {/* Always two rows: 1) what it is, 2) where the learner stands. Not positioned, so the waiting-time info
-            button (z-20) sits above the card-wide link (z-10). */}
-        <div className="grid gap-2 pt-1" data-testid="card-meta">
-          <ChallengeMeta challenge={ch} compact />
+      </div>
+      {/* The meta rows span the whole card, so they are two rows at every width. No stacking context of their own,
+          so the waiting-time info button (z-20) sits above the card-wide link (z-10). */}
+      <div className="px-[var(--pad)] pt-4 pb-[var(--pad)]">
+        {/* Always two rows: 1) what it is, 2) where the learner stands. */}
+        <div className="grid gap-2" data-testid="card-meta">
+          <ChallengeMeta challenge={ch} nowrap />
           <div className="flex flex-wrap items-center gap-2" data-testid="card-badges">
             {ch.isDraft && <DraftBadge />}
             <RequiredBadges required={ch.required} dueAt={ch.due_at} done={ch.done} now={now} className="contents" />

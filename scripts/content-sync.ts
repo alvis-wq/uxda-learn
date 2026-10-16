@@ -32,7 +32,7 @@ async function main() {
     db.from("categories").select("slug,title,description,audiences,sort_order,archived,image"),
     db.from("challenges").select("*"),
     db.from("challenge_keys").select("challenge_slug,answer_key,grader_notes"),
-    db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,requires,before_you_start,before_you_submit,image,status,required_for,due_at"),
+    db.from("paths").select("slug,category_slug,title,summary,audiences,sequential,milestones,requires,before_you_start,before_you_submit,image,image_scale,image_offset_x,image_offset_y,status,required_for,due_at"),
   ]);
   check(cats, "read categories");
   check(chs, "read challenges");
@@ -71,7 +71,7 @@ async function main() {
   for (const u of plan.challengeHashRefreshes) console.log(`  challenge hash refresh: ${u.slug} (version unchanged)`);
   for (const u of plan.challengeDisplayUpdates) {
     console.log(
-      `  challenge display: ${u.slug} (image ${u.image ?? "none"}, tip ${u.tip ? "set" : "none"}, path ${u.path_slug ?? "none"}; version unchanged)`,
+      `  challenge display: ${u.slug} (image ${u.image ?? "none"} ×${u.image_scale} ${u.image_offset_x}%/${u.image_offset_y}%, tip ${u.tip ? "set" : "none"}, path ${u.path_slug ?? "none"}; version unchanged)`,
     );
   }
   for (const slug of plan.challengeArchives) console.log(`  challenge archived: ${slug}`);
@@ -121,8 +121,8 @@ async function main() {
   for (const { slug, content_hash } of plan.challengeHashRefreshes) {
     check(await db.from("challenges").update({ content_hash }).eq("slug", slug), `hash refresh ${slug}`);
   }
-  for (const { slug, image, tip, path_slug } of plan.challengeDisplayUpdates) {
-    check(await db.from("challenges").update({ image, tip, path_slug }).eq("slug", slug), `display ${slug}`);
+  for (const { slug, ...display } of plan.challengeDisplayUpdates) {
+    check(await db.from("challenges").update(display).eq("slug", slug), `display ${slug}`);
   }
   for (const slug of plan.pathArchives) {
     check(

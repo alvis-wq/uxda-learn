@@ -66,6 +66,10 @@ create table paths (
   before_you_submit text[] not null default '{}',
   -- Card artwork: a file name in public/challenges/ (else the category's). Display only.
   image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$'),
+  -- Hand tuning of the illustration (scale anchored bottom-right; offsets in % of its size); display only.
+  image_scale numeric not null default 1 check (image_scale between 0.5 and 2),
+  image_offset_x numeric not null default 0 check (image_offset_x between -50 and 50),
+  image_offset_y numeric not null default 0 check (image_offset_y between -50 and 50),
   -- Path slugs that come first: this path stays locked until each has every milestone submitted (any attempt counts).
   requires text[] not null default '{}',
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
@@ -104,6 +108,10 @@ create table challenges (
   due_at timestamptz,
   -- File name in public/challenges/ (card artwork); display only, not part of content_hash.
   image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$'),
+  -- Hand tuning of the illustration (scale anchored bottom-right; offsets in % of its size); display only.
+  image_scale numeric not null default 1 check (image_scale between 0.5 and 2),
+  image_offset_x numeric not null default 0 check (image_offset_x between -50 and 50),
+  image_offset_y numeric not null default 0 check (image_offset_y between -50 and 50),
   -- Short markdown hint above the questions; display only, not part of content_hash.
   tip text check (tip is null or char_length(tip) <= 1000),
   -- The path this challenge is a milestone of (listed only inside it); display only, not part of content_hash.

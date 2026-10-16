@@ -1,47 +1,58 @@
 import Image from "next/image";
 import type { CardSpan } from "@/lib/challenges/card";
+import type { ImageTuning } from "@/lib/content/transform";
 
 /**
  * Sets `--art`, the illustration's width, on a card. The card must be a size container (`@container`): the width is
  * a share of the card's own width (`cqw`), so it follows the card, not the viewport.
  *
  * - Large cards (full width on desktop, and every card from md to lg, where the grid is one column): 18.25rem.
- * - Grid cards (lg+): about half the card, so the object reads clearly: 48% of a wide card, 45% of a narrow one.
- * - Mobile (one column, below md): a third of the card.
- *
- * Whatever the target, it is capped so the text column (`--text-min`) always fits beside it: on a card too narrow for
- * both, the illustration shrinks, never the text into it.
+ * - Grid cards (lg+): 45% of the card, so the object reads clearly.
+ * - Mobile (one column, below md): 40% of the card.
  */
 export const ARTWORK_SIZE: Record<CardSpan, string> = {
-  wide: "[--art-target:34cqw] md:[--art-target:18.25rem] lg:[--art-target:48cqw]",
-  narrow: "[--art-target:34cqw] md:[--art-target:18.25rem] lg:[--art-target:45cqw]",
-  full: "[--art-target:34cqw] md:[--art-target:18.25rem]",
+  wide: "[--art:40cqw] md:[--art:18.25rem] lg:[--art:45cqw]",
+  narrow: "[--art:40cqw] md:[--art:18.25rem] lg:[--art:45cqw]",
+  full: "[--art:40cqw] md:[--art:18.25rem]",
 };
 
-/** Shared by every span: the gap between text and illustration, the narrowest the text may get, and `--art` itself. */
-export const ARTWORK_VARS =
-  "[--art-gap:0.75rem] [--text-min:11rem] [--art:min(var(--art-target),calc(100cqw_-_var(--pad)_-_var(--art-gap)_-_var(--text-min)))]";
-
-/** Right padding for a card's content when it has an illustration: everything stays left of it. */
-export const ARTWORK_CLEARANCE = "pr-[calc(var(--art)_+_var(--art-gap))]";
-
 /**
- * Largest width the image is drawn at, for `sizes` (see ARTWORK_SIZE): 18.25rem from md (a wide grid card's 48% is
- * less), 45% of a narrow grid card (≤ 11.5rem), and a third of the card below md.
+ * Largest width the image is drawn at, for `sizes` (see ARTWORK_SIZE): 18.25rem from md (45% of a wide grid card is
+ * less), 45% of a narrow grid card (≤ 11.5rem), and 40% of the card below md.
  */
 const SIZES: Record<CardSpan, string> = {
-  wide: "(min-width: 768px) 18.25rem, 34vw",
-  narrow: "(min-width: 1024px) 11.5rem, (min-width: 768px) 18.25rem, 34vw",
-  full: "(min-width: 768px) 18.25rem, 34vw",
+  wide: "(min-width: 768px) 18.25rem, 40vw",
+  narrow: "(min-width: 1024px) 11.5rem, (min-width: 768px) 18.25rem, 40vw",
+  full: "(min-width: 768px) 18.25rem, 40vw",
 };
 
 /**
- * A card's illustration as a background layer: flush with the card's bottom and right edges, so the 800×800 frame
- * (drawn to be cropped there) bleeds off both and is clipped by the rounded corner, and underneath everything else
- * (`-z-10` inside the card's `isolate`). The card keeps its content left of it with ARTWORK_CLEARANCE. Decorative
- * (the title says what the card is), served resized by next/image and lazy-loaded.
+ * The fade that keeps text readable where it crosses the illustration: fully visible in the bottom-right corner,
+ * transparent towards the top-left. On the image itself: nothing is painted behind the text. A gentle fade on
+ * purpose: on an extreme card (a long badge row on a wide grid card) text can still cross an opaque part of the object
+ * — accepted, see DECISIONS.md.
  */
-export function CardArtwork({ src, span }: { src: string; span: CardSpan }) {
+const FADE = "radial-gradient(circle at 100% 100%, #000 30%, transparent 85%)";
+
+/** `sizes` for a tuned illustration: every width multiplied by its scale. */
+export function scaledSizes(sizes: string, scale: number): string {
+  if (scale === 1) return sizes;
+  return sizes.replace(/(\d+(?:\.\d+)?)(rem|vw)/g, (_, n: string, unit: string) => `${+(Number(n) * scale).toFixed(2)}${unit}`);
+}
+
+/**
+ * A card's illustration as a true background: absolutely positioned, flush with the card's bottom and right edges, so
+ * the 800×800 frame (drawn to be cropped there) bleeds off both and is clipped by the rounded corner, and underneath
+ * everything else (`-z-10` inside the card's `isolate`). It never affects the layout: the card's content is laid out
+ * as if there were no image, and the fade (FADE) keeps the text that crosses it readable. Decorative (the title says
+ * what the card is), served resized by next/image and lazy-loaded.
+ *
+ * `tuning` adjusts one illustration by hand, like in Figma: `image_scale` multiplies its width (still anchored
+ * bottom-right) and `image_offset_x` / `image_offset_y` move it by a % of its own size (right / down). The fade moves
+ * with it.
+ */
+export function CardArtwork({ src, span, tuning }: { src: string; span: CardSpan; tuning: ImageTuning }) {
+  const { image_scale: scale, image_offset_x: x, image_offset_y: y } = tuning;
   return (
     <Image
       src={src}
@@ -49,9 +60,15 @@ export function CardArtwork({ src, span }: { src: string; span: CardSpan }) {
       aria-hidden
       width={800}
       height={800}
-      sizes={SIZES[span]}
+      sizes={scaledSizes(SIZES[span], scale)}
       draggable={false}
       data-testid="card-artwork"
+      style={{
+        maskImage: FADE,
+        WebkitMaskImage: FADE,
+        width: scale === 1 ? undefined : `calc(var(--art) * ${scale})`,
+        transform: x || y ? `translate(${x}%, ${y}%)` : undefined,
+      }}
       className="pointer-events-none absolute right-0 bottom-0 -z-10 h-auto w-[var(--art)] max-w-none select-none"
     />
   );
