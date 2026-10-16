@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import Stepper, { Step } from "@/components/stepper/Stepper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { choicesOf, type PublicQuestion, type SubmissionSpec } from "@/lib/content/schema";
+import { choicesOf, parseMatchPairs, type PublicQuestion, type SubmissionSpec } from "@/lib/content/schema";
 import type { FormDraft } from "@/lib/data/drafts";
 import type { DraftInput } from "@/lib/submissions/input";
 import {
@@ -458,6 +458,15 @@ function Review({
     const choices = choicesOf(q) ?? [];
     const labels = ids.map((id) => choices.find((o) => o.id === id)?.label ?? id);
     if (q.kind === "order") return labels.length ? labels.map((l, i) => `${i + 1}. ${l}`).join("\n") : null;
+    if (q.kind === "match") {
+      const placed = parseMatchPairs(ids);
+      return placed.size
+        ? q.items
+            .filter((item) => placed.has(item.id))
+            .map((item) => `${item.label} → ${q.categories.find((c) => c.id === placed.get(item.id))?.label ?? ""}`)
+            .join("\n")
+        : null;
+    }
     return labels.length ? labels.join("; ") : null;
   };
   const empty = <span className="text-muted-foreground">Nothing added</span>;

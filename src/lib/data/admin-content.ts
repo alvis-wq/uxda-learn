@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { parseChallenge } from "@/lib/challenges/model";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { toExplanations } from "@/lib/submissions/results";
 import { visibleTracks } from "@/lib/tracks";
 
 type AuditSelect = {
@@ -168,7 +169,7 @@ export async function getChallengePreview(slug: string) {
   if (!row) return null;
   const [{ data: category }, { data: key }, audit, feedback, tests] = await Promise.all([
     supabase.from("categories").select("title,audiences,archived").eq("slug", row.category_slug).maybeSingle(),
-    createAdminClient().from("challenge_keys").select("answer_key,grader_notes").eq("challenge_slug", slug).maybeSingle(),
+    createAdminClient().from("challenge_keys").select("answer_key,explanations,grader_notes").eq("challenge_slug", slug).maybeSingle(),
     supabase
       .from("challenge_settings_audit")
       .select(AUDIT_COLUMNS)
@@ -190,9 +191,10 @@ export async function getChallengePreview(slug: string) {
   const challenge = parseChallenge(row);
   const answers = (key?.answer_key ?? {}) as Record<string, string | string[] | undefined>;
   // Correct option ids per auto-graded question (null for text questions or a missing key).
+  const explanations = toExplanations(key?.explanations);
   const questions = challenge.questions.map((q) => {
     const a = q.kind === "text" ? undefined : answers[q.id];
-    return { ...q, correct: a === undefined ? null : [a].flat() };
+    return { ...q, correct: a === undefined ? null : [a].flat(), explanation: explanations[q.id] ?? null };
   });
 
   return {

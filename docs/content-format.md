@@ -76,6 +76,7 @@ audiences: [strategist]            # optional, defaults to the category's audien
 required_for: [strategist]         # initial value* — optional: all | [track, ...]; omitted = optional
 due_at: 2026-11-01T17:00:00Z       # initial value* — optional deadline (ISO 8601 with offset)
 type: mixed                        # quiz | screenshot | figma | mixed | acknowledge
+feedback_mode: final               # final (default): results after submit | instant: each answer checked as you go (quiz only)
 difficulty: 2                      # 1 easy, 2 medium, 3 hard (not used by acknowledge)
 points: 30                         # MUST equal sum of question points + rubric points
 estimated_minutes: 90              # optional total time
@@ -86,10 +87,11 @@ tip: Start with the brief's last paragraph; it lists what is scored.   # optiona
 status: draft                      # initial value* — draft | published | archived
 questions:                         # optional
   - id: q1
-    kind: single                   # single | multi | order (auto-graded) | text (AI-reviewed)
+    kind: single                   # single | multi | order | match (auto-graded) | text (AI-reviewed)
     prompt: Which tool is cheapest for early exploration?
     options: [{ id: a, label: Claude Code }, { id: b, label: Figma Make }]
-    answer: b                      # single: id; multi: [ids]; order / text: omit
+    answer: b                      # single: id; multi: [ids]; order / match / text: omit
+    explanation: Figma Make drafts a screen in seconds.   # optional, private: why the answer is right (not on text)
     points: 5
   - id: q2
     kind: order                    # learners drag `items` into the right order
@@ -99,6 +101,16 @@ questions:                         # optional
       - { id: consequence, label: Consequence }
       - { id: next, label: Next step }
     points: 4
+  - id: q3
+    kind: match                    # learners put each item on its category
+    prompt: Match each file to its purpose.
+    categories:
+      - { id: guide, label: "The guide: what to do in each step" }
+      - { id: work, label: Where the work is filled in }
+    items:                         # each with the category id it belongs to (`match`)
+      - { id: framework, label: Wireframe creation framework, match: guide }
+      - { id: workspace, label: Wireframe workspace, match: work }
+    points: 2
 submission:                        # optional — omit for quiz-only
   screenshots: { min: 1, max: 6, label: What to capture }
   figma_url: { required: false, label: Link to the final frame (node URL) }
@@ -128,6 +140,39 @@ correct order), and the correct order lives only in the private key. It is grade
 all-or-nothing, so one item in the wrong place scores 0. Learners move items by dragging, or with the
 Move up / Move down buttons on each item (and from the keyboard). Changing the items changes the
 challenge `version`.
+
+A `match` question needs at least 2 categories and 2 items, each with different ids and labels, and every item's
+`match` must be one of the category ids. When every category gets exactly one item, each category on screen takes one
+item (putting an item on a taken one sends the other back to "Items to place"); otherwise a category can take several.
+`content:sync` stores the items shuffled and without `match`: the pairs live only in the private key. Graded
+all-or-nothing, like `order`. Learners drag an item's handle onto a category (or use Space and the arrow keys), or pick
+the category in the item's menu.
+
+**True / false** is a `single` question with the options `True` and `False`. Quote the ids, since YAML reads a bare
+`true` as a boolean: `options: [{ id: "true", label: "True" }, { id: "false", label: "False" }]`, `answer: "false"`.
+A True/False pair always shows in that order; other options are shuffled.
+
+**Shuffling.** Every new attempt shows the options of each question, and the items of `order` and `match` questions,
+in its own order (an `order` question never starts in the right order). In a challenge whose questions are all
+auto-graded, the questions are shuffled too; a challenge with written (`text`) questions keeps their order. The order
+is fixed per learner and attempt, so a refresh doesn't change it.
+
+**Explanations** (`explanation`, optional on every question except `text`, up to 2000 characters) are private like the
+answers. In final mode they show on the result page under each question the learner got right, and under every
+question once the right answers may be shown (full marks, or every attempt used). Changing one bumps the `version`,
+like a change to an answer.
+
+### Instant feedback (`feedback_mode: instant`)
+Only for a `quiz` whose questions are all `single`, `multi`, `order` or `match` (`content:validate` checks it).
+- One question at a time. On **Continue** the server checks that one answer and a dialog says **Correct!** (with the
+  explanation, then the next question) or **Not quite — try again.** (no answer, no explanation: back to the same
+  question). Learners move on only with a right answer; sending the same wrong answer twice isn't possible.
+- **Scoring:** full points on the first try, half on the second, 0 after that (rounded to half points). Tries are
+  counted on the server and survive a refresh or another device.
+- When the last question is right, the attempt is published and the result page opens (each question shows its try
+  and points).
+- **One real attempt**: the first completed run is final, no "Try again". Testers' test attempts stay unlimited.
+- Changing `feedback_mode` bumps the `version`.
 
 `submission.screenshots.min: 0` makes the screenshots optional (the Stepper shows "Optional"); use it when the
 Figma link alone shows the work, and write the rubric so the link can earn full marks.

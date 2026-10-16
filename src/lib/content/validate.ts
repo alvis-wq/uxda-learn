@@ -92,6 +92,21 @@ export function validateContent(
 
     for (const q of c.questions) {
       if (q.kind === "text") continue;
+      if (q.kind === "match") {
+        const categoryIds = q.categories.map((cat) => cat.id);
+        for (const cid of duplicates(categoryIds)) err(file, `question ${q.id}: duplicate category id "${cid}"`);
+        for (const label of duplicates(q.categories.map((cat) => cat.label.trim().toLowerCase()))) {
+          err(file, `question ${q.id}: two categories are both "${label}" — each category must be different`);
+        }
+        for (const iid of duplicates(q.items.map((item) => item.id))) err(file, `question ${q.id}: duplicate item id "${iid}"`);
+        for (const label of duplicates(q.items.map((item) => item.label.trim().toLowerCase()))) {
+          err(file, `question ${q.id}: two items are both "${label}" — each item must be different`);
+        }
+        for (const item of q.items) {
+          if (!categoryIds.includes(item.match)) err(file, `question ${q.id}: item "${item.id}" matches "${item.match}", which is not a category id`);
+        }
+        continue;
+      }
       if (q.kind === "order") {
         for (const iid of duplicates(q.items.map((item) => item.id))) err(file, `question ${q.id}: duplicate item id "${iid}"`);
         for (const label of duplicates(q.items.map((item) => item.label.trim().toLowerCase()))) {
@@ -137,10 +152,14 @@ export function validateContent(
     if (c.type === "quiz") {
       if (c.questions.length === 0) err(file, "quiz challenges need at least one question");
       if (needsReview(c)) {
-        err(file, "quiz challenges may only contain single/multi questions and no submission section");
+        err(file, "quiz challenges may only contain single/multi/order/match questions and no submission section");
       }
     } else if (!c.submission) {
       err(file, `type "${c.type}" needs a submission section`);
+    }
+    // Instant feedback checks every answer on its own, so nothing in the challenge can wait for a review.
+    if (c.feedback_mode === "instant" && (c.type !== "quiz" || needsReview(c))) {
+      err(file, "feedback_mode: instant only works on a quiz whose questions are all single, multi, order or match");
     }
 
     if (c.type === "figma" && !c.submission?.figma_url) {

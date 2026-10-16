@@ -44,8 +44,8 @@ export function showTryAgain(cta: CardCta, canRetry: boolean): boolean {
  * same rule as its card — its latest attempt has a result, attempts are left, it isn't at full marks, nothing awaits
  * review. Only for challenges that take submissions (read & confirm items have none).
  */
-export function historyTryAgain(attempts: AttemptSummary[]): boolean {
-  const state = attemptState(attempts);
+export function historyTryAgain(attempts: AttemptSummary[], maxAttempts?: number): boolean {
+  const state = attemptState(attempts, maxAttempts);
   const cta = cardCta({ type: "quiz", latestStatus: state.latest?.status });
   return showTryAgain(cta, state.attemptsUsed > 0 && state.canSubmit);
 }

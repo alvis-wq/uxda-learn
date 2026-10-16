@@ -15,7 +15,8 @@ import {
 } from "./transform";
 
 export type DbCategory = CategoryRow;
-export type DbChallenge = PublicChallengeContent & {
+export type DbChallenge = Omit<PublicChallengeContent, "feedback_mode"> & {
+  feedback_mode?: string; // undefined until the instant quiz migration has been applied
   image?: string | null; // undefined until the image migration has been applied
   tip?: string | null; // undefined until the drafts migration has been applied
   path_slug?: string | null; // undefined until the paths migration has been applied
@@ -33,7 +34,7 @@ export type DbPath = PathRow & {
   required_for?: string[]; // undefined until the path required/due migration has been applied
   due_at?: string | null;
 };
-export type DbKey = { challenge_slug: string; answer_key: unknown; grader_notes: string | null };
+export type DbKey = { challenge_slug: string; answer_key: unknown; explanations?: unknown; grader_notes: string | null };
 
 export type SyncPlan = {
   categoryUpserts: { row: CategoryRow; action: "create" | "update" }[];
@@ -109,6 +110,7 @@ function sameKey(a: ChallengeKeyRow, b: DbKey | undefined): boolean {
   if (!b) return false;
   return (
     canonicalJson(a.answer_key) === canonicalJson(b.answer_key ?? {}) &&
+    canonicalJson(a.explanations) === canonicalJson(b.explanations ?? {}) &&
     (a.grader_notes ?? null) === (b.grader_notes ?? null)
   );
 }

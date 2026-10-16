@@ -8,7 +8,6 @@ import {
   ATTEMPT_LABEL,
   isLowScore,
   isResultVisible,
-  MAX_ATTEMPTS,
   type AttemptLabel,
   type ChallengeHistory,
   type SubmissionStatus,
@@ -104,11 +103,14 @@ export function ChallengeHistoryList({
   groups,
   titleOf,
   canTryAgain,
+  maxAttemptsOf,
 }: {
   groups: ChallengeHistory<HistoryRow>[];
   titleOf: (slug: string) => string;
   /** Whether the challenge's card would offer "Try again" (historyTryAgain, and the challenge still published). */
   canTryAgain: (slug: string) => boolean;
+  /** Real attempts the challenge allows (maxAttemptsFor). */
+  maxAttemptsOf: (slug: string) => number;
 }) {
   return (
     <ul className="grid gap-3">
@@ -131,7 +133,7 @@ export function ChallengeHistoryList({
                     <Link href={`/submissions/${headline.id}`} className="hover:underline">
                       Attempt {headline.attempt}
                     </Link>{" "}
-                    · {g.attemptsUsed} of {MAX_ATTEMPTS} attempts used
+                    · {g.attemptsUsed} of {maxAttemptsOf(g.slug)} {maxAttemptsOf(g.slug) === 1 ? "attempt" : "attempts"} used
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

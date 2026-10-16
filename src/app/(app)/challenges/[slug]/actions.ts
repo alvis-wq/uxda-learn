@@ -8,7 +8,7 @@ import { loadOpenChallenge, milestoneGate } from "@/lib/challenges/open";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gradeAnswers, type AnswerKey } from "@/lib/submissions/grading";
 import { submissionInputSchema } from "@/lib/submissions/input";
-import { attemptState } from "@/lib/submissions/rules";
+import { attemptState, maxAttemptsFor } from "@/lib/submissions/rules";
 import { isTestChallenge, nextTestAttempt, testingState } from "@/lib/submissions/testing";
 
 export type SubmitResult =
@@ -40,6 +40,8 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
   const locked = await milestoneGate(admin, row, { id: user.id, track: profile.track, is_tester: profile.is_tester });
   if (locked) return { ok: false, error: locked };
   const challenge = parseChallenge(row);
+  // Instant feedback is scored from the tries counted as the learner goes (checkInstantAnswer), never in one go.
+  if (challenge.feedback_mode === "instant") return { ok: false, error: "This quiz checks each answer as you go. Reload the page." };
   const testing = isTestChallenge(row.status);
 
   const { data: previous, error: prevError } = await admin
@@ -49,7 +51,7 @@ export async function submitChallenge(slugInput: string, rawInput: unknown): Pro
     .eq("challenge_slug", challenge.slug)
     .eq("is_test", testing);
   if (prevError) return { ok: false, error: "Couldn't check your previous attempts. Please try again." };
-  const state = testing ? testingState(previous) : attemptState(previous);
+  const state = testing ? testingState(previous) : attemptState(previous, maxAttemptsFor(challenge.feedback_mode));
   if (!state.canSubmit) return { ok: false, error: state.reason ?? "You can't submit right now." };
 
   const parsed = submissionInputSchema(challenge, user.id).safeParse(rawInput);

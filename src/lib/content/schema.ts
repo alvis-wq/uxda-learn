@@ -66,6 +66,8 @@ export const categoriesFileSchema = z.strictObject({
 
 const optionSchema = z.strictObject({ id, label: nonEmpty });
 const points = z.number().int().positive("must be a positive integer");
+/** Why the right answer is right. Private (stored in challenge_keys): shown once the learner has it right. */
+const explanation = z.string().trim().min(1, "must not be empty").max(2000, "keep the explanation short (at most 2000 characters)").optional();
 
 const singleQuestionSchema = z.strictObject({
   id,
@@ -73,6 +75,7 @@ const singleQuestionSchema = z.strictObject({
   prompt: nonEmpty,
   options: z.array(optionSchema).min(2, "needs at least 2 options"),
   answer: id,
+  explanation,
   points,
 });
 
@@ -82,6 +85,7 @@ const multiQuestionSchema = z.strictObject({
   prompt: nonEmpty,
   options: z.array(optionSchema).min(2, "needs at least 2 options"),
   answer: z.array(id).min(1, "needs at least one correct option"),
+  explanation,
   points,
 });
 
@@ -91,6 +95,34 @@ const orderQuestionSchema = z.strictObject({
   kind: z.literal("order"),
   prompt: nonEmpty,
   items: z.array(optionSchema).min(2, "needs at least 2 items"),
+  explanation,
+  points,
+});
+
+/**
+ * Drag each item onto its category. Authors give every item its `match` (a category id); sync stores the items
+ * shuffled without it (the pairs live only in challenge_keys). When every category gets exactly one item, each
+ * category holds one item; otherwise a category can take many.
+ */
+const matchQuestionSchema = z.strictObject({
+  id,
+  kind: z.literal("match"),
+  prompt: nonEmpty,
+  categories: z.array(optionSchema).min(2, "needs at least 2 categories"),
+  items: z.array(z.strictObject({ id, label: nonEmpty, match: id })).min(2, "needs at least 2 items"),
+  explanation,
+  points,
+});
+
+/** A match question as stored: items shuffled and without their category. */
+const publicMatchQuestionSchema = z.strictObject({
+  id,
+  kind: z.literal("match"),
+  prompt: nonEmpty,
+  categories: z.array(optionSchema),
+  items: z.array(optionSchema),
+  /** Every category takes exactly one item (derived from the pairs at sync). */
+  one_per_category: z.boolean(),
   points,
 });
 
@@ -106,6 +138,7 @@ export const questionSchema = z.discriminatedUnion("kind", [
   singleQuestionSchema,
   multiQuestionSchema,
   orderQuestionSchema,
+  matchQuestionSchema,
   textQuestionSchema,
 ]);
 
@@ -137,11 +170,16 @@ export const rubricCriterionSchema = z.strictObject({
 
 /** Questions as stored in challenges.questions (answers stripped). */
 export const publicQuestionSchema = z.discriminatedUnion("kind", [
-  singleQuestionSchema.omit({ answer: true }),
-  multiQuestionSchema.omit({ answer: true }),
-  orderQuestionSchema, // as stored: the items are already shuffled, so this never shows the answer
+  singleQuestionSchema.omit({ answer: true, explanation: true }),
+  multiQuestionSchema.omit({ answer: true, explanation: true }),
+  orderQuestionSchema.omit({ explanation: true }), // as stored: the items are already shuffled, so this never shows the answer
+  publicMatchQuestionSchema,
   textQuestionSchema,
 ]);
+
+/** final: results after submit. instant: each answer is checked as the learner goes (one real attempt). */
+export const feedbackModeSchema = z.enum(["final", "instant"]);
+export type FeedbackMode = z.infer<typeof feedbackModeSchema>;
 
 export const challengeFrontmatterSchema = z.strictObject({
   slug,
@@ -151,6 +189,7 @@ export const challengeFrontmatterSchema = z.strictObject({
   audience: legacyAudience,
   required_for: audiencesSchema.optional(), // omitted = optional for everyone
   type: challengeTypeSchema,
+  feedback_mode: feedbackModeSchema.default("final"), // instant only for auto-graded quizzes (checked in validate.ts)
   // Optional only for `acknowledge` (checked in validate.ts).
   difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   points: z.number().int().min(0, "must be 0 or more").optional(),
@@ -200,22 +239,33 @@ export type ChallengeFrontmatter = z.infer<typeof challengeFrontmatterSchema>;
 export type PathFile = z.infer<typeof pathFileSchema>;
 
 /** A question as shown to users: never includes the answer. */
-export type PublicQuestion =
-  | Omit<Extract<Question, { kind: "single" }>, "answer">
-  | Omit<Extract<Question, { kind: "multi" }>, "answer">
-  | Extract<Question, { kind: "order" }>
-  | Extract<Question, { kind: "text" }>;
+export type PublicQuestion = z.infer<typeof publicQuestionSchema>;
 
-export const AUTO_GRADED_KINDS = ["single", "multi", "order"] as const;
+export const AUTO_GRADED_KINDS = ["single", "multi", "order", "match"] as const;
 
 export function isAutoGraded(q: Question | PublicQuestion): boolean {
   return q.kind !== "text";
 }
 
-/** The options (single / multi) or items (order) of a question; null for a text question. */
+/** The options (single / multi) or items (order / match) of a question; null for a text question. */
 export function choicesOf(q: Question | PublicQuestion): { id: string; label: string }[] | null {
   if (q.kind === "text") return null;
-  return q.kind === "order" ? q.items : q.options;
+  return q.kind === "order" || q.kind === "match" ? q.items : q.options;
+}
+
+/** A match answer is a list of "item=category" pairs (ids never contain "="). */
+export function matchPair(itemId: string, categoryId: string): string {
+  return `${itemId}=${categoryId}`;
+}
+
+/** The pairs of a match answer as item id → category id; malformed entries are skipped. */
+export function parseMatchPairs(pairs: readonly string[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const p of pairs) {
+    const [item, category, extra] = p.split("=");
+    if (item && category && extra === undefined) out.set(item, category);
+  }
+  return out;
 }
 
 /** True when a submission needs human/AI review (anything beyond auto-graded questions). */

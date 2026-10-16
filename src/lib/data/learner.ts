@@ -22,6 +22,7 @@ import {
 import { blockingPath, pathCta, requiredPathState, type MilestonePlace, type MilestoneState, type PathSummary, type RequiredPath } from "@/lib/paths/progress";
 import {
   attemptState,
+  maxAttemptsFor,
   rankOf,
   summarizeScores,
   type AttemptState,
@@ -124,6 +125,7 @@ function progressFor(
     due_at: string | null;
     questions: unknown;
     submission_spec: unknown;
+    feedback_mode?: string;
   },
   profile: Profile,
   subs: AttemptSummary[],
@@ -133,7 +135,7 @@ function progressFor(
 ): ChallengeProgress {
   // A draft is only ever tried as a test: nothing about it is done, required or limited.
   const testing = isTestChallenge(ch.status);
-  const state = testing ? testingState(subs) : attemptState(subs);
+  const state = testing ? testingState(subs) : attemptState(subs, maxAttemptsFor(ch.feedback_mode));
   const acknowledgedAt = testing ? null : (acks.get(ch.slug) ?? null);
   const done = testing ? false : ch.type === "acknowledge" ? acknowledgedAt !== null : state.bestScore !== null;
   const draft = drafts.get(ch.slug);
@@ -419,7 +421,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
       .order("sort_order"),
     supabase
       .from("challenges")
-      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,waiting_minutes,image,image_scale,image_offset_x,image_offset_y,questions,submission_spec,path_slug")
+      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,waiting_minutes,image,image_scale,image_offset_x,image_offset_y,questions,submission_spec,path_slug,feedback_mode")
       .in("status", listedStatuses(profile)),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
@@ -534,7 +536,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   const [chs, subs, acks, drafts, paths, chainPaths] = await Promise.all([
     supabase
       .from("challenges")
-      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,waiting_minutes,audiences,required_for,due_at,image,image_scale,image_offset_x,image_offset_y,questions,submission_spec,path_slug")
+      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,waiting_minutes,audiences,required_for,due_at,image,image_scale,image_offset_x,image_offset_y,questions,submission_spec,path_slug,feedback_mode")
       .eq("category_slug", slug)
       .eq("status", "published") // drafts are only listed on the home page, under the tester's filter
       .order("difficulty")
@@ -642,7 +644,7 @@ export async function getChallengePage(
     myAcknowledgements(profile.id),
     supabase
       .from("submission_drafts")
-      .select("challenge_version,answers,figma_url,reflection,image_paths,current_step,updated_at")
+      .select("challenge_version,answers,figma_url,reflection,image_paths,current_step,updated_at,instant_tries")
       .eq("user_id", profile.id)
       .eq("challenge_slug", slug)
       .maybeSingle(),

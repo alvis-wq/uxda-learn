@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Challenge } from "@/lib/challenges/model";
+import { matchPair, type PublicQuestion } from "@/lib/content/schema";
 
 export const IMAGE_TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as const;
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -33,38 +34,60 @@ export type SubmissionInput = {
   reflection: string | null;
 };
 
+type MatchQuestion = Extract<PublicQuestion, { kind: "match" }>;
+
+/**
+ * A match answer: "item=category" pairs with known ids, each item placed at most once and, when every category holds
+ * one item, no category used twice. `complete` also needs every item placed (a submission; a draft may be partial).
+ */
+function matchAnswerSchema(q: MatchQuestion, complete: boolean) {
+  const allowed = q.items.flatMap((i) => q.categories.map((c) => matchPair(i.id, c.id))) as [string, ...string[]];
+  const message = "Put every item on a category.";
+  return z
+    .array(z.enum(allowed), { error: message })
+    .refine((pairs) => !complete || pairs.length === q.items.length, message)
+    .refine((pairs) => new Set(pairs.map((p) => p.split("=")[0])).size === pairs.length, "Each item can only go on one category.")
+    .refine(
+      (pairs) => !q.one_per_category || new Set(pairs.map((p) => p.split("=")[1])).size === pairs.length,
+      "Each category takes one item.",
+    );
+}
+
+/** A complete answer to one question, as a submission (and an instant-mode check) needs it. */
+export function answerSchema(q: PublicQuestion): z.ZodType<string | string[]> {
+  if (q.kind === "single") {
+    return z.enum(q.options.map((o) => o.id) as [string, ...string[]], { error: "Choose an answer." });
+  }
+  if (q.kind === "order") {
+    const ids = q.items.map((i) => i.id) as [string, ...string[]];
+    return z
+      .array(z.enum(ids), { error: "Put the items in order." })
+      .length(ids.length, "Put the items in order.")
+      .refine((a) => new Set(a).size === a.length, "Each item can only be used once.");
+  }
+  if (q.kind === "match") return matchAnswerSchema(q, true);
+  if (q.kind === "multi") {
+    const ids = q.options.map((o) => o.id) as [string, ...string[]];
+    return z
+      .array(z.enum(ids), { error: "Choose at least one option." })
+      .min(1, "Choose at least one option.")
+      .refine((a) => new Set(a).size === a.length, "Each option can only be chosen once.");
+  }
+  return z
+    .string({ error: "Write an answer." })
+    .trim()
+    .min(1, "Write an answer.")
+    .max(MAX_TEXT, "Answer is too long.")
+    .refine((t) => !q.min_words || countWords(t) >= q.min_words, `Write at least ${q.min_words} words.`);
+}
+
 /** Build a Zod schema for one challenge's submission, derived from its questions and spec. */
 export function submissionInputSchema(
   challenge: Pick<Challenge, "slug" | "questions" | "submission_spec">,
   userId: string,
 ) {
   const answerShape: Record<string, z.ZodType<string | string[]>> = {};
-  for (const q of challenge.questions) {
-    if (q.kind === "single") {
-      answerShape[q.id] = z.enum(q.options.map((o) => o.id) as [string, ...string[]], {
-        error: "Choose an answer.",
-      });
-    } else if (q.kind === "order") {
-      const ids = q.items.map((i) => i.id) as [string, ...string[]];
-      answerShape[q.id] = z
-        .array(z.enum(ids), { error: "Put the items in order." })
-        .length(ids.length, "Put the items in order.")
-        .refine((a) => new Set(a).size === a.length, "Each item can only be used once.");
-    } else if (q.kind === "multi") {
-      const ids = q.options.map((o) => o.id) as [string, ...string[]];
-      answerShape[q.id] = z
-        .array(z.enum(ids), { error: "Choose at least one option." })
-        .min(1, "Choose at least one option.")
-        .refine((a) => new Set(a).size === a.length, "Each option can only be chosen once.");
-    } else {
-      answerShape[q.id] = z
-        .string({ error: "Write an answer." })
-        .trim()
-        .min(1, "Write an answer.")
-        .max(MAX_TEXT, "Answer is too long.")
-        .refine((t) => !q.min_words || countWords(t) >= q.min_words, `Write at least ${q.min_words} words.`);
-    }
-  }
+  for (const q of challenge.questions) answerShape[q.id] = answerSchema(q);
 
   const spec = challenge.submission_spec;
   const shots = spec.screenshots;
@@ -133,6 +156,8 @@ export function draftInputSchema(
   for (const q of challenge.questions) {
     if (q.kind === "text") {
       answerShape[q.id] = z.string().max(MAX_TEXT, "Answer is too long.");
+    } else if (q.kind === "match") {
+      answerShape[q.id] = matchAnswerSchema(q, false);
     } else {
       const ids = (q.kind === "order" ? q.items : q.options).map((o) => o.id) as [string, ...string[]];
       answerShape[q.id] =

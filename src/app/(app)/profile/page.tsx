@@ -10,7 +10,7 @@ import { historyTryAgain } from "@/lib/challenges/card";
 import { getJobTitle } from "@/lib/data/staff-titles";
 import { createClient } from "@/lib/supabase/server";
 import { inProgressChallenges } from "@/lib/submissions/in-progress";
-import { groupAttemptHistory, summarizeScores } from "@/lib/submissions/rules";
+import { groupAttemptHistory, maxAttemptsFor, summarizeScores } from "@/lib/submissions/rules";
 import { TRACK_LABEL } from "@/lib/tracks";
 import { ChallengeHistoryList, ConfirmedList } from "./challenge-history";
 import { InProgressList } from "./in-progress-list";
@@ -49,7 +49,7 @@ export default async function ProfilePage() {
     ...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug), ...acks.map((a) => a.challenge_slug)]),
   ];
   const { data: challenges } = slugs.length
-    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec,path_slug").in("slug", slugs)
+    ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec,path_slug,feedback_mode").in("slug", slugs)
     : { data: [] };
   // A path milestone reads "Path title · 2. Milestone title" (RLS: paths the learner can see).
   const pathSlugs = [...new Set((challenges ?? []).flatMap((c) => (c.path_slug ? [c.path_slug] : [])))];
@@ -80,8 +80,10 @@ export default async function ProfilePage() {
   const inProgressSlugs = new Set(inProgress.map((c) => c.slug));
   const history = groupAttemptHistory(subs).filter((g) => !inProgressSlugs.has(g.slug));
   // "Try again" as on the challenge's home card, for a challenge that is still published.
-  const canTryAgain = (slug: string) =>
-    challenges?.find((c) => c.slug === slug)?.status === "published" && historyTryAgain(subs.filter((s) => s.challenge_slug === slug));
+  const canTryAgain = (slug: string) => {
+    const c = challenges?.find((x) => x.slug === slug);
+    return c?.status === "published" && historyTryAgain(subs.filter((s) => s.challenge_slug === slug), maxAttemptsFor(c.feedback_mode));
+  };
   // Only items the learner can still see (RLS on challenges).
   const confirmed = acks.flatMap((a) => {
     const c = challenges?.find((x) => x.slug === a.challenge_slug);
@@ -135,7 +137,12 @@ export default async function ProfilePage() {
         {inProgress.length > 0 && history.length > 0 && (
           <SectionLabel as="h3" className="mt-2">Submitted</SectionLabel>
         )}
-        {history.length > 0 && <ChallengeHistoryList groups={history} titleOf={titleOf} canTryAgain={canTryAgain} />}
+        {history.length > 0 && <ChallengeHistoryList
+            groups={history}
+            titleOf={titleOf}
+            canTryAgain={canTryAgain}
+            maxAttemptsOf={(slug) => maxAttemptsFor(challenges?.find((c) => c.slug === slug)?.feedback_mode)}
+          />}
         {confirmed.length > 0 && (
           <div className="grid gap-3" data-testid="confirmed-group">
             {(inProgress.length > 0 || history.length > 0) && (

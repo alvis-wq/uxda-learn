@@ -59,6 +59,15 @@ Create a challenge from this description: $ARGUMENTS
    - Use `kind: order` when the sequence is the point (steps of a process, the order of a message): list `items`
      in the CORRECT order (2 or more, each different); sync shuffles them for learners. All-or-nothing, so keep
      it to 3–6 items.
+   - Use `kind: match` when learners pair things up (file → purpose, skill → step): `categories` (2 or more) and
+     `items`, each item with `match: <category id>`. One item per category, or several items on one category. All-
+     or-nothing, so keep it to about 3–9 items.
+   - True/false is `kind: single` with quoted ids: `options: [{ id: "true", label: "True" }, { id: "false", label: "False" }]`.
+   - Add an `explanation` (one or two sentences: why the right answer is right) to every auto-graded question when
+     the source gives one. It stays private until the learner has it right.
+   - `feedback_mode: instant` when the description asks for instant feedback, or for a short self-check quiz
+     (only `type: quiz`, all questions single / multi / order / match). Learners see right/wrong after each answer,
+     score full points on the first try and half on the second, and get ONE attempt. Otherwise leave it out (final).
    - Rubric: 2–5 criteria, each with full / partial / none levels that are observable in a
      screenshot, Figma frame or text. No vague criteria like "good quality".
    - `grader_notes`: what a strong answer contains and common mistakes.
@@ -67,7 +76,7 @@ Create a challenge from this description: $ARGUMENTS
      language. Skip the rules above about rubrics, reflections and points.
 7. Run `npm run content:validate`. Fix until it passes.
 8. Reply with a short summary: title, category (+ why), audiences, required_for (+ due_at),
-   type, difficulty, points, time (total and waiting), rubric criteria, any new category, the path and milestone number (if any), any open questions.
+   type, feedback mode, difficulty, points, time (total and waiting), rubric criteria, any new category, the path and milestone number (if any), any open questions.
 9. Wait for approval. On "approve": run `npm run content:sync` (creates it as a draft) and commit
    `content: add <slug>`; then Alvis reviews it under Admin → Content → "Preview with answers" and
    publishes it there. (Only if the challenge has never been synced and Alvis says to publish

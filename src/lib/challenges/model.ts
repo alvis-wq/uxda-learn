@@ -1,10 +1,12 @@
 import { z } from "zod";
 import type { Database } from "@/lib/database.types";
 import {
+  feedbackModeSchema,
   needsReview,
   publicQuestionSchema,
   rubricCriterionSchema,
   submissionSpecSchema,
+  type FeedbackMode,
   type PublicQuestion,
   type RubricCriterion,
   type SubmissionSpec,
@@ -15,7 +17,8 @@ import { isVisibleToTrack, type Audience, type Track } from "@/lib/tracks";
 export type ChallengeRow = Database["public"]["Tables"]["challenges"]["Row"];
 export type { Audience, Track };
 
-export type Challenge = Omit<ChallengeRow, "questions" | "submission_spec" | "rubric"> & {
+export type Challenge = Omit<ChallengeRow, "questions" | "submission_spec" | "rubric" | "feedback_mode"> & {
+  feedback_mode: FeedbackMode;
   questions: PublicQuestion[];
   submission_spec: SubmissionSpec;
   rubric: RubricCriterion[];
@@ -25,6 +28,7 @@ export type Challenge = Omit<ChallengeRow, "questions" | "submission_spec" | "ru
 export function parseChallenge(row: ChallengeRow): Challenge {
   return {
     ...row,
+    feedback_mode: feedbackModeSchema.catch("final").parse(row.feedback_mode),
     questions: z.array(publicQuestionSchema).parse(row.questions ?? []),
     submission_spec: submissionSpecSchema.parse(row.submission_spec ?? {}),
     rubric: z.array(rubricCriterionSchema).parse(row.rubric ?? []),

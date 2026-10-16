@@ -73,9 +73,9 @@ describe("order results", () => {
 
   it("marks the order and only carries the right sequence once revealed", () => {
     const wrong = { q1: ["b", "a", "c", "d"] };
-    expect(questionResults(questions, key, wrong, hidden)).toEqual([{ questionId: "q1", correct: false, correctOptionIds: null }]);
+    expect(questionResults(questions, key, wrong, hidden)).toEqual([{ questionId: "q1", correct: false, correctOptionIds: null, explanation: null, instant: null }]);
     expect(questionResults(questions, key, wrong, REVEAL_ALL)).toEqual([
-      { questionId: "q1", correct: false, correctOptionIds: ["a", "b", "c", "d"] }, // in order: not sorted
+      { questionId: "q1", correct: false, correctOptionIds: ["a", "b", "c", "d"], explanation: null, instant: null }, // in order: not sorted
     ]);
     expect(questionResults(questions, key, { q1: ["a", "b", "c", "d"] }, REVEAL_ALL)[0]).toMatchObject({ correct: true, correctOptionIds: null });
   });

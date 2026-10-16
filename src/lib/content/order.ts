@@ -26,14 +26,20 @@ function random(seed: number): () => number {
   };
 }
 
-/** `items` (in the correct order) in a fixed shuffled order that is never the correct one. */
-export function shuffleItems<T extends { id: string }>(questionId: string, items: readonly T[]): T[] {
-  const rand = random(hash(`${questionId}|${items.map((i) => i.id).join("|")}`));
+/** `items` in an order fixed by `seed` (the same seed always gives the same order). */
+export function seededShuffle<T>(seed: string, items: readonly T[]): T[] {
+  const rand = random(hash(seed));
   const out = [...items];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
+  return out;
+}
+
+/** `items` (in the correct order) in a fixed shuffled order that is never the correct one. */
+export function shuffleItems<T extends { id: string }>(questionId: string, items: readonly T[]): T[] {
+  const out = seededShuffle(`${questionId}|${items.map((i) => i.id).join("|")}`, items);
   // Items are unique (validate.ts), so equal ids in the same places means the correct order.
   if (out.length > 1 && out.every((item, i) => item.id === items[i].id)) out.push(out.shift()!);
   return out;

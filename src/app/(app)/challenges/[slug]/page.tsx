@@ -16,9 +16,11 @@ import { requireOnboardedProfile } from "@/lib/auth/session";
 import { briefView } from "@/lib/challenges/brief";
 import { challengeNeedsReview } from "@/lib/challenges/model";
 import { timeOf } from "@/lib/challenges/time";
+import { questionsForAttempt } from "@/lib/data/attempt-order";
 import { prepareFormDraft } from "@/lib/data/drafts";
 import { getChallengePage } from "@/lib/data/learner";
-import { isResultVisible, MAX_ATTEMPTS } from "@/lib/submissions/rules";
+import { parseInstantRun } from "@/lib/submissions/instant";
+import { isResultVisible, maxAttemptsFor } from "@/lib/submissions/rules";
 import { planSteps } from "@/lib/submissions/steps";
 import { showsTestTotal } from "@/lib/submissions/testing";
 import { formatDateTime } from "@/lib/utils";
@@ -26,6 +28,7 @@ import { AcknowledgeForm } from "./acknowledge-form";
 import { ChallengeForm } from "./challenge-form";
 import { BriefProvider, CollapsibleBrief } from "./collapsible-brief";
 import { FeedbackForm } from "./feedback-form";
+import { InstantQuizForm } from "./instant-quiz-form";
 import { SteppedChallengeForm } from "./stepped-challenge-form";
 
 export const metadata: Metadata = { title: "Challenge · UXDA Learn" };
@@ -43,15 +46,24 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   // A test attempt on a challenge with screenshots, Figma or written parts only has its questions marked: no total.
   const testTotal = showsTestTotal(challengeNeedsReview(challenge));
 
+  // Each attempt shows the questions (and options, items) in its own order; grading goes by id.
+  const attemptNumber = state.attemptsUsed + 1;
+  const formOpen = !preview && !isAck && state.canSubmit;
+  const questions = formOpen ? await questionsForAttempt(challenge, profile.id, attemptNumber, testing) : challenge.questions;
+  const maxAttempts = testing ? null : maxAttemptsFor(challenge.feedback_mode);
+  // Instant feedback: one question at a time, each checked on the server (instant-quiz-form.tsx).
+  const instant = formOpen && challenge.feedback_mode === "instant" && questions.length > 0;
+
   // Multi-step challenges fill in a Stepper. A mixed challenge's brief is its first step, so it's only
   // shown above the page when there's no stepper (preview, no attempts left, single-step, acknowledge).
-  const plan = planSteps({ questions: challenge.questions, submission_spec: challenge.submission_spec });
-  const stepped = !preview && !isAck && state.canSubmit && plan.mode !== "single";
-  const briefInStepper = stepped && plan.mode === "mixed";
+  const plan = planSteps({ questions, submission_spec: challenge.submission_spec });
+  const stepped = instant || (formOpen && plan.mode !== "single");
+  const briefInStepper = stepped && !instant && plan.mode === "mixed";
   const tip = challenge.tip ? <TipBox>{challenge.tip}</TipBox> : undefined;
   // The saved draft is only read into the form when the form is shown.
   const initialDraft =
-    stepped && draft ? await prepareFormDraft(draft, challenge, profile.id, plan.steps.length) : null;
+    stepped && !instant && draft ? await prepareFormDraft(draft, challenge, profile.id, plan.steps.length) : null;
+  const instantRun = instant ? parseInstantRun(draft?.instant_tries, testing) : {};
 
   // The brief without a leading heading that repeats the page title (the files stay as they are). Once the learner
   // has started, a stepped challenge shows only its first paragraph, with a toggle for the rest.
@@ -85,7 +97,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
-      <BriefProvider initialStarted={initialDraft !== null}>
+      <BriefProvider initialStarted={initialDraft !== null || Object.keys(instantRun).length > 0}>
         <div>
           {milestone ? (
             <>
@@ -250,31 +262,41 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
             <h2 id="submit-heading" className={state.canSubmit && stepped ? "sr-only" : "text-lg font-semibold"}>
               {testing ? (attempts.length ? "Test again" : "Test it") : attempts.length ? "Submit again" : "Your submission"}
             </h2>
-            {state.canSubmit && stepped ? (
+            {instant ? (
+              <InstantQuizForm
+                slug={challenge.slug}
+                version={challenge.version}
+                questions={questions}
+                initialRun={instantRun}
+                tip={tip}
+                attemptNumber={attemptNumber}
+                maxAttempts={maxAttempts}
+              />
+            ) : state.canSubmit && stepped ? (
               <SteppedChallengeForm
                 // A new attempt (after a submit) starts a new form: fresh state, autosave on again.
                 key={state.attemptsUsed}
                 slug={challenge.slug}
                 userId={profile.id}
                 version={challenge.version}
-                questions={challenge.questions}
+                questions={questions}
                 spec={challenge.submission_spec}
                 plan={plan}
                 brief={briefInStepper ? collapsibleBrief : undefined}
                 tip={tip}
                 initialDraft={initialDraft}
-                attemptNumber={state.attemptsUsed + 1}
-                maxAttempts={testing ? null : MAX_ATTEMPTS}
+                attemptNumber={attemptNumber}
+                maxAttempts={maxAttempts}
               />
             ) : state.canSubmit ? (
               <ChallengeForm
                 slug={challenge.slug}
                 userId={profile.id}
-                questions={challenge.questions}
+                questions={questions}
                 spec={challenge.submission_spec}
                 tip={tip}
-                attemptNumber={state.attemptsUsed + 1}
-                maxAttempts={testing ? null : MAX_ATTEMPTS}
+                attemptNumber={attemptNumber}
+                maxAttempts={maxAttempts}
               />
             ) : (
               <Alert>

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { LoadedChallenge } from "./load";
 import type { Audience } from "@/lib/tracks";
 import { shuffleItems } from "./order";
-import type { Category, PathFile, PublicQuestion, Question } from "./schema";
+import { matchPair, type Category, type FeedbackMode, type PathFile, type PublicQuestion, type Question } from "./schema";
 
 /** JSON with object keys sorted, so equal data always serialises identically (jsonb reorders keys). */
 export function canonicalJson(value: unknown): string {
@@ -16,12 +16,24 @@ export function canonicalJson(value: unknown): string {
   });
 }
 
+/** The question as learners may read it: no answer, no explanation (both live in challenge_keys). */
 export function toPublicQuestion(q: Question): PublicQuestion {
   if (q.kind === "text") return q;
-  // The authored items are in the correct order: store them shuffled, never as written.
-  if (q.kind === "order") return { ...q, items: shuffleItems(q.id, q.items) };
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { answer, ...rest } = q;
+  const { explanation, ...shown } = q;
+  // The authored items are in the correct order: store them shuffled, never as written.
+  if (shown.kind === "order") return { ...shown, items: shuffleItems(q.id, shown.items) };
+  if (shown.kind === "match") {
+    const used = shown.items.map((i) => i.match);
+    return {
+      ...shown,
+      // Shuffled like an order question's, so the stored order says nothing about the pairs.
+      items: shuffleItems(q.id, shown.items.map(({ id, label }) => ({ id, label }))),
+      one_per_category: used.length === shown.categories.length && new Set(used).size === used.length,
+    };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { answer, ...rest } = shown;
   return rest;
 }
 
@@ -61,6 +73,7 @@ export type ChallengeRow = {
   questions: PublicQuestion[];
   submission_spec: Record<string, unknown>;
   rubric: unknown[];
+  feedback_mode: FeedbackMode;
   /** Card artwork (a file in public/challenges/). Display only: not in PUBLIC_KEYS, so it never changes content_hash. */
   image: string | null;
   /** Short markdown hint shown above the questions. Display only, like `image`: it never changes content_hash. */
@@ -121,16 +134,19 @@ export function normalizeTimestamp(value: string | null | undefined): string | n
  * sha256 over the public fields only. Also used on rows read back from the DB, so a stale stored
  * hash (e.g. after a format migration) can be told apart from a real content change.
  */
-export function hashPublicContent(content: PublicChallengeContent): string {
+export function hashPublicContent(content: Omit<PublicChallengeContent, "feedback_mode"> & { feedback_mode?: string }): string {
   const picked: Record<string, unknown> = Object.fromEntries(PUBLIC_KEYS.map((k) => [k, content[k] ?? null]));
   // Added later: only hashed when set, so challenges without it keep the hash they had (no version bump, no refresh).
   if (content.waiting_minutes != null) picked.waiting_minutes = content.waiting_minutes;
+  if (content.feedback_mode === "instant") picked.feedback_mode = content.feedback_mode;
   return createHash("sha256").update(canonicalJson(picked)).digest("hex");
 }
 
 export type ChallengeKeyRow = {
   challenge_slug: string;
   answer_key: Record<string, string | string[]>;
+  /** Question id → why the right answer is right. Private, like the key. */
+  explanations: Record<string, string>;
   grader_notes: string | null;
 };
 
@@ -225,14 +241,18 @@ export function toChallengeRows(
     questions: c.questions.map(toPublicQuestion),
     submission_spec: (c.submission ?? {}) as Record<string, unknown>,
     rubric: c.rubric,
+    feedback_mode: c.feedback_mode,
   };
   const content_hash = hashPublicContent(publicContent);
 
   const answer_key: Record<string, string | string[]> = {};
+  const explanations: Record<string, string> = {};
   for (const q of c.questions) {
     if (q.kind === "single") answer_key[q.id] = q.answer;
     else if (q.kind === "multi") answer_key[q.id] = [...q.answer].sort();
     else if (q.kind === "order") answer_key[q.id] = q.items.map((item) => item.id); // the sequence matters: not sorted
+    else if (q.kind === "match") answer_key[q.id] = q.items.map((item) => matchPair(item.id, item.match)).sort();
+    if (q.kind !== "text" && q.explanation) explanations[q.id] = q.explanation;
   }
 
   return {
@@ -245,6 +265,6 @@ export function toChallengeRows(
       content_hash,
     },
     settings: { status: c.status, required_for: c.required_for ?? [], due_at: normalizeTimestamp(c.due_at) },
-    key: { challenge_slug: c.slug, answer_key, grader_notes: c.grader_notes?.trim() || null },
+    key: { challenge_slug: c.slug, answer_key, explanations, grader_notes: c.grader_notes?.trim() || null },
   };
 }
