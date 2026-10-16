@@ -2,12 +2,12 @@
 
 import { useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Info, Loader2, RotateCcw } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink, Info, Loader2, RotateCcw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import type { PublicQuestion } from "@/lib/content/schema";
+import type { HelpLink, PublicQuestion } from "@/lib/content/schema";
 import type { InstantRun } from "@/lib/submissions/instant";
 import { answerSchema } from "@/lib/submissions/input";
 import { useReportStarted } from "./collapsible-brief";
@@ -23,6 +23,8 @@ type Props = {
   /** Tries and solved questions so far (from the server), so a refresh carries on where the learner was. */
   initialRun: InstantRun;
   tip?: ReactNode;
+  /** The challenge's source material, offered after a wrong answer. */
+  helpLink?: HelpLink | null;
   attemptNumber: number;
   /** null for a test attempt (no limit). */
   maxAttempts: number | null;
@@ -37,10 +39,11 @@ const same = (a: string | string[] | undefined, b: string | string[] | undefined
 /**
  * An instant-feedback quiz: one question at a time. Continue sends that one answer to the server
  * (checkInstantAnswer), which counts the try and says right or wrong; a dialog shows the outcome. Right: the
- * explanation, then the next question. Wrong: no answer and no explanation, back to the same question. The learner
- * moves on only with a right answer. After the last one the attempt is published and the result page opens.
+ * explanation, then the next question. Wrong: no answer and no explanation (just the help link, if any), back to the
+ * same question. The learner moves on only with a right answer. After the last one the attempt is published and the
+ * result page opens.
  */
-export function InstantQuizForm({ slug, version, questions, initialRun, tip, attemptNumber, maxAttempts }: Props) {
+export function InstantQuizForm({ slug, version, questions, initialRun, tip, helpLink, attemptNumber, maxAttempts }: Props) {
   const router = useRouter();
   const [run, setRun] = useState<InstantRun>(initialRun);
   // The first question not solved yet (all solved but not published: the last, to finish it).
@@ -171,6 +174,7 @@ export function InstantQuizForm({ slug, version, questions, initialRun, tip, att
         open={open}
         feedback={feedback}
         onClose={closeFeedback}
+        helpLink={helpLink}
         // Focus goes to the question's heading: the next question after a right answer, the same one after a wrong
         // answer (Continue, where the learner was, stays disabled until they change their answer).
         onCloseAutoFocus={(e) => {
@@ -184,18 +188,22 @@ export function InstantQuizForm({ slug, version, questions, initialRun, tip, att
 
 /**
  * The outcome of one check. Right: "Correct!", the explanation and Continue (or "See your result" after the last
- * question). Wrong: "Not quite — try again." and nothing else. `feedback` stays set while the dialog closes, so its
- * text doesn't change during the fade.
+ * question). Wrong: "Not quite — try again." and, when the challenge has one, a link to its source material; never
+ * the answer or the explanation. `feedback` stays set while the dialog closes, so its text doesn't change during the
+ * fade.
  */
 export function InstantFeedbackDialog({
   open,
   feedback,
   onClose,
   onCloseAutoFocus,
+  helpLink,
 }: {
   open: boolean;
   feedback: Feedback | null;
   onClose: () => void;
+  /** Wrong answers only: "Not sure? Refresh your memory in <label>." (opens in a new tab, like a brief's links). */
+  helpLink?: HelpLink | null;
   onCloseAutoFocus?: (e: Event) => void;
 }) {
   return (
@@ -230,7 +238,24 @@ export function InstantFeedbackDialog({
                 <RotateCcw className="size-5" aria-hidden />
                 Not quite — try again.
               </DialogTitle>
-              <DialogDescription>Close this to answer the same question again.</DialogDescription>
+              {helpLink ? (
+                <DialogDescription data-testid="help-link">
+                  Not sure? Refresh your memory in{" "}
+                  <a
+                    href={helpLink.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-foreground font-medium underline underline-offset-4"
+                  >
+                    {helpLink.label}
+                    <ExternalLink aria-hidden className="ml-1 inline size-[0.85em] align-baseline" />
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </a>
+                  .
+                </DialogDescription>
+              ) : (
+                <DialogDescription>Close this to answer the same question again.</DialogDescription>
+              )}
             </div>
             <div className="flex justify-end">
               <Button type="button" onClick={onClose} autoFocus>

@@ -9,6 +9,9 @@ feedback_mode: instant
 difficulty: 1
 points: 12
 estimated_minutes: 10
+help_link:
+  url: "https://www.figma.com/design/LGZoFgcZNZPl72DDRv9n0A/UXDA-Playbook?node-id=2482-30725"
+  label: "the UXDA Playbook"
 status: draft
 questions:
   - id: q1

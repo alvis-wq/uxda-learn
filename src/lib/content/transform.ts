@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { LoadedChallenge } from "./load";
 import type { Audience } from "@/lib/tracks";
 import { shuffleItems } from "./order";
-import { matchPair, type Category, type FeedbackMode, type PathFile, type PublicQuestion, type Question } from "./schema";
+import { matchPair, type Category, type FeedbackMode, type HelpLink, type PathFile, type PublicQuestion, type Question } from "./schema";
 
 /** JSON with object keys sorted, so equal data always serialises identically (jsonb reorders keys). */
 export function canonicalJson(value: unknown): string {
@@ -78,6 +78,8 @@ export type ChallengeRow = {
   image: string | null;
   /** Short markdown hint shown above the questions. Display only, like `image`: it never changes content_hash. */
   tip: string | null;
+  /** Link to the source material, offered after a wrong answer in instant mode. Display only, like `tip`. */
+  help_link: HelpLink | null;
   /** The learning path this challenge is a milestone of. Display only, like `image`: it never changes content_hash. */
   path_slug: string | null;
   content_hash: string;
@@ -118,7 +120,7 @@ export const SETTING_FIELDS = ["status", "required_for", "due_at"] as const sati
 export type SettingField = (typeof SETTING_FIELDS)[number];
 
 /** The public fields content_hash covers (everything in ChallengeRow except the hash). */
-export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image" | "tip" | "path_slug" | keyof ImageTuning>;
+export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image" | "tip" | "help_link" | "path_slug" | keyof ImageTuning>;
 
 const PUBLIC_KEYS = [
   "slug", "category_slug", "title", "summary", "body_md", "type", "audiences", "difficulty", "points",
@@ -261,6 +263,7 @@ export function toChallengeRows(
       image: c.image ?? null,
       ...imageTuningOf(c),
       tip: c.tip ?? null,
+      help_link: c.help_link ?? null,
       path_slug: c.path ?? null,
       content_hash,
     },

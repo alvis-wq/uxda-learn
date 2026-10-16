@@ -6,6 +6,9 @@ type: quiz
 feedback_mode: instant
 difficulty: 1
 points: 6
+help_link:
+  url: "https://example.com/playbook"
+  label: "the E2E Playbook"
 status: published
 questions:
   - id: pick

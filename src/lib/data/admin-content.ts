@@ -56,7 +56,7 @@ export async function getContentOverview() {
     supabase
       .from("challenges")
       .select(
-        "slug,category_slug,title,summary,body_md,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric,path_slug",
+        "slug,category_slug,title,summary,body_md,tip,help_link,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric,path_slug",
       )
       .order("title"),
     supabase.from("submissions").select("challenge_slug").eq("is_test", false),

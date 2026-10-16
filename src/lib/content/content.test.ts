@@ -576,14 +576,14 @@ describe("card images", () => {
       const plan = planSync(rowsFor("new.webp"), dbFrom(rowsFor("old.webp")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null, path_slug: null, ...NO_IMAGE_TUNING }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug: content.challenges[0].data.slug, image: "new.webp", tip: null, help_link: null, path_slug: null, ...NO_IMAGE_TUNING }]);
       expect(countChanges(plan)).toBe(1);
     });
 
     it("adding and removing an image are both detected", () => {
       expect(planSync(rowsFor("a.webp"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
       expect(planSync(rowsFor(), dbFrom(rowsFor("a.webp"))).challengeDisplayUpdates).toEqual([
-        { slug: content.challenges[0].data.slug, image: null, tip: null, path_slug: null, ...NO_IMAGE_TUNING },
+        { slug: content.challenges[0].data.slug, image: null, tip: null, help_link: null, path_slug: null, ...NO_IMAGE_TUNING },
       ]);
     });
 
@@ -600,9 +600,9 @@ describe("card images", () => {
       const plan = planSync(rowsFor(undefined, "new"), dbFrom(rowsFor(undefined, "old")));
       expect(plan.challengeWrites).toEqual([]);
       expect(plan.challengeHashRefreshes).toEqual([]);
-      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new", path_slug: null, ...NO_IMAGE_TUNING }]);
+      expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: null, tip: "new", help_link: null, path_slug: null, ...NO_IMAGE_TUNING }]);
       expect(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor())).challengeDisplayUpdates).toHaveLength(1);
-      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null, path_slug: null, ...NO_IMAGE_TUNING }]);
+      expect(planSync(rowsFor(), dbFrom(rowsFor(undefined, "t"))).challengeDisplayUpdates).toEqual([{ slug, image: null, tip: null, help_link: null, path_slug: null, ...NO_IMAGE_TUNING }]);
       expect(countChanges(planSync(rowsFor(undefined, "t"), dbFrom(rowsFor(undefined, "t"))))).toBe(0);
     });
 
@@ -644,7 +644,7 @@ describe("card images", () => {
       it("a changed tuning alone is a version-neutral display write, carrying it", () => {
         const plan = planSync(tuned({ image_offset_y: 8 }), dbFrom(tuned({})));
         expect(plan.challengeWrites).toEqual([]);
-        expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: "a.webp", tip: null, path_slug: null, ...NO_IMAGE_TUNING, image_offset_y: 8 }]);
+        expect(plan.challengeDisplayUpdates).toEqual([{ slug, image: "a.webp", tip: null, help_link: null, path_slug: null, ...NO_IMAGE_TUNING, image_offset_y: 8 }]);
         expect(countChanges(planSync(tuned({ image_scale: 1.5 }), dbFrom(tuned({ image_scale: 1.5 }))))).toBe(0);
       });
 
@@ -770,7 +770,7 @@ describe("planSync for learning paths", () => {
     db.challenges[0] = { ...db.challenges[0], path_slug: null };
     const plan = planSync(disk, db);
     expect(plan.challengeWrites).toEqual([]);
-    expect(plan.challengeDisplayUpdates).toEqual([{ slug: "step-one", image: null, tip: null, path_slug: "two-steps", ...NO_IMAGE_TUNING }]);
+    expect(plan.challengeDisplayUpdates).toEqual([{ slug: "step-one", image: null, tip: null, help_link: null, path_slug: "two-steps", ...NO_IMAGE_TUNING }]);
     const ch = content.challenges[0];
     const moved = { ...ch, data: { ...ch.data, path: undefined } };
     expect(toChallengeRows(moved, content.categories).challenge.content_hash).toBe(disk.challenges[0].challenge.content_hash);

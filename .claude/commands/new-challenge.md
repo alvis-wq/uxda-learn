@@ -68,6 +68,9 @@ Create a challenge from this description: $ARGUMENTS
    - `feedback_mode: instant` when the description asks for instant feedback, or for a short self-check quiz
      (only `type: quiz`, all questions single / multi / order / match). Learners see right/wrong after each answer,
      score full points on the first try and half on the second, and get ONE attempt. Otherwise leave it out (final).
+   - With `feedback_mode: instant`, add `help_link: { url, label }` when the description names the source material
+     (https only). After a wrong answer learners read "Not sure? Refresh your memory in <label>.", so write the label
+     to fit that sentence ("the UXDA Playbook"). Never invent a link: leave it out, or ask in the summary.
    - Rubric: 2–5 criteria, each with full / partial / none levels that are observable in a
      screenshot, Figma frame or text. No vague criteria like "good quality".
    - `grader_notes`: what a strong answer contains and common mistakes.
