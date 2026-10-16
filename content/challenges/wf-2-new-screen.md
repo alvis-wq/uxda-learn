@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 20
 status: draft
+image: wf-2-new-screen.png
 tip: >-
   /new-screen asks you questions step by step. Answer them like you would brief a colleague —
   short and specific.

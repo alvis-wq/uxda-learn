@@ -876,3 +876,11 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Admin → Required progress and its CSV include required paths (Path badge, links to the path; CSV `item_type` column).
 - Migration: `20261020090000_path_required_due.sql` (paths.required_for, paths.due_at, audit field check, `set_path_setting`). `db:check` covers the function. `database.types.ts` edited by hand to match.
 - Checks (Node 22): `npm run check` ✅ (802 tests) · `npm run build` ✅ · `content:validate` ✅. Unit tests: path state rules, required summary, admin progress + CSV with paths, path setting validation, path file schema/validation, sync create + drift. Real components bundled into a client page with the built CSS: badges per state, admin controls, axe clean, no overflow at 375/1024 in light and dark. E2E not run: no test project. Migration applied (`db:push`), types regenerated (identical to the hand edit).
+
+## Card illustrations (`feat/card-illustrations`)
+
+- `image` set on 14 challenges and 4 paths (files in `public/challenges/`, named after the slug). `extra-keycard-lanyard.png` and `extra-hand-locked-cube.png` left out for now.
+- Paths support `image` (schema, validation, sync, `CardPath.imageUrl` with category fallback); path cards show it bottom-right like challenge cards.
+- Both cards render artwork with next/image (`src/components/card-artwork.tsx`): resized per card size, lazy-loaded. `next.config.ts` restricts the optimiser to `/challenges/**`.
+- Migration: `20261021090000_path_images.sql` (paths.image). `database.types.ts` edited by hand to match — NOT yet applied (`db:push`, then `db:types`); apply it before deploying and before the next content:sync.
+- Checks (Node 22): `npm run check` ✅ · `npm run build` ✅ · `content:validate` ✅ (content:sync not run). Real cards rendered on a temporary page with fixture data: dark + light at 375 and 1280 px, no text over artwork (measured), no horizontal scroll, no image requested before it scrolls near the viewport. E2E not run: no test project.

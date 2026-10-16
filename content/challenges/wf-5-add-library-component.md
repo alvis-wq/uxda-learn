@@ -7,6 +7,7 @@ difficulty: 2
 points: 20
 estimated_minutes: 35
 status: draft
+image: wf-5-add-library-component.png
 tip: >-
   Pick something simple and common — like a progress bar, a chip or a small info card. A clear,
   cropped screenshot gives a much better result than a whole screen.

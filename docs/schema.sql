@@ -64,6 +64,8 @@ create table paths (
   milestones text[] not null check (cardinality(milestones) >= 2),   -- challenge slugs, in order
   before_you_start text check (before_you_start is null or char_length(before_you_start) <= 600),  -- markdown box at the top
   before_you_submit text[] not null default '{}',
+  -- Card artwork: a file name in public/challenges/ (else the category's). Display only.
+  image text check (image is null or image ~ '^[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$'),
   -- Path slugs that come first: this path stays locked until each has every milestone submitted (any attempt counts).
   requires text[] not null default '{}',
   status text not null default 'draft' check (status in ('draft', 'published', 'archived')),

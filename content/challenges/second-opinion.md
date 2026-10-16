@@ -8,6 +8,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 5
 status: draft
+image: second-opinion.png
 questions:
   - id: q1
     kind: single

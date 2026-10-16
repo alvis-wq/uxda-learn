@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 20
 status: draft
+image: wf-1-make-kit-quick-draft.png
 tip: >-
   Keep it rough. The point is speed, not polish. If the first result isn't right, change your
   prompt once or twice — don't fix it by hand.

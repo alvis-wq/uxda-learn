@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 15
 status: draft
+image: wf-3-check-and-fix.png
 tip: >-
   Don't just trust the /check list. For each finding, look at the screen yourself and decide if
   it's really a problem.

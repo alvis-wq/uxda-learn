@@ -7,6 +7,7 @@ difficulty: 2
 points: 20
 estimated_minutes: 40
 status: draft
+image: wf-6-handoff-ready.png
 tip: >-
   Read the AI's annotations as if you were the developer. Anything that says "always" or
   "never" without proof is probably an assumption, not a fact.

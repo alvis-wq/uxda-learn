@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 6
 status: draft
+image: uxda-dna-7-values.png
 tip: >-
   You don't have to read the whole document. Open it and ask **Gemini in Google Drive**, or ask **Claude** with the Google Drive connector on, to find the answer for you.
 questions:

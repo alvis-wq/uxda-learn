@@ -7,6 +7,7 @@ difficulty: 1
 points: 10
 estimated_minutes: 8
 status: draft
+image: uxda-collaboration-standards.png
 tip: >-
   Open the document and ask **Gemini in Google Drive**, or ask **Claude** with the Google Drive connector on, to find the answers for you.
 questions:
