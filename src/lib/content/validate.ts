@@ -3,6 +3,7 @@ import path from "node:path";
 import type { ContentError, LoadedContent } from "./load";
 import { audienceTracks, onlyHiddenTracks, TRACK_LABEL, visibleTracks, type Audience, type Track } from "@/lib/tracks";
 import { briefImageErrors } from "./images";
+import { IMAGE_TUNING_FIELDS } from "./transform";
 import { challengeParts, describePlaceholders, findPlaceholders } from "./placeholders";
 import { needsReview } from "./schema";
 
@@ -70,6 +71,7 @@ export function validateContent(
     }
 
     if (missingImage(c.image)) err(file, `image: "${c.image}" not found in public/challenges/`);
+    for (const f of tuningWithoutImage(c)) err(file, `${f}: tunes this file's own illustration, so it needs \`image\` here too`);
     if (!body) err(file, "brief (markdown body) is empty");
     for (const m of briefImageErrors(body, (name) => existsSync(path.join(imageDir, name)))) err(file, m);
 
@@ -160,6 +162,11 @@ export function validateContent(
   return errors;
 }
 
+/** Illustration tuning set in a file that has no `image` of its own (a category's image can't be tuned per file). */
+function tuningWithoutImage(data: { image?: string } & Partial<Record<(typeof IMAGE_TUNING_FIELDS)[number], number>>): string[] {
+  return data.image ? [] : IMAGE_TUNING_FIELDS.filter((f) => data[f] !== undefined);
+}
+
 /** A chain of `requires` that leads from a path back to itself (e.g. [a, b, a]), or null. Self-requires are reported apart. */
 function requiresLoop(start: string, pathsBySlug: Map<string, LoadedContent["paths"][number]>): string[] | null {
   const seen = new Set<string>();
@@ -208,6 +215,7 @@ function validatePaths(
   for (const { file, data: p } of content.paths) {
     if (file !== `paths/${p.slug}.yaml`) err(file, `slug "${p.slug}" must match the filename (paths/${p.slug}.yaml)`);
     if (missingImage(p.image)) err(file, `image: "${p.image}" not found in public/challenges/`);
+    for (const f of tuningWithoutImage(p)) err(file, `${f}: tunes this file's own illustration, so it needs \`image\` here too`);
     const category = categoriesBySlug.get(p.category);
     if (!category) err(file, `unknown category "${p.category}"`);
     if (category && p.audiences && !p.audiences.includes("all")) {

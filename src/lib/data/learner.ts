@@ -4,6 +4,7 @@ import type { Profile } from "@/lib/auth/session";
 import { isChallengeVisible, parseChallenge, type Challenge } from "@/lib/challenges/model";
 import { requiredFirst, requiredState, summarizeRequired, type RequiredState } from "@/lib/challenges/required";
 import { resolveCardImage } from "@/lib/challenges/card";
+import { NO_IMAGE_TUNING, type ImageTuning } from "@/lib/content/transform";
 import { draftProgress, type DraftProgress } from "@/lib/challenges/draft-progress";
 import { groupChains, pathChains, sortHomeChallenges, type ChainPlace } from "@/lib/challenges/home-order";
 import type { DraftRow } from "@/lib/submissions/draft";
@@ -192,7 +193,21 @@ export type CardChallenge = {
   categorySlug: string;
   /** Public URL of the card artwork (the challenge's own, else its category's), or null. */
   imageUrl: string | null;
+  /** Hand tuning of that artwork (scale, offsets); only the challenge's own image is tuned. */
+  imageTuning: ImageTuning;
 };
+
+type TuningColumns = { image: string | null; image_scale?: number | null; image_offset_x?: number | null; image_offset_y?: number | null };
+
+/** A card's artwork tuning from its row: none when the image is the category's (or there is none). */
+function cardTuning(row: TuningColumns): ImageTuning {
+  if (!row.image) return NO_IMAGE_TUNING;
+  return {
+    image_scale: Number(row.image_scale ?? NO_IMAGE_TUNING.image_scale),
+    image_offset_x: Number(row.image_offset_x ?? NO_IMAGE_TUNING.image_offset_x),
+    image_offset_y: Number(row.image_offset_y ?? NO_IMAGE_TUNING.image_offset_y),
+  };
+}
 
 type CardSource = {
   slug: string;
@@ -206,8 +221,7 @@ type CardSource = {
   estimated_minutes: number | null;
   waiting_minutes: number | null;
   due_at: string | null;
-  image: string | null;
-};
+} & TuningColumns;
 
 function cardOf(
   ch: CardSource,
@@ -238,6 +252,7 @@ function cardOf(
     savedAt: p.savedAt,
     categorySlug: ch.category_slug,
     imageUrl: resolveCardImage(ch.image, category.image),
+    imageTuning: cardTuning(ch),
   };
 }
 
@@ -273,6 +288,8 @@ export type CardPath = {
   due_at: string | null;
   /** Public URL of the card artwork (the path's own, else its category's), or null. */
   imageUrl: string | null;
+  /** Hand tuning of that artwork; only the path's own image is tuned. */
+  imageTuning: ImageTuning;
 };
 
 /** What the home page and a category page list. */
@@ -290,8 +307,7 @@ type PathSource = {
   requires: string[];
   required_for: Challenge["required_for"];
   due_at: string | null;
-  image: string | null;
-};
+} & TuningColumns;
 
 /** A path's card (not locked yet, see `withLock`) and its milestone states, or null when the learner sees none of its milestones. */
 function pathCardOf(
@@ -337,6 +353,7 @@ function pathCardOf(
     requiredState: requiredPathState(states, isDraft ? null : path.due_at, now),
     due_at: isDraft ? null : path.due_at,
     imageUrl: resolveCardImage(path.image, category.image),
+    imageTuning: cardTuning(path),
   };
   return { card, states };
 }
@@ -402,7 +419,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
       .order("sort_order"),
     supabase
       .from("challenges")
-      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,waiting_minutes,image,questions,submission_spec,path_slug")
+      .select("slug,title,summary,category_slug,type,status,difficulty,audiences,required_for,due_at,points,estimated_minutes,waiting_minutes,image,image_scale,image_offset_x,image_offset_y,questions,submission_spec,path_slug")
       .in("status", listedStatuses(profile)),
     mySubmissions(profile.id),
     myAcknowledgements(profile.id),
@@ -410,7 +427,7 @@ export async function getHomeData(profile: Profile, now = new Date()): Promise<H
     group ? supabase.rpc("get_leaderboard", { p_tracks: [...group.tracks] }) : Promise.resolve(null),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at,image")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at,image,image_scale,image_offset_x,image_offset_y")
       .in("status", listedStatuses(profile)),
     profile.is_tester ? myTestAttempts(profile.id) : Promise.resolve([]),
   ]);
@@ -517,7 +534,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
   const [chs, subs, acks, drafts, paths, chainPaths] = await Promise.all([
     supabase
       .from("challenges")
-      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,waiting_minutes,audiences,required_for,due_at,image,questions,submission_spec,path_slug")
+      .select("slug,title,summary,category_slug,type,status,difficulty,points,estimated_minutes,waiting_minutes,audiences,required_for,due_at,image,image_scale,image_offset_x,image_offset_y,questions,submission_spec,path_slug")
       .eq("category_slug", slug)
       .eq("status", "published") // drafts are only listed on the home page, under the tester's filter
       .order("difficulty")
@@ -527,7 +544,7 @@ export async function getCategoryPage(profile: Profile, slug: string, now = new 
     myDrafts(profile.id),
     supabase
       .from("paths")
-      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at,image")
+      .select("slug,title,summary,category_slug,status,audiences,sequential,milestones,requires,required_for,due_at,image,image_scale,image_offset_x,image_offset_y")
       .eq("category_slug", slug)
       .eq("status", "published") // like challenges: draft paths only under the tester's filter on home
       .order("title"),

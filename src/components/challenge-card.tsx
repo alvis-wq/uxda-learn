@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ARTWORK_COLUMN, CardArtwork } from "@/components/card-artwork";
+import { ARTWORK_SIZE, CardArtwork } from "@/components/card-artwork";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { DraftProgressBar } from "@/components/draft-progress";
@@ -23,9 +23,8 @@ const GRID_SPAN: Record<CardSpan, string> = {
  * subheading, muted body, a violet CTA pill and a compact meta row. The whole card is one link (the heading's), so the
  * accessible name stays the challenge title; the CTA is decoration for that link.
  *
- * Optional artwork bleeds off the bottom-right corner. It starts at the left edge of its own grid column and grows
- * rightwards and downwards through the card's padding and past its edge, while the text spans only the other column,
- * so text can never sit under the image.
+ * Optional artwork is a true background in the bottom-right corner (CardArtwork): it never changes the layout, which
+ * is the same with or without it, and fades towards the top-left so text crossing it stays readable.
  */
 export function ChallengeCard({
   challenge: ch,
@@ -56,14 +55,15 @@ export function ChallengeCard({
       data-has-image={hasImage ? "" : undefined}
       data-draft={ch.isDraft ? "" : undefined}
       className={cn(
-        "challenge-card group relative isolate flex min-h-64 w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
+        "challenge-card group @container relative isolate flex min-h-64 w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
         "hover:border-primary has-[a:focus-visible]:ring-ring/50 has-[a:focus-visible]:ring-[3px]",
         // A draft a tester can try: dashed border and a muted surface, so it can't be mistaken for a real challenge.
         ch.isDraft ? "bg-muted border-muted-foreground/50 border-dashed" : "bg-tile",
-        ARTWORK_COLUMN[span],
+        ARTWORK_SIZE[span],
       )}
     >
-      <div className={cn("grid min-w-0 flex-1 gap-x-4 px-[var(--pad)] pt-[var(--pad)] sm:gap-x-6", hasImage ? "grid-cols-[minmax(0,1fr)_var(--img-w)]" : "grid-cols-1")}>
+      {ch.imageUrl && <CardArtwork src={ch.imageUrl} span={span} tuning={ch.imageTuning} />}
+      <div className="grid min-w-0 flex-1 px-[var(--pad)] pt-[var(--pad)]">
         <div className="flex min-w-0 flex-col gap-4">
           <div className="grid gap-2">
             <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">
@@ -99,14 +99,10 @@ export function ChallengeCard({
             )}
           </div>
         </div>
-
-        {ch.imageUrl && <CardArtwork src={ch.imageUrl} span={span} />}
       </div>
-      {/* The meta rows span the whole card (below the artwork's column, which they are painted over), so they are
-          two rows at every width. Positioned without a z-index: above the artwork (it comes first), below the
-          card-wide link (z-10), and no stacking context of its own, so the waiting-time info button (z-20) sits above
-          that link. */}
-      <div className={cn("relative px-[var(--pad)] pt-4 pb-[var(--pad)]", ch.isDraft ? "bg-muted" : "bg-tile")}>
+      {/* The meta rows span the whole card, so they are two rows at every width. No stacking context of their own,
+          so the waiting-time info button (z-20) sits above the card-wide link (z-10). */}
+      <div className="px-[var(--pad)] pt-4 pb-[var(--pad)]">
         {/* Always two rows: 1) what it is, 2) where the learner stands. */}
         <div className="grid gap-2" data-testid="card-meta">
           <ChallengeMeta challenge={ch} nowrap />

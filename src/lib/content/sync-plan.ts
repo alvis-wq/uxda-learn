@@ -2,10 +2,12 @@ import {
   canonicalJson,
   hashPublicContent,
   normalizeTimestamp,
+  sameImageTuning,
   type CategoryRow,
   type ChallengeKeyRow,
   type ChallengeRow,
   type ChallengeSettings,
+  type ImageTuning,
   type PathRow,
   type PathSettings,
   type PublicChallengeContent,
@@ -17,6 +19,9 @@ export type DbChallenge = PublicChallengeContent & {
   image?: string | null; // undefined until the image migration has been applied
   tip?: string | null; // undefined until the drafts migration has been applied
   path_slug?: string | null; // undefined until the paths migration has been applied
+  image_scale?: number; // these three: undefined until the image tuning migration has been applied
+  image_offset_x?: number;
+  image_offset_y?: number;
   content_hash: string;
   version: number;
   status: string;
@@ -43,8 +48,8 @@ export type SyncPlan = {
   )[];
   /** Same content, but the stored hash is stale (e.g. after a format change). Never bumps the version. */
   challengeHashRefreshes: { slug: string; content_hash: string }[];
-  /** Only the card image and/or tip changed: written without bumping the version (display only, not in the content hash). */
-  challengeDisplayUpdates: { slug: string; image: string | null; tip: string | null; path_slug: string | null }[];
+  /** Only display fields changed (card image and its tuning, tip, path): written without bumping the version (not in the content hash). */
+  challengeDisplayUpdates: ({ slug: string; image: string | null; tip: string | null; path_slug: string | null } & ImageTuning)[];
   challengeArchives: string[];
   /** File and DB disagree on an admin-owned setting. Informational only: the DB wins, nothing is written. */
   settingsDrift: { slug: string; field: SettingField; file: string; db: string }[];
@@ -95,7 +100,8 @@ function samePath(a: PathRow, b: DbPath): boolean {
     a.requires.join() === b.requires.join() &&
     (a.before_you_start ?? null) === (b.before_you_start ?? null) &&
     a.before_you_submit.join("\n") === b.before_you_submit.join("\n") &&
-    (a.image ?? null) === (b.image ?? null)
+    (a.image ?? null) === (b.image ?? null) &&
+    sameImageTuning(a, b)
   );
 }
 
@@ -206,16 +212,20 @@ export function planSync(
     } else if (existing.content_hash !== challenge.content_hash) {
       plan.challengeHashRefreshes.push({ slug: challenge.slug, content_hash: challenge.content_hash });
     }
-    // A content write already carries image, tip and path; otherwise a change to any is its own version-neutral write.
+    // A content write already carries the display fields; otherwise a change to any is its own version-neutral write.
     const contentWritten = plan.challengeWrites.at(-1)?.row.slug === challenge.slug;
     const displayChanged =
       (existing.image ?? null) !== (challenge.image ?? null) ||
       (existing.tip ?? null) !== (challenge.tip ?? null) ||
-      (existing.path_slug ?? null) !== (challenge.path_slug ?? null);
+      (existing.path_slug ?? null) !== (challenge.path_slug ?? null) ||
+      !sameImageTuning(challenge, existing);
     if (!contentWritten && displayChanged) {
       plan.challengeDisplayUpdates.push({
         slug: challenge.slug,
         image: challenge.image ?? null,
+        image_scale: challenge.image_scale,
+        image_offset_x: challenge.image_offset_x,
+        image_offset_y: challenge.image_offset_y,
         tip: challenge.tip ?? null,
         path_slug: challenge.path_slug ?? null,
       });

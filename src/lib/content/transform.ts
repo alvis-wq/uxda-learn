@@ -68,7 +68,28 @@ export type ChallengeRow = {
   /** The learning path this challenge is a milestone of. Display only, like `image`: it never changes content_hash. */
   path_slug: string | null;
   content_hash: string;
-};
+} & ImageTuning;
+
+/**
+ * Hand tuning of a card illustration (`image_scale`, `image_offset_x`, `image_offset_y` in a challenge or path file).
+ * Display only, like `image`: never in content_hash. Omitted = no tuning (scale 1, no offset).
+ */
+export type ImageTuning = { image_scale: number; image_offset_x: number; image_offset_y: number };
+export const NO_IMAGE_TUNING: ImageTuning = { image_scale: 1, image_offset_x: 0, image_offset_y: 0 };
+export const IMAGE_TUNING_FIELDS = ["image_scale", "image_offset_x", "image_offset_y"] as const satisfies readonly (keyof ImageTuning)[];
+
+export function imageTuningOf(file: Partial<Record<keyof ImageTuning, number>>): ImageTuning {
+  return {
+    image_scale: file.image_scale ?? NO_IMAGE_TUNING.image_scale,
+    image_offset_x: file.image_offset_x ?? NO_IMAGE_TUNING.image_offset_x,
+    image_offset_y: file.image_offset_y ?? NO_IMAGE_TUNING.image_offset_y,
+  };
+}
+
+/** Same tuning; a database row read before the tuning migration (fields missing) counts as untuned. */
+export function sameImageTuning(a: ImageTuning, b: Partial<Record<keyof ImageTuning, number | string | null>>): boolean {
+  return IMAGE_TUNING_FIELDS.every((f) => Number(b[f] ?? NO_IMAGE_TUNING[f]) === a[f]);
+}
 
 /**
  * Operational settings, owned by the admin panel. A content file sets them only when a challenge
@@ -84,7 +105,7 @@ export const SETTING_FIELDS = ["status", "required_for", "due_at"] as const sati
 export type SettingField = (typeof SETTING_FIELDS)[number];
 
 /** The public fields content_hash covers (everything in ChallengeRow except the hash). */
-export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image" | "tip" | "path_slug">;
+export type PublicChallengeContent = Omit<ChallengeRow, "content_hash" | "image" | "tip" | "path_slug" | keyof ImageTuning>;
 
 const PUBLIC_KEYS = [
   "slug", "category_slug", "title", "summary", "body_md", "type", "audiences", "difficulty", "points",
@@ -127,7 +148,7 @@ export type PathRow = {
   before_you_submit: string[];
   /** Card artwork in public/challenges/ (else the category's). Display only. */
   image: string | null;
-};
+} & ImageTuning;
 
 /** A path's admin-owned settings: the same three as a challenge's, set from the file only when the path is created. */
 export type PathSettings = ChallengeSettings;
@@ -146,6 +167,7 @@ export function toPathRow(p: PathFile, categories: Category[]): { row: PathRow; 
       before_you_start: p.before_you_start ?? null,
       before_you_submit: p.before_you_submit,
       image: p.image ?? null,
+      ...imageTuningOf(p),
     },
     settings: { status: p.status, required_for: p.required_for ?? [], due_at: normalizeTimestamp(p.due_at) },
   };
@@ -214,7 +236,14 @@ export function toChallengeRows(
   }
 
   return {
-    challenge: { ...publicContent, image: c.image ?? null, tip: c.tip ?? null, path_slug: c.path ?? null, content_hash },
+    challenge: {
+      ...publicContent,
+      image: c.image ?? null,
+      ...imageTuningOf(c),
+      tip: c.tip ?? null,
+      path_slug: c.path ?? null,
+      content_hash,
+    },
     settings: { status: c.status, required_for: c.required_for ?? [], due_at: normalizeTimestamp(c.due_at) },
     key: { challenge_slug: c.slug, answer_key, grader_notes: c.grader_notes?.trim() || null },
   };

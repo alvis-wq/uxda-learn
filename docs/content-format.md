@@ -48,6 +48,19 @@ categories:
 `public/challenges/`. A challenge's own `image` wins; with neither, the card has no image. Images are
 display-only: they are not part of the content hash, so changing one never bumps a challenge's `version`.
 
+On a card the image is a background: flush with the card's bottom-right corner (40% of the card on mobile, about 45%
+of a grid card, 18.25rem on a full-width card), behind the text, fading towards its top-left. It never changes the
+card's layout. Frames are drawn to be cropped at the bottom-right (800×800 works well).
+
+**Tuning one illustration by hand** (challenge and path files, only with their own `image`; display only, like it):
+
+```yaml
+image: three-tools.webp
+image_scale: 1.2        # multiplies its size, still anchored bottom-right (0.5–2, default 1)
+image_offset_x: -10     # moves it by a % of its own size: + right, - left (-50–50, default 0)
+image_offset_y: 5       # + down, - up (-50–50, default 0)
+```
+
 ## content/challenges/<slug>.md
 Markdown file with YAML frontmatter. The body is the brief shown to the user.
 
@@ -180,8 +193,9 @@ path: auto-layout-homework
 ```
 
 - **Points:** a path has none of its own; its total is the sum of its milestones.
-- **Card artwork** (`image`): works like a challenge's — a file in `public/challenges/` (else the category's image,
-  else none), in the card's bottom-right corner, never under its text. Display only, synced every time.
+- **Card artwork** (`image`, and `image_scale` / `image_offset_x` / `image_offset_y`): works like a challenge's — a
+  file in `public/challenges/` (else the category's image, else none), a background in the card's bottom-right corner.
+  Display only, synced every time.
 - **Unlocking** (`sequential: true`): milestone 1 is open; each next one opens as soon as the one before it has any
   attempt — awaiting review, changes requested and done all count, so nobody waits for a review to go on. A locked
   milestone can't be opened or submitted (checked on the server). `sequential: false` opens them all.

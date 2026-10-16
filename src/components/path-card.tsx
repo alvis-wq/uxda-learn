@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, FlaskConical, Lock, Route } from "lucide-react";
-import { ARTWORK_COLUMN, CardArtwork } from "@/components/card-artwork";
+import { ARTWORK_SIZE, CardArtwork } from "@/components/card-artwork";
 import { DraftBadge } from "@/components/draft-badge";
 import { RequiredBadges } from "@/components/required-badge";
 import { TimeEstimate } from "@/components/time-estimate";
@@ -19,8 +19,8 @@ import { cn } from "@/lib/utils";
  * same lock, plus "Open as tester": its page lets them open every draft milestone. Its time is its milestones' added up.
  * A required path shows "Required" and its due / overdue badge above the CTA, or above the lock ("Unlocks after …").
  *
- * Optional artwork bleeds off the bottom-right corner, as on a challenge card: it has a grid column of its own and
- * everything else stays in the other one, so no text ever sits under it.
+ * Optional artwork is a true background in the bottom-right corner, as on a challenge card: the layout is the same
+ * with or without it.
  */
 export function PathCard({
   path: p,
@@ -49,13 +49,14 @@ export function PathCard({
       data-has-image={p.imageUrl ? "" : undefined}
       data-draft={p.isDraft ? "" : undefined}
       className={cn(
-        "group relative isolate flex w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
+        "group @container relative isolate flex w-full min-w-0 flex-col overflow-hidden rounded-[24px] border transition-colors [--pad:1.5rem] sm:rounded-[32px] sm:[--pad:2rem]",
         "hover:border-primary has-[a:focus-visible]:ring-ring/50 has-[a:focus-visible]:ring-[3px] motion-reduce:transition-none",
         p.isDraft ? "bg-muted border-muted-foreground/50 border-dashed" : "bg-tile",
-        ARTWORK_COLUMN[span],
+        ARTWORK_SIZE[span],
       )}
     >
-      <div className={cn("grid min-w-0 flex-1 gap-x-4 p-[var(--pad)] sm:gap-x-6", p.imageUrl ? "grid-cols-[minmax(0,1fr)_var(--img-w)]" : "grid-cols-1")}>
+      {p.imageUrl && <CardArtwork src={p.imageUrl} span={span} tuning={p.imageTuning} />}
+      <div className="grid min-w-0 flex-1 p-[var(--pad)]">
         <div className="flex min-w-0 flex-col gap-4">
           <p className="text-muted-foreground text-meta flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
             <span className="inline-flex items-center gap-1.5">
@@ -120,7 +121,6 @@ export function PathCard({
             {p.isDraft && <DraftBadge />}
           </div>
         </div>
-        {p.imageUrl && <CardArtwork src={p.imageUrl} span={span} />}
       </div>
     </article>
   );
