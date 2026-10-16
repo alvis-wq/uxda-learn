@@ -10,13 +10,14 @@ import { describePlaceholders } from "@/lib/content/placeholders";
 import { getContentOverview } from "@/lib/data/admin-content";
 import { audienceLabel } from "@/lib/tracks";
 import { AuditHistory } from "./audit-history";
+import { FeaturedOrder } from "./featured-order";
 import { FeedbackList } from "./feedback-list";
 import { ChallengeSettingsControls, PathSettingsControls } from "./settings-controls";
 
 export const metadata: Metadata = { title: "Content · Admin · UXDA Learn" };
 
 export default async function AdminContentPage() {
-  const sections = await getContentOverview();
+  const { sections, featured } = await getContentOverview();
 
   return (
     <section aria-labelledby="content-heading" className="grid gap-8">
@@ -25,10 +26,12 @@ export default async function AdminContentPage() {
           Content
         </h1>
         <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-          Status, required and due date are managed here and save immediately. Briefs, questions, rubrics, points
-          and audiences come from <code>/content</code> — edit the files, then run <code>npm run content:sync</code>.
+          Status, required, due date and featuring are managed here and save immediately. Briefs, questions, rubrics,
+          points and audiences come from <code>/content</code> — edit the files, then run{" "}
+          <code>npm run content:sync</code>.
         </p>
       </div>
+      {sections.length > 0 && <FeaturedOrder items={featured} />}
       {sections.length === 0 && <EmptyState icon={FileText} title="No content synced yet" />}
       {sections.map(({ category, challenges, paths }) => (
         <div key={category.slug} className="grid gap-3">
@@ -65,6 +68,7 @@ export default async function AdminContentPage() {
                         draftMilestones={p.milestones.filter((m) => m.status === "draft").length}
                         requiredFor={p.required_for}
                         dueAt={p.due_at}
+                        featuredFor={p.featured_for}
                         visibleTracks={p.visibleTracks}
                       />
                       <ol className="text-meta grid list-decimal gap-1 pl-5">
@@ -127,6 +131,7 @@ export default async function AdminContentPage() {
                         status={c.status}
                         requiredFor={c.required_for}
                         dueAt={c.due_at}
+                        featuredFor={c.featured_for}
                         visibleTracks={c.visibleTracks}
                         milestone={c.path !== null}
                       />

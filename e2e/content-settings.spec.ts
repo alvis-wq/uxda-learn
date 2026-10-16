@@ -11,6 +11,8 @@ test.beforeAll(cleanTestUserData);
 test.afterAll(installFixtures);
 
 const card = (page: Page, title: string) => page.getByTestId("content-challenge").filter({ hasText: title });
+/** A card's "Required for" checkboxes (the card also has "Featured for" ones with the same track names). */
+const requiredFor = (c: ReturnType<typeof card>) => c.getByRole("group", { name: "Required for" });
 
 async function setting(slug: string) {
   const { data } = await adminDb().from("challenges").select("status,required_for,due_at").eq("slug", slug).single();
@@ -30,13 +32,13 @@ test.describe("admin content settings", () => {
     await expect.poll(async () => (await setting("e2e-quiz")).status).toBe("draft");
 
     // Required for: one track, then everyone, then optional again.
-    await quiz.getByRole("checkbox", { name: "Designer", exact: true }).click();
+    await requiredFor(quiz).getByRole("checkbox", { name: "Designer", exact: true }).click();
     await expect(page.getByText("Required for saved for “[E2E] Quiz”: Designer.")).toBeVisible();
     await expect.poll(async () => (await setting("e2e-quiz")).required_for).toEqual(["designer"]);
-    await quiz.getByRole("checkbox", { name: "Everyone" }).click();
+    await requiredFor(quiz).getByRole("checkbox", { name: "Everyone" }).click();
     await expect.poll(async () => (await setting("e2e-quiz")).required_for).toEqual(["all"]);
-    await expect(quiz.getByRole("checkbox", { name: "Strategist" })).toBeDisabled();
-    await quiz.getByRole("checkbox", { name: "Everyone" }).click();
+    await expect(requiredFor(quiz).getByRole("checkbox", { name: "Strategist" })).toBeDisabled();
+    await requiredFor(quiz).getByRole("checkbox", { name: "Everyone" }).click();
     await expect.poll(async () => (await setting("e2e-quiz")).required_for).toEqual([]);
 
     // Due date: saved when leaving the field (browser local time), then cleared.
@@ -75,9 +77,9 @@ test.describe("admin content settings", () => {
     await loginAs(page, "admin");
     await page.goto("/admin/content");
     const shot = card(page, "[E2E] Screenshot");
-    await expect(shot.getByRole("checkbox", { name: "Strategist" })).toBeDisabled();
-    await expect(shot.getByRole("checkbox", { name: "Everyone" })).toBeDisabled();
-    await expect(shot.getByRole("checkbox", { name: "Designer", exact: true })).toBeEnabled();
+    await expect(requiredFor(shot).getByRole("checkbox", { name: "Strategist" })).toBeDisabled();
+    await expect(requiredFor(shot).getByRole("checkbox", { name: "Everyone" })).toBeDisabled();
+    await expect(requiredFor(shot).getByRole("checkbox", { name: "Designer", exact: true })).toBeEnabled();
   });
 
   test("publishing is blocked while the content has a TODO placeholder", async ({ page }) => {

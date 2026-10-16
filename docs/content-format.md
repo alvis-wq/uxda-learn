@@ -13,6 +13,12 @@
 - If a file disagrees with the DB on one of them, `content:sync` prints it under "Settings managed
   in the admin panel" (file value ignored, DB wins). Editing those lines in the file does nothing.
 - Content changes bump `version`; settings changes never do.
+- **Featured on home** (Admin → Content, on every challenge and path card) is admin-only from the start: content files
+  don't have it. A "Feature on home" switch plus "Featured for" tracks (Everyone, or tracks that can see it); a list at
+  the top of Admin → Content sets the order (oldest first; Move up / Move down). Learners see a "Featured" section at the
+  top of their home list with what's featured for their track, can see and haven't completed; it ignores the filter, its
+  items aren't listed again below, and the counts don't change. A milestone can't be featured on its own (its path can);
+  drafts appear once published. Every change is audited.
 - A file removed from `/content` still archives its challenge (recorded in the change history as
   `content:sync`). Restoring the file doesn't un-archive it — publish it again in the admin panel.
 - **Placeholders:** a challenge whose content still contains `TODO` or `TODO_SOMETHING` (e.g.

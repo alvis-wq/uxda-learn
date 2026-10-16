@@ -77,6 +77,10 @@ create table paths (
   required_for audience[] not null default '{}'
     check (cardinality(required_for) = 0 or public.valid_audiences(required_for)),
   due_at timestamptz,
+  -- Featured on home, like a challenge's (admin-owned, set_path_setting / move_featured).
+  featured_for audience[] not null default '{}' check (cardinality(featured_for) = 0 or public.valid_audiences(featured_for)),
+  featured_at timestamptz,
+  constraint paths_featured_at check ((cardinality(featured_for) = 0) = (featured_at is null)),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -123,6 +127,11 @@ create table challenges (
     and char_length(help_link ->> 'label') between 1 and 120)),
   -- The path this challenge is a milestone of (listed only inside it); display only, not part of content_hash.
   path_slug text references paths(slug),
+  -- Admin-owned (never in content files): the tracks it's featured for on the home page ('{}' = not), and when
+  -- (the "Featured" order, oldest first; move_featured swaps it). A milestone is never featured (set_challenge_setting).
+  featured_for audience[] not null default '{}' check (cardinality(featured_for) = 0 or public.valid_audiences(featured_for)),
+  featured_at timestamptz,
+  constraint challenges_featured_at check ((cardinality(featured_for) = 0) = (featured_at is null)),
   updated_at timestamptz not null default now()
 );
 
@@ -225,7 +234,7 @@ create table submission_drafts (
 create table challenge_settings_audit (
   id bigint generated always as identity primary key,
   challenge_slug text not null references challenges(slug) on delete cascade,
-  field text not null check (field in ('status', 'required_for', 'due_at')),
+  field text not null check (field in ('status', 'required_for', 'due_at', 'featured_for', 'featured_order')),
   old_value jsonb,
   new_value jsonb,
   source text not null check (source in ('admin', 'content:sync')),
@@ -285,7 +294,7 @@ create index challenge_feedback_slug_idx on challenge_feedback (challenge_slug, 
 create table path_settings_audit (
   id bigint generated always as identity primary key,
   path_slug text not null references paths(slug) on delete cascade,
-  field text not null check (field in ('status', 'required_for', 'due_at')),
+  field text not null check (field in ('status', 'required_for', 'due_at', 'featured_for', 'featured_order')),
   old_value jsonb,
   new_value jsonb,
   source text not null check (source in ('admin', 'content:sync')),
@@ -402,6 +411,10 @@ $$;
 --   attempt on a published milestone of a published path, flagged is_imported; actor must be an admin; same limits as
 --   a submit (nothing awaiting review, an attempt left, not at full points); audited.
 -- undo_import(p_submission, p_source, p_actor): deletes an imported attempt that is the user's latest; audited.
+-- set_challenge_setting / set_path_setting also take 'featured_for' (featuring stamps featured_at, un-featuring clears
+--   it, changing tracks keeps it; a milestone is refused). Body: supabase/migrations/20261025090000_featured.sql.
+-- move_featured(p_kind, p_slug, p_direction, p_actor) returns boolean: swaps a featured challenge's or path's place in
+--   the home order with its neighbour; both moves audited as 'featured_order'. Admin only.
 -- record_instant_try(p_user, p_challenge, p_version, p_question, p_correct, p_is_test) returns jsonb: counts one check
 --   of one question in the learner's instant run (atomic; a solved question is never counted again; a run of the other
 --   kind, test or real, is discarded first). Service role only.

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  featuredMoveSchema,
   pathPublishError,
   pathSettingChangeError,
   pathSettingChangeSchema,
@@ -14,7 +15,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "../actions";
 
 /**
- * Change one admin-owned setting (status, required_for, due_at) of a challenge and record it in
+ * Change one admin-owned setting (status, required_for, due_at, featured_for) of a challenge and record it in
  * the audit log. The write + audit row happen together in set_challenge_setting().
  */
 export async function updateChallengeSetting(raw: unknown): Promise<ActionResult> {
@@ -101,8 +102,8 @@ export async function updatePathStatus(raw: unknown): Promise<ActionResult> {
 }
 
 /**
- * Change a learning path's required_for or due_at, audited in path_settings_audit (set_path_setting). Admin-owned like
- * its status: content:sync never writes them after the path is created.
+ * Change a learning path's required_for, due_at or featured_for, audited in path_settings_audit (set_path_setting).
+ * Admin-owned like its status: content:sync never writes them after the path is created (featured_for never at all).
  */
 export async function updatePathSetting(raw: unknown): Promise<ActionResult> {
   const admin = await getAdminOrNull();
@@ -128,6 +129,32 @@ export async function updatePathSetting(raw: unknown): Promise<ActionResult> {
     p_actor: admin.id,
   });
   if (error) return { ok: false, error: "Couldn't save the change. Please try again." };
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Move a featured challenge or path one place up or down in the home page's "Featured" order. move_featured swaps it
+ * with its neighbour and records both moves in their audit logs; at either end nothing changes.
+ */
+export async function moveFeatured(raw: unknown): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return { ok: false, error: "Only admins can do this." };
+
+  const parsed = featuredMoveSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Invalid value." };
+  const { kind, slug, direction } = parsed.data;
+
+  const { error } = await createAdminClient().rpc("move_featured", {
+    p_kind: kind,
+    p_slug: slug,
+    p_direction: direction,
+    p_actor: admin.id,
+  });
+  if (error) {
+    return { ok: false, error: error.code === "P0002" ? "That isn't featured any more. Reload the page." : "Couldn't move it. Please try again." };
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };

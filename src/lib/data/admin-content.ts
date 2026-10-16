@@ -2,6 +2,7 @@ import "server-only";
 import { challengePlaceholders, type AuditRow } from "@/lib/admin/challenge-settings";
 import { findPlaceholders } from "@/lib/content/placeholders";
 import { requireAdmin } from "@/lib/auth/admin";
+import { compareFeatured } from "@/lib/challenges/featured";
 import { parseChallenge } from "@/lib/challenges/model";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -45,7 +46,7 @@ function toFeedbackItem(r: FeedbackSelect): FeedbackItem {
 
 /**
  * Admin → Content: every challenge with its settings, who can see it, placeholders and change
- * history. Public rows and the audit log are read with the admin's RLS client; grader notes
+ * history, by category (`sections`), and the home page's "Featured" items in their order (`featured`). Public rows and the audit log are read with the admin's RLS client; grader notes
  * (for the placeholder check) need the service role and stay on the server.
  */
 export async function getContentOverview() {
@@ -56,7 +57,7 @@ export async function getContentOverview() {
     supabase
       .from("challenges")
       .select(
-        "slug,category_slug,title,summary,body_md,tip,help_link,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric,path_slug",
+        "slug,category_slug,title,summary,body_md,tip,help_link,type,audiences,required_for,due_at,difficulty,points,status,version,questions,submission_spec,rubric,path_slug,featured_for,featured_at",
       )
       .order("title"),
     supabase.from("submissions").select("challenge_slug").eq("is_test", false),
@@ -90,7 +91,7 @@ export async function getContentOverview() {
   const challengeBySlug = new Map((challenges.data ?? []).map((c) => [c.slug, c]));
   const pathBySlug = new Map((paths.data ?? []).map((p) => [p.slug, p]));
 
-  return cats.map((cat) => ({
+  const sections = cats.map((cat) => ({
     category: cat,
     challenges: (challenges.data ?? [])
       .filter((c) => c.category_slug === cat.slug)
@@ -105,6 +106,7 @@ export async function getContentOverview() {
         status: c.status,
         required_for: c.required_for,
         due_at: c.due_at,
+        featured_for: c.featured_for,
         submissions: submissionCount.get(c.slug) ?? 0,
         visibleTracks: visibleTracks(cat.audiences, c.audiences),
         placeholders: challengePlaceholders({
@@ -130,6 +132,7 @@ export async function getContentOverview() {
           status: p.status,
           required_for: p.required_for,
           due_at: p.due_at,
+          featured_for: p.featured_for,
           audiences: p.audiences,
           visibleTracks: visibleTracks(cat.audiences, p.audiences),
           sequential: p.sequential,
@@ -145,6 +148,26 @@ export async function getContentOverview() {
         };
       }),
   }));
+
+  // The home page's "Featured" list, in its order (the same as move_featured: oldest first, then kind and slug).
+  const catTitle = new Map(cats.map((c) => [c.slug, c.title]));
+  const featured = [
+    ...(challenges.data ?? []).map((c) => ({ kind: "challenge" as const, ...c })),
+    ...(paths.data ?? []).map((p) => ({ kind: "path" as const, ...p })),
+  ]
+    .filter((x) => x.featured_at)
+    .map((x) => ({
+      kind: x.kind,
+      slug: x.slug,
+      title: x.title,
+      categoryTitle: catTitle.get(x.category_slug) ?? x.category_slug,
+      status: x.status,
+      featuredFor: x.featured_for,
+      featuredAt: x.featured_at!,
+    }))
+    .sort(compareFeatured);
+
+  return { sections, featured };
 }
 
 /** "Milestone 2 of 7 · Auto Layout homework" for a challenge in a path. */

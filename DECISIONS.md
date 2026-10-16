@@ -364,3 +364,9 @@
 - `help_link` is display only (not in content_hash), like `tip` — fixing a link shouldn't make earlier attempts "outdated".
 - A help link outside instant mode is a warning, not an error — harmless, but nothing shows it.
 - The help link replaces the wrong-answer dialog's "Close this to answer the same question again." line — one short line under the title, as asked; without a link the old line stays.
+- Featuring is admin-only from the start (no content-file field) — it's a home-page curation choice, like status after creation, never content.
+- Featured order = `featured_at`, swapped by `move_featured` — one global order across challenges and paths with no extra table; featuring again puts an item last.
+- The order list lives at the top of Admin → Content, not on the cards — cards are grouped by category, so up/down there would be meaningless.
+- "Milestones can't be featured" is checked in `set_challenge_setting`, not a table constraint — content:sync moving a featured challenge into a path must not fail; home never lists milestones anyway.
+- Featured times compare to the microsecond — `move_featured` breaks ties by one microsecond, which a JS Date would lose.
+- Unticking "Everyone" in Featured for keeps it featured for each offered track — turning it off is the switch's job.

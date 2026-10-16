@@ -55,6 +55,8 @@ export default async function AdminChallengePreviewPage({ params }: PageProps<"/
             <dd>{formatSettingValue("required_for", challenge.required_for)}</dd>
             <dt className="text-muted-foreground">Due date</dt>
             <dd>{formatSettingValue("due_at", challenge.due_at)}</dd>
+            <dt className="text-muted-foreground">Featured for</dt>
+            <dd>{formatSettingValue("featured_for", challenge.featured_for)}</dd>
             <dt className="text-muted-foreground">Version</dt>
             <dd>
               v{challenge.version} · <code>content/challenges/{challenge.slug}.md</code>

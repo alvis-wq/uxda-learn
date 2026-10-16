@@ -5,16 +5,19 @@ import type { SettingField } from "@/lib/content/transform";
 import {
   audienceLabel,
   audienceTracks,
+  isSelectableTrack,
   TRACK_LABEL,
   TRACK_VALUES,
   visibleTracks,
   type Audience,
+  type Track,
 } from "@/lib/tracks";
 import { formatDateTime } from "@/lib/utils";
 
 /**
  * Admin-owned challenge settings: status, required_for, due_at. Content files set them only on
  * creation; after that they change here (server action → set_challenge_setting → audit row).
+ * featured_for (the home page's "Featured") is admin-only from the start: content files don't have it.
  */
 
 const slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
@@ -29,8 +32,21 @@ export const settingChangeSchema = z.discriminatedUnion("field", [
   z.strictObject({ slug, field: z.literal("status"), value: challengeStatusSchema }),
   z.strictObject({ slug, field: z.literal("required_for"), value: requiredForSchema }),
   z.strictObject({ slug, field: z.literal("due_at"), value: z.iso.datetime({ offset: true }).nullable() }),
+  z.strictObject({ slug, field: z.literal("featured_for"), value: requiredForSchema }),
 ]);
 export type SettingChange = z.infer<typeof settingChangeSchema>;
+
+/** Every field the settings audit logs can hold: the content-file settings, plus featuring (admin-only). */
+export type AuditField = SettingField | "featured_for" | "featured_order";
+
+/**
+ * Tracks in `value` (["all"] or a list) that can't see the item, given its category's and its own audiences. Used for
+ * required_for and featured_for: only tracks that can see something can be required to do it, or see it featured.
+ */
+function blindTracks(value: Audience[], category: { audiences: Audience[] }, own: Audience[]) {
+  const visible = visibleTracks(category.audiences, own);
+  return audienceTracks(value).filter((t) => !visible.includes(t));
+}
 
 export type SettingContext = {
   challenge: {
@@ -74,6 +90,12 @@ export function settingChangeError(change: SettingChange, ctx: SettingContext): 
   if (ctx.challenge.path_slug) {
     if (change.field === "required_for" && change.value.length > 0) return "A path milestone can't be required on its own.";
     if (change.field === "due_at" && change.value !== null) return "A path milestone can't have its own due date.";
+    if (change.field === "featured_for" && change.value.length > 0) return "A path milestone can't be featured on its own. Feature its path instead.";
+  }
+  if (change.field === "featured_for" && change.value.length > 0) {
+    if (!ctx.category) return "This challenge's category is missing.";
+    const blind = blindTracks(change.value, ctx.category, ctx.challenge.audiences);
+    if (blind.length) return featureBlindError(change.value, blind, "challenge");
   }
   if (change.field === "required_for" && change.value.length > 0) {
     if (!ctx.category) return "This challenge's category is missing.";
@@ -98,14 +120,29 @@ export function settingChangeError(change: SettingChange, ctx: SettingContext): 
   return null;
 }
 
-export const SETTING_LABEL: Record<SettingField, string> = {
+/** "Can't feature it for Designer: they can't see this path…" */
+function featureBlindError(value: Audience[], blind: Track[], noun: "challenge" | "path"): string {
+  const who = blind.map((t) => TRACK_LABEL[t]).join(", ");
+  return value.includes("all")
+    ? `Can't feature it for everyone: ${who} can't see this ${noun}. Pick the tracks instead.`
+    : `Can't feature it for ${who}: they can't see this ${noun} (check the audiences of the ${noun} and its category).`;
+}
+
+export const SETTING_LABEL: Record<AuditField, string> = {
   status: "Status",
   required_for: "Required for",
   due_at: "Due date",
+  featured_for: "Featured for",
+  featured_order: "Featured order",
 };
 
 /** Human form of a stored setting value (audit log, toasts). */
-export function formatSettingValue(field: SettingField, value: unknown): string {
+export function formatSettingValue(field: AuditField, value: unknown): string {
+  if (field === "featured_for") {
+    const list = Array.isArray(value) ? (value as Audience[]) : [];
+    return list.length ? audienceLabel(list) : "Not featured";
+  }
+  if (field === "featured_order") return typeof value === "number" ? `#${value}` : "—";
   if (field === "status") {
     const s = typeof value === "string" ? value : "";
     return s ? s[0].toUpperCase() + s.slice(1) : "—";
@@ -127,8 +164,8 @@ export type AuditRow = {
   actor: string | null; // admin's name or email
 };
 
-export function isSettingField(f: string): f is SettingField {
-  return f === "status" || f === "required_for" || f === "due_at";
+export function isSettingField(f: string): f is AuditField {
+  return f in SETTING_LABEL;
 }
 
 /** "Status: Draft → Published", by "Alvis" or "content:sync". */
@@ -148,15 +185,24 @@ export const pathStatusChangeSchema = z.strictObject({ slug, value: challengeSta
 export const pathSettingChangeSchema = z.discriminatedUnion("field", [
   z.strictObject({ slug, field: z.literal("required_for"), value: requiredForSchema }),
   z.strictObject({ slug, field: z.literal("due_at"), value: z.iso.datetime({ offset: true }).nullable() }),
+  z.strictObject({ slug, field: z.literal("featured_for"), value: requiredForSchema }),
 ]);
 export type PathSettingChange = z.infer<typeof pathSettingChangeSchema>;
 
-/** Why a (schema-valid) path setting change isn't allowed, or null: required only for tracks that can see the path. */
+/**
+ * Why a (schema-valid) path setting change isn't allowed, or null: required or featured only for tracks that can see
+ * the path.
+ */
 export function pathSettingChangeError(
   change: PathSettingChange,
   path: { audiences: Audience[] },
   category: { audiences: Audience[] } | null,
 ): string | null {
+  if (change.field === "featured_for" && change.value.length > 0) {
+    if (!category) return "This path's category is missing.";
+    const blind = blindTracks(change.value, category, path.audiences);
+    return blind.length ? featureBlindError(change.value, blind, "path") : null;
+  }
   if (change.field !== "required_for" || change.value.length === 0) return null;
   if (!category) return "This path's category is missing.";
   const visible = visibleTracks(category.audiences, path.audiences);
@@ -194,4 +240,20 @@ export function pathPublishError(
     }
   }
   return null;
+}
+
+/** Move a featured challenge or path one place in the home page's "Featured" order (move_featured, audited). */
+export const featuredMoveSchema = z.strictObject({
+  kind: z.enum(["challenge", "path"]),
+  slug,
+  direction: z.enum(["up", "down"]),
+});
+export type FeaturedMove = z.infer<typeof featuredMoveSchema>;
+
+/**
+ * The value the "Feature on home" switch sets when turned on: everyone when every track can see the item, else the
+ * offered tracks that can (unticked from there; tracks nobody can choose any more are left out). Off is [].
+ */
+export function defaultFeaturedFor(visible: readonly Track[]): Audience[] {
+  return visible.length === TRACK_VALUES.length ? ["all"] : visible.filter(isSelectableTrack);
 }
