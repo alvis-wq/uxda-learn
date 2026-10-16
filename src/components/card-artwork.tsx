@@ -27,12 +27,14 @@ const SIZES: Record<CardSpan, string> = {
 };
 
 /**
- * The fade that keeps text readable where it crosses the illustration: fully visible in the bottom-right corner,
- * transparent towards the top-left. On the image itself: nothing is painted behind the text. A gentle fade on
- * purpose: on an extreme card (a long badge row on a wide grid card) text can still cross an opaque part of the object
- * — accepted, see DECISIONS.md.
+ * On a full-width card (desktop), the text block (title, subtitle, description) keeps to 70% of the card's content
+ * width, so it never runs over the illustration (18.25rem in the corner). Grid cards and mobile have no limit.
  */
-const FADE = "radial-gradient(circle at 100% 100%, #000 30%, transparent 85%)";
+export const ARTWORK_TEXT_WIDTH: Record<CardSpan, string | undefined> = {
+  wide: undefined,
+  narrow: undefined,
+  full: "lg:max-w-[70%]",
+};
 
 /** `sizes` for a tuned illustration: every width multiplied by its scale. */
 export function scaledSizes(sizes: string, scale: number): string {
@@ -43,13 +45,12 @@ export function scaledSizes(sizes: string, scale: number): string {
 /**
  * A card's illustration as a true background: absolutely positioned, flush with the card's bottom and right edges, so
  * the 800×800 frame (drawn to be cropped there) bleeds off both and is clipped by the rounded corner, and underneath
- * everything else (`-z-10` inside the card's `isolate`). It never affects the layout: the card's content is laid out
- * as if there were no image, and the fade (FADE) keeps the text that crosses it readable. Decorative (the title says
- * what the card is), served resized by next/image and lazy-loaded.
+ * everything else (`-z-10` inside the card's `isolate`), fully opaque. It never affects the layout: the card's content
+ * is laid out as if there were no image (only a full-width card's text block is narrowed, ARTWORK_TEXT_WIDTH).
+ * Decorative (the title says what the card is), served resized by next/image and lazy-loaded.
  *
  * `tuning` adjusts one illustration by hand, like in Figma: `image_scale` multiplies its width (still anchored
- * bottom-right) and `image_offset_x` / `image_offset_y` move it by a % of its own size (right / down). The fade moves
- * with it.
+ * bottom-right) and `image_offset_x` / `image_offset_y` move it by a % of its own size (right / down).
  */
 export function CardArtwork({ src, span, tuning }: { src: string; span: CardSpan; tuning: ImageTuning }) {
   const { image_scale: scale, image_offset_x: x, image_offset_y: y } = tuning;
@@ -64,8 +65,6 @@ export function CardArtwork({ src, span, tuning }: { src: string; span: CardSpan
       draggable={false}
       data-testid="card-artwork"
       style={{
-        maskImage: FADE,
-        WebkitMaskImage: FADE,
         width: scale === 1 ? undefined : `calc(var(--art) * ${scale})`,
         transform: x || y ? `translate(${x}%, ${y}%)` : undefined,
       }}

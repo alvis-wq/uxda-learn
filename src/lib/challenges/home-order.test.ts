@@ -4,6 +4,7 @@ import {
   groupByCategory,
   groupChains,
   homeGroup,
+  isCompletedOnHome,
   parseHomeFilter,
   pathChains,
   sortHomeChallenges,
@@ -220,5 +221,53 @@ describe("groupChains", () => {
 
   it("leaves a list without chains as it is", () => {
     expect(group([item("a"), item("b"), item("c")])).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("isCompletedOnHome", () => {
+  const item = (over: Partial<{ done: boolean; inProgress: boolean; latestStatus: "submitted" | "ai_reviewed" | "published" | "needs_resubmission" | null }> = {}) => ({
+    done: false,
+    inProgress: false,
+    latestStatus: null,
+    ...over,
+  });
+
+  it("is completed with a published score, once acknowledged, or as a path with every milestone published", () => {
+    expect(isCompletedOnHome(item({ done: true, latestStatus: "published" }))).toBe(true);
+    expect(isCompletedOnHome(item({ done: true }))).toBe(true); // acknowledged: no attempts
+    expect(isCompletedOnHome({ done: true, inProgress: false })).toBe(true); // a path: no latestStatus
+  });
+
+  it("keeps not started, in progress, awaiting review and resubmission requested", () => {
+    expect(isCompletedOnHome(item())).toBe(false);
+    expect(isCompletedOnHome(item({ inProgress: true }))).toBe(false);
+    expect(isCompletedOnHome(item({ latestStatus: "submitted" }))).toBe(false);
+    expect(isCompletedOnHome(item({ latestStatus: "needs_resubmission" }))).toBe(false);
+  });
+
+  it("keeps a challenge that has a score while the learner is on it again (saved retry, retry awaiting review or sent back)", () => {
+    expect(isCompletedOnHome(item({ done: true, inProgress: true, latestStatus: "published" }))).toBe(false);
+    expect(isCompletedOnHome(item({ done: true, latestStatus: "submitted" }))).toBe(false);
+    expect(isCompletedOnHome(item({ done: true, latestStatus: "ai_reviewed" }))).toBe(false);
+    expect(isCompletedOnHome(item({ done: true, latestStatus: "needs_resubmission" }))).toBe(false);
+  });
+
+  it("a chain loses its completed paths and keeps the rest in order with their own step numbers", () => {
+    const paths = [
+      { slug: "connect", requires: [] },
+      { slug: "brand", requires: ["connect"] },
+      { slug: "build", requires: ["brand"] },
+    ];
+    const chains = pathChains(paths);
+    const cards = [
+      { slug: "brand", done: false, inProgress: true, chain: chains.get("brand")! },
+      { slug: "build", done: false, inProgress: false, chain: chains.get("build")! },
+      { slug: "connect", done: true, inProgress: false, chain: chains.get("connect")! },
+    ];
+    const open = groupChains(cards, (c) => c.chain, (c) => c.done).filter((c) => !isCompletedOnHome(c));
+    expect(open.map((c) => [c.slug, c.chain.step, c.chain.of])).toEqual([
+      ["brand", 2, 3],
+      ["build", 3, 3],
+    ]);
   });
 });

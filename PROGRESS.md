@@ -891,3 +891,10 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Size: 18.25rem on full-width cards (as before), 45% of grid cards, 40% on mobile. `sizes` follows, including a tuned scale.
 - Tuning per challenge / path: `image_scale`, `image_offset_x`, `image_offset_y` (schema, validation: needs the file's own `image`; transform; version-neutral sync; card data). Migration `20261022090000_image_tuning.sql` (challenges + paths); `database.types.ts` edited by hand — NOT yet applied (`db:push`, then `db:types`); apply before deploying and before the next content:sync.
 - Checks (Node 22): `npm run check` ✅ · `npm run build` ✅. Real cards on a temporary page (longest titles, three status badges + best score, waiting time, one tuned illustration), each also rendered without its illustration: dark + light at 375 / 1024 / 1280 px — every element box identical with and without art, art flush (tuned one scaled/moved as set), no horizontal scroll. Contrast of text over the art measured for information only (accepted overlaps on extreme cards, see DECISIONS). E2E not run: no test project.
+
+## Opaque card art, completed items off home (`feat/home-hide-completed`)
+
+- Card illustrations: the fade (mask) is removed. Full-width cards (lg+) keep the title, subtitle and description to 70% of the width; grid cards and mobile unchanged.
+- Home "Challenges": completed challenges, acknowledged items and fully published paths are hidden (in progress, awaiting review and resubmission requested stay, also on a retry). Chains keep their remaining paths with their step numbers. Counts unchanged. "All done here." empty state with a link to the profile.
+- Profile "Your challenges": View result / Continue and Try again on each history card; a "Read & confirmed" list for acknowledged items.
+- Tests: `isCompletedOnHome` (incl. chains), `historyTryAgain`, home list source rules, card art (opaque, 70% only on full cards); E2E specs updated (required: ack off home and on the profile; dashboard: scored quiz off home, profile actions).

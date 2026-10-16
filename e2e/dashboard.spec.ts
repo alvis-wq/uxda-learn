@@ -49,11 +49,19 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   // 4 / 10 with attempts left: "Try again" sits next to "View result" and opens the challenge at its form.
   await expect(quizCard.getByTestId("card-try-again")).toHaveAttribute("href", "/challenges/e2e-quiz#submit");
 
+  // It has a published score, so it is completed: no longer on the home list (category pages keep showing it).
+  await page.goto("/");
+  await expect(page.getByTestId("challenges-section").getByRole("link", { name: "[E2E] Quiz", exact: true })).toHaveCount(0);
+
   await page.goto("/profile");
   await expect(page.getByTestId("stat-total")).toHaveText("4");
   await expect(page.getByTestId("stat-completed")).toHaveText("1");
   await expect(page.getByTestId("stat-pending")).toHaveText("0");
-  await expect(page.getByRole("link", { name: "[E2E] Quiz" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "[E2E] Quiz", exact: true })).toBeVisible();
+  // The profile's card has the home card's actions: View result, and Try again with attempts left.
+  const history = page.getByTestId("challenge-history").filter({ hasText: "[E2E] Quiz" });
+  await expect(history.getByTestId("history-actions")).toContainText("View result");
+  await expect(history.getByTestId("history-try-again")).toHaveAttribute("href", "/challenges/e2e-quiz#submit");
 
   const toggle = page.getByRole("switch", { name: "Show me on the leaderboard" });
   await expect(toggle).not.toBeChecked();

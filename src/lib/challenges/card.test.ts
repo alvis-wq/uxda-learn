@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardCta, cardSpans, listSpans, resolveCardImage, showTryAgain } from "./card";
+import { cardCta, cardSpans, historyTryAgain, listSpans, resolveCardImage, showTryAgain } from "./card";
 
 describe("cardCta", () => {
   it("Start when there is no attempt yet", () => {
@@ -73,5 +73,27 @@ describe("showTryAgain", () => {
   it("hides it when the card already offers Start or Continue", () => {
     expect(showTryAgain("Start", true)).toBe(false);
     expect(showTryAgain("Continue", true)).toBe(false);
+  });
+});
+
+describe("historyTryAgain (the profile's \"Your challenges\")", () => {
+  const a = (attempt: number, status: "submitted" | "published" | "needs_resubmission", final_score: number | null = null) => ({
+    attempt,
+    status,
+    final_score,
+    max_score: 10,
+  });
+
+  it("offers a retry like the card: a result, attempts left, not full marks", () => {
+    expect(historyTryAgain([a(1, "published", 4)])).toBe(true);
+    expect(historyTryAgain([a(1, "published", 4), a(2, "published", 6)])).toBe(true);
+  });
+
+  it("not at full marks' end, with no attempts left, while awaiting review, or when changes were requested (that's Continue)", () => {
+    expect(historyTryAgain([a(1, "published", 10)])).toBe(false);
+    expect(historyTryAgain([a(1, "published", 4), a(2, "published", 5), a(3, "published", 6)])).toBe(false);
+    expect(historyTryAgain([a(1, "published", 4), a(2, "submitted")])).toBe(false);
+    expect(historyTryAgain([a(1, "needs_resubmission")])).toBe(false);
+    expect(historyTryAgain([])).toBe(false);
   });
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { scaledSizes } from "./card-artwork";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { ARTWORK_TEXT_WIDTH, scaledSizes } from "./card-artwork";
 
 describe("scaledSizes", () => {
   it("multiplies every width by the illustration's scale and leaves the media queries alone", () => {
@@ -9,3 +11,16 @@ describe("scaledSizes", () => {
     expect(scaledSizes(sizes, 0.5)).toBe("(min-width: 1024px) 5.75rem, (min-width: 768px) 9.13rem, 20vw");
   });
 });
+
+describe("card illustrations", () => {
+  const source = readFileSync(path.resolve(__dirname, "card-artwork.tsx"), "utf8");
+
+  it("are fully opaque: no mask or fade", () => {
+    expect(source).not.toMatch(/mask-?image|maskImage|opacity/i);
+  });
+
+  it("narrow the text block only on full-width cards, on desktop", () => {
+    expect(ARTWORK_TEXT_WIDTH).toEqual({ wide: undefined, narrow: undefined, full: "lg:max-w-[70%]" });
+  });
+});
+

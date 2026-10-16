@@ -1,12 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, FlaskConical } from "lucide-react";
+import { BookOpen, CircleCheckBig, FlaskConical } from "lucide-react";
 import { ChallengeCardGrid } from "@/components/challenge-card";
 import { EmptyState } from "@/components/empty-state";
 import { FilterMenu, type FilterOption } from "@/components/filter-menu";
 import { SectionLabel } from "@/components/section-label";
-import { ALL_CATEGORIES, DRAFTS_FILTER, filterByCategory, groupByCategory, parseHomeFilter } from "@/lib/challenges/home-order";
+import {
+  ALL_CATEGORIES,
+  DRAFTS_FILTER,
+  filterByCategory,
+  groupByCategory,
+  isCompletedOnHome,
+  parseHomeFilter,
+} from "@/lib/challenges/home-order";
 import type { CategoryProgress, HomeCard } from "@/lib/data/learner";
 
 const PARAM = "category";
@@ -19,6 +27,10 @@ const PARAM = "category";
  * which Next syncs into `useSearchParams` without a navigation or a fetch, so the list changes on the client at once.
  * Order is fixed by the server (sortHomeChallenges) and grouping and filtering keep it. Drafts are never in All or in
  * a category: they only exist under the tester's "Drafts — testing" option.
+ *
+ * Completed items are left out (isCompletedOnHome): they stay on their category page and in the profile, and every count
+ * (the menu's done/total, the group labels) still includes them. A path chain loses its completed paths but keeps the
+ * rest in order, each with its own "Step N of M". A filter with nothing left to do says so and points to the profile.
  */
 export function HomeChallenges({
   categories,
@@ -63,8 +75,11 @@ export function HomeChallenges({
   };
 
   const label = options.find((o) => o.key === selected)?.label ?? "All";
-  const shown = selected === DRAFTS_FILTER ? drafts : filterByCategory(challenges, selected);
-  const groups = groupByCategory(challenges, categories);
+  const open = challenges.filter((c) => !isCompletedOnHome(c));
+  const shown = selected === DRAFTS_FILTER ? drafts : filterByCategory(open, selected);
+  const groups = groupByCategory(open, categories);
+  // Something there, all of it completed (as opposed to nothing for this track at all).
+  const allDone = selected !== DRAFTS_FILTER && filterByCategory(challenges, selected).length > 0;
 
   return (
     <section aria-labelledby="challenges-heading" className="mt-12 grid gap-5" data-testid="challenges-section">
@@ -81,7 +96,7 @@ export function HomeChallenges({
       <div key={selected} className="animate-in fade-in grid gap-10 duration-200 motion-reduce:animate-none" data-testid="challenge-list">
         {selected === ALL_CATEGORIES ? (
           groups.length === 0 ? (
-            <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />
+            allDone ? <AllDone /> : <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />
           ) : (
             groups.map((g) => (
               <section key={g.slug} aria-labelledby={`group-${g.slug}`} className="grid gap-4" data-testid="category-group" data-slug={g.slug}>
@@ -102,6 +117,8 @@ export function HomeChallenges({
         ) : shown.length === 0 ? (
           selected === DRAFTS_FILTER ? (
             <EmptyState icon={FlaskConical} title="No drafts to test" description="Draft challenges your track can see will show up here." />
+          ) : allDone ? (
+            <AllDone />
           ) : (
             <EmptyState icon={BookOpen} title="Nothing here yet." description="New challenges for your track will show up here." />
           )
@@ -110,5 +127,18 @@ export function HomeChallenges({
         )}
       </div>
     </section>
+  );
+}
+
+/** A filter (or All) whose items are all completed: they are in the profile. */
+function AllDone() {
+  return (
+    <div data-testid="all-done">
+      <EmptyState icon={CircleCheckBig} title="All done here." description="Your completed challenges are in your profile.">
+        <Link href="/profile#challenges-heading" className="text-sm font-medium underline underline-offset-4">
+          Go to your profile
+        </Link>
+      </EmptyState>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, FlaskConical, Lock, Route } from "lucide-react";
-import { ARTWORK_SIZE, CardArtwork } from "@/components/card-artwork";
+import { ARTWORK_SIZE, ARTWORK_TEXT_WIDTH, CardArtwork } from "@/components/card-artwork";
 import { DraftBadge } from "@/components/draft-badge";
 import { RequiredBadges } from "@/components/required-badge";
 import { TimeEstimate } from "@/components/time-estimate";
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  * A required path shows "Required" and its due / overdue badge above the CTA, or above the lock ("Unlocks after …").
  *
  * Optional artwork is a true background in the bottom-right corner, as on a challenge card: the layout is the same
- * with or without it.
+ * with or without it, except that on a full-width card the text block keeps to 70% (ARTWORK_TEXT_WIDTH).
  */
 export function PathCard({
   path: p,
@@ -69,7 +69,7 @@ export function PathCard({
               </span>
             )}
           </p>
-          <div className="grid gap-2">
+          <div className={cn("grid gap-2", p.imageUrl && ARTWORK_TEXT_WIDTH[span])}>
             <Heading className="text-2xl leading-tight font-light tracking-tight sm:text-3xl">
               <Link href={`/paths/${p.slug}`} className="outline-none after:absolute after:inset-0 after:z-10 after:content-['']">
                 {p.title}
@@ -77,7 +77,7 @@ export function PathCard({
             </Heading>
             {subheading && <p className="text-brand-text line-clamp-2 font-medium">{subheading}</p>}
           </div>
-          {body && <p className="text-muted-foreground line-clamp-2">{body}</p>}
+          {body && <p className={cn("text-muted-foreground line-clamp-2", p.imageUrl && ARTWORK_TEXT_WIDTH[span])}>{body}</p>}
           {p.progress.time && <TimeEstimate time={p.progress.time} className="text-muted-foreground text-meta" />}
 
           <div className="mt-auto grid gap-2 pt-2">

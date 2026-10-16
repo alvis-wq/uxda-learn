@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ChevronRight, Clock, RotateCcw, TriangleAlert, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cardCta } from "@/lib/challenges/card";
 import {
   ATTEMPT_LABEL,
   isLowScore,
@@ -93,19 +95,28 @@ function AttemptLine({ row, current }: { row: HistoryRow & { label: AttemptLabel
   );
 }
 
-/** "Your challenges": one card per challenge, the attempt that counts on top, the rest collapsible. */
+/**
+ * "Your challenges": one card per challenge, the attempt that counts on top, the rest collapsible. Completed challenges
+ * are no longer on the home page, so each card has the home card's actions: "View result" (or "Continue" when changes
+ * were requested) and, where the card would show it, "Try again" straight to the form.
+ */
 export function ChallengeHistoryList({
   groups,
   titleOf,
+  canTryAgain,
 }: {
   groups: ChallengeHistory<HistoryRow>[];
   titleOf: (slug: string) => string;
+  /** Whether the challenge's card would offer "Try again" (historyTryAgain, and the challenge still published). */
+  canTryAgain: (slug: string) => boolean;
 }) {
   return (
     <ul className="grid gap-3">
       {groups.map((g) => {
         const { headline } = g;
         const latestAttempt = Math.max(headline.attempt, ...g.others.map((o) => o.attempt));
+        // The newest attempt decides the label, as on the home card (`newer` is it when it isn't the headline).
+        const cta = cardCta({ type: "quiz", latestStatus: (g.newer ?? headline).status });
         return (
           <li key={g.slug}>
             <Card className="gap-3 py-4" data-testid="challenge-history" data-slug={g.slug}>
@@ -149,11 +160,57 @@ export function ChallengeHistoryList({
                     </ul>
                   </details>
                 )}
+                <div className="flex flex-wrap items-center gap-2" data-testid="history-actions">
+                  <Link href={`/challenges/${g.slug}`} className={cn(buttonVariants({ size: "sm" }), "rounded-full px-4")}>
+                    {cta}
+                    <span className="sr-only"> — {titleOf(g.slug)}</span>
+                  </Link>
+                  {canTryAgain(g.slug) && (
+                    <Link
+                      href={`/challenges/${g.slug}#submit`}
+                      data-testid="history-try-again"
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full px-4")}
+                    >
+                      Try again
+                      <span className="sr-only"> — {titleOf(g.slug)}</span>
+                    </Link>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </li>
         );
       })}
+    </ul>
+  );
+}
+
+export type ConfirmedRow = { slug: string; title: string; acknowledged_at: string };
+
+/** Read & confirm items the learner confirmed: they have no attempts, and are no longer on the home page once done. */
+export function ConfirmedList({ items }: { items: ConfirmedRow[] }) {
+  return (
+    <ul className="grid gap-3">
+      {items.map((c) => (
+        <li key={c.slug}>
+          <Card className="gap-3 py-4" data-testid="confirmed-item" data-slug={c.slug}>
+            <CardHeader className="flex flex-wrap items-start justify-between gap-2 px-4">
+              <div className="grid gap-0.5">
+                <CardTitle className="text-base">
+                  <Link href={`/challenges/${c.slug}`} className="hover:underline">
+                    {c.title}
+                  </Link>
+                </CardTitle>
+                <p className="text-muted-foreground text-meta">Confirmed {formatDate(c.acknowledged_at)}</p>
+              </div>
+              <Link href={`/challenges/${c.slug}`} className={cn(buttonVariants({ size: "sm" }), "rounded-full px-4")}>
+                View result
+                <span className="sr-only"> — {c.title}</span>
+              </Link>
+            </CardHeader>
+          </Card>
+        </li>
+      ))}
     </ul>
   );
 }

@@ -1,5 +1,5 @@
 import type { CardPath, HomeCard } from "@/lib/data/learner";
-import type { SubmissionStatus } from "@/lib/submissions/rules";
+import { attemptState, type AttemptSummary, type SubmissionStatus } from "@/lib/submissions/rules";
 
 /** A learning path's card among the challenge cards (home and category lists). */
 export function isPathCard(card: HomeCard): card is CardPath {
@@ -37,6 +37,17 @@ export function cardCta(input: {
  */
 export function showTryAgain(cta: CardCta, canRetry: boolean): boolean {
   return cta === "View result" && canRetry;
+}
+
+/**
+ * "Try again" for a challenge in the profile's "Your challenges" (completed ones are no longer on the home page): the
+ * same rule as its card — its latest attempt has a result, attempts are left, it isn't at full marks, nothing awaits
+ * review. Only for challenges that take submissions (read & confirm items have none).
+ */
+export function historyTryAgain(attempts: AttemptSummary[]): boolean {
+  const state = attemptState(attempts);
+  const cta = cardCta({ type: "quiz", latestStatus: state.latest?.status });
+  return showTryAgain(cta, state.attemptsUsed > 0 && state.canSubmit);
 }
 
 /** Where card artwork lives (public/challenges/). Files are referenced by bare name from content. */

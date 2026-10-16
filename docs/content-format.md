@@ -49,8 +49,9 @@ categories:
 display-only: they are not part of the content hash, so changing one never bumps a challenge's `version`.
 
 On a card the image is a background: flush with the card's bottom-right corner (40% of the card on mobile, about 45%
-of a grid card, 18.25rem on a full-width card), behind the text, fading towards its top-left. It never changes the
-card's layout. Frames are drawn to be cropped at the bottom-right (800×800 works well).
+of a grid card, 18.25rem on a full-width card), behind the text, fully opaque. It never changes the card's layout,
+except that on a full-width card (desktop) the title, subtitle and description keep to 70% of the width so they stay
+clear of it. Frames are drawn to be cropped at the bottom-right (800×800 works well).
 
 **Tuning one illustration by hand** (challenge and path files, only with their own `image`; display only, like it):
 

@@ -1,4 +1,5 @@
 import type { RequiredState } from "@/lib/challenges/required";
+import type { SubmissionStatus } from "@/lib/submissions/rules";
 
 /** What the home page's "Challenges" list sorts and filters on. */
 export type HomeSortable = {
@@ -114,6 +115,19 @@ export function groupChains<T>(items: readonly T[], chainOf: (item: T) => ChainP
     if (!c) return [item];
     return anchors.has(item) ? chains.get(c.id)! : [];
   });
+}
+
+/** Latest-attempt statuses that still need a review or the learner: an item with one stays on the home page. */
+const OPEN_STATUSES: readonly SubmissionStatus[] = ["submitted", "ai_reviewed", "needs_resubmission"];
+
+/**
+ * Completed, so left off the home page's list (it stays on its category page and in the profile): a challenge with a
+ * published score, an acknowledged read & confirm item, a path whose every milestone has a published score. Something
+ * the learner is still on stays: saved work in progress, or a newer attempt awaiting review or sent back for changes,
+ * even on a challenge that already has a score. Counts (done/total, Overall progress, required) still count it.
+ */
+export function isCompletedOnHome(item: { done: boolean; inProgress: boolean; latestStatus?: SubmissionStatus | null }): boolean {
+  return item.done && !item.inProgress && !OPEN_STATUSES.includes(item.latestStatus ?? "published");
 }
 
 /** The URL param of the "All" filter being absent. */

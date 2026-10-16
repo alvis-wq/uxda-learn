@@ -6,12 +6,13 @@ import { PageHeader } from "@/components/page-header";
 import { SectionLabel } from "@/components/section-label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
+import { historyTryAgain } from "@/lib/challenges/card";
 import { getJobTitle } from "@/lib/data/staff-titles";
 import { createClient } from "@/lib/supabase/server";
 import { inProgressChallenges } from "@/lib/submissions/in-progress";
 import { groupAttemptHistory, summarizeScores } from "@/lib/submissions/rules";
 import { TRACK_LABEL } from "@/lib/tracks";
-import { ChallengeHistoryList } from "./challenge-history";
+import { ChallengeHistoryList, ConfirmedList } from "./challenge-history";
 import { InProgressList } from "./in-progress-list";
 import { VisibilityToggle } from "./visibility-toggle";
 
@@ -36,7 +37,17 @@ export default async function ProfilePage() {
     .eq("user_id", profile.id);
   if (draftsError) throw new Error(`Couldn't load your drafts: ${draftsError.message}`);
 
-  const slugs = [...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug)])];
+  // Read & confirm items the learner confirmed (no attempts; off the home page once done).
+  const { data: acks, error: acksError } = await supabase
+    .from("acknowledgements")
+    .select("challenge_slug,acknowledged_at")
+    .eq("user_id", profile.id)
+    .order("acknowledged_at", { ascending: false });
+  if (acksError) throw new Error(`Couldn't load your acknowledgements: ${acksError.message}`);
+
+  const slugs = [
+    ...new Set([...subs.map((s) => s.challenge_slug), ...drafts.map((d) => d.challenge_slug), ...acks.map((a) => a.challenge_slug)]),
+  ];
   const { data: challenges } = slugs.length
     ? await supabase.from("challenges").select("slug,title,status,category_slug,audiences,questions,submission_spec,path_slug").in("slug", slugs)
     : { data: [] };
@@ -68,6 +79,14 @@ export default async function ProfilePage() {
   // A challenge with a draft shows once, in the In progress group (with its best score so far), not again below.
   const inProgressSlugs = new Set(inProgress.map((c) => c.slug));
   const history = groupAttemptHistory(subs).filter((g) => !inProgressSlugs.has(g.slug));
+  // "Try again" as on the challenge's home card, for a challenge that is still published.
+  const canTryAgain = (slug: string) =>
+    challenges?.find((c) => c.slug === slug)?.status === "published" && historyTryAgain(subs.filter((s) => s.challenge_slug === slug));
+  // Only items the learner can still see (RLS on challenges).
+  const confirmed = acks.flatMap((a) => {
+    const c = challenges?.find((x) => x.slug === a.challenge_slug);
+    return c ? [{ slug: c.slug, title: c.title, acknowledged_at: a.acknowledged_at }] : [];
+  });
   const now = new Date();
 
   const stats = [
@@ -116,9 +135,16 @@ export default async function ProfilePage() {
         {inProgress.length > 0 && history.length > 0 && (
           <SectionLabel as="h3" className="mt-2">Submitted</SectionLabel>
         )}
-        {history.length > 0 ? (
-          <ChallengeHistoryList groups={history} titleOf={titleOf} />
-        ) : inProgress.length === 0 ? (
+        {history.length > 0 && <ChallengeHistoryList groups={history} titleOf={titleOf} canTryAgain={canTryAgain} />}
+        {confirmed.length > 0 && (
+          <div className="grid gap-3" data-testid="confirmed-group">
+            {(inProgress.length > 0 || history.length > 0) && (
+              <SectionLabel as="h3" className="mt-2">Read &amp; confirmed</SectionLabel>
+            )}
+            <ConfirmedList items={confirmed} />
+          </div>
+        )}
+        {inProgress.length === 0 && history.length === 0 && confirmed.length === 0 ? (
           <EmptyState
             icon={MessageSquareText}
             title="No attempts yet"
