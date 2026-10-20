@@ -47,6 +47,7 @@ export function HeroCard({ hero, image, index }: { hero: Hero; image: HeroImage;
         intro
         introDelay={Math.min(index * 40, 600)}
         radius={15}
+        hoverStroke="linear-gradient(135deg, #b5a2ff, #7438fb)"
         style={{ borderRadius: 15, "--tc-focus-color": "var(--brand-text)" } as CSSProperties}
         backContent={
           <div className="bg-card text-card-foreground flex h-full flex-col gap-1.5 p-3 sm:gap-3 sm:p-4">

@@ -18,7 +18,7 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await expect(page.getByTestId("overall-count")).toContainText("0 of");
 
   // Hidden by default (E2E setup) — the leaderboard says so.
-  await page.goto("/heroes");
+  await page.goto("/leaderboard");
   await expect(page.getByRole("link", { name: "Designers" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("You're hidden from the leaderboard.")).toBeVisible();
 
@@ -68,7 +68,7 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await toggle.click();
   await expect(page.getByText("You're on the leaderboard.")).toBeVisible();
 
-  await page.goto("/heroes?group=designers");
+  await page.goto("/leaderboard?group=designers");
   const me = page.getByTestId("leaderboard-me");
   await expect(me).toContainText("Test Designer");
   await expect(me).toContainText("You");
@@ -81,7 +81,7 @@ test("published score appears on the dashboard and the correct leaderboard tab",
   await expect(page.getByTestId("hero-rank")).toContainText("Designers");
   await expect(page.getByTestId("overall-count")).toContainText("1 of");
 
-  await page.goto("/heroes?group=designers");
+  await page.goto("/leaderboard?group=designers");
   await page.getByRole("link", { name: "Strategists" }).click();
   await expect(page).toHaveURL(/group=strategists/);
   await expect(page.getByText("Test Designer")).toHaveCount(0);

@@ -22,12 +22,8 @@ const nextConfig: NextConfig = {
     ],
     qualities: [75],
   },
-  // The Heroes page reads content/heroes.yaml at request time.
-  outputFileTracingIncludes: { "/heroes": [`./${HEROES_FILE}`] },
-  // The leaderboard moved into the Heroes page; old links (and their ?group=) keep working.
-  async redirects() {
-    return [{ source: "/leaderboard", destination: "/heroes", permanent: true }];
-  },
+  // The Heroes and Profile pages read content/heroes.yaml at request time.
+  outputFileTracingIncludes: { "/heroes": [`./${HEROES_FILE}`], "/profile": [`./${HEROES_FILE}`] },
   // Security headers on every route (pages, API and static files). See src/lib/security-headers.ts.
   async headers() {
     return [{ source: "/(.*)", headers: SECURITY_HEADERS }];

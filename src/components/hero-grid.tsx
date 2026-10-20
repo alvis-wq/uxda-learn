@@ -1,15 +1,10 @@
-import { getImageProps } from "next/image";
-import { HeroCard, type HeroImage } from "@/components/hero-card";
+import { HeroCard } from "@/components/hero-card";
+import { heroPortrait } from "@/components/hero-portrait";
 import type { Hero } from "@/lib/heroes";
 import { cn } from "@/lib/utils";
 
 const SIZES = "(min-width: 1024px) 240px, (min-width: 768px) 30vw, 50vw";
 
-/** next/image's optimized URLs for a portrait (600×800), for the card's own <img>. */
-function portrait(hero: Hero): HeroImage {
-  const { props } = getImageProps({ src: hero.image, alt: "", width: 600, height: 800, sizes: SIZES });
-  return { src: props.src, srcSet: props.srcSet, sizes: props.sizes };
-}
 
 /**
  * The UXDA Superhero Team, one list in file order. The first two cards sit alone in a centred top row; after that,
@@ -24,7 +19,7 @@ export function HeroGrid({ heroes }: { heroes: Hero[] }) {
           key={hero.image}
           className={cn("md:col-span-2 lg:col-span-1", i === 0 && "md:col-start-2 lg:col-start-2", i === 2 && "md:col-start-1 lg:col-start-1")}
         >
-          <HeroCard hero={hero} image={portrait(hero)} index={i} />
+          <HeroCard hero={hero} image={heroPortrait(hero, SIZES)} index={i} />
         </li>
       ))}
     </ul>

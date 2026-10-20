@@ -14,11 +14,20 @@ export const HEROES_FILE = "content/heroes.yaml";
 export const HERO_IMAGE_SRC = /^\/heroes\/[a-z0-9][a-z0-9._-]*\.(png|jpe?g|webp|avif)$/;
 
 const text = z.string().trim().min(1);
+const fraction = z.number().min(0).max(1);
+
+/** The face in the portrait (fractions of its width/height): centre x/y, and the square crop's width. */
+export const avatarSchema = z.strictObject({ x: fraction, y: fraction, size: z.number().gt(0).max(1) });
+export type HeroAvatar = z.infer<typeof avatarSchema>;
+export const DEFAULT_AVATAR: HeroAvatar = { x: 0.5, y: 0.25, size: 0.3 };
 
 export const heroSchema = z.strictObject({
   person: text,
   hero: text,
   image: z.string().regex(HERO_IMAGE_SRC, "use a file in public/heroes/, written as /heroes/<file>.jpg (or .png, .webp, .avif; lowercase)"),
+  /** The person's login: their profile shows this hero. Lowercase, unique across the file. */
+  email: z.email().refine((e) => e === e.toLowerCase(), "must be lowercase"),
+  avatar: avatarSchema.optional(),
   description: text,
   traits: z
     .array(text)
@@ -26,7 +35,19 @@ export const heroSchema = z.strictObject({
     .refine((t) => new Set(t).size === t.length, "traits must all be different"),
 });
 
-export const heroesFileSchema = z.strictObject({ heroes: z.array(heroSchema).min(1) });
+export const heroesFileSchema = z.strictObject({
+  heroes: z
+    .array(heroSchema)
+    .min(1)
+    .superRefine((heroes, ctx) => {
+      const seen = new Map<string, number>();
+      heroes.forEach((h, i) => {
+        const first = seen.get(h.email);
+        if (first === undefined) seen.set(h.email, i);
+        else ctx.addIssue({ code: "custom", path: [i, "email"], message: `"${h.email}" is also used by heroes.${first}` });
+      });
+    }),
+});
 
 export type Hero = z.infer<typeof heroSchema>;
 
@@ -59,6 +80,12 @@ export function validateHeroesFile(root = process.cwd()): Hero[] {
 }
 
 let cached: Hero[] | undefined;
+
+/** The hero for a signed-in user, by email (case-insensitive); undefined when they have none. */
+export function heroForEmail(heroes: Hero[], email: string | null | undefined): Hero | undefined {
+  const e = email?.trim().toLowerCase();
+  return e ? heroes.find((h) => h.email === e) : undefined;
+}
 
 /** The heroes, for the page. The file was validated at build time; a parse error here still throws. */
 export function loadHeroes(): Hero[] {

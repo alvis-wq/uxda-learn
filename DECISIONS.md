@@ -374,3 +374,5 @@
 - Hero top row via grid column starts (card 1 starts one in, card 3 back at column 1; a 6-column grid on tablet) — keeps the team one list for screen readers instead of two.
 - TiltedCard vendored with marked local changes rather than wrapped — fluid 3:4 sizing, next/image URLs and the reduced-motion crossfade all need to reach inside its render loop and markup.
 - Hero card text repeated in a screen-reader-only block — the card is role="button" (TiltedCard's flip), whose content isn't read on its own, so both sides stay readable whatever the flip state.
+- Hero avatar crop stored per hero in heroes.yaml (`avatar` face box) — face position and size vary too much between portraits for one fixed crop; optional, with a default.
+- Narrow-phone nav slots shrink (32 → 28 → 25px wide, still ≥ 24px targets) rather than dropping an item — five icons must fit between logo and actions down to 320px.

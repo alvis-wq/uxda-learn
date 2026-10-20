@@ -6,6 +6,7 @@
  * - `imageProps`: extra <img> attributes (srcSet, sizes, loading) so the portrait can use next/image's optimized URLs.
  * - `ariaLabel`: the button's accessible name (the visible faces are presentational inside role="button").
  * - Settings ref synced in a layout effect instead of during render (React Compiler lint).
+ * - `hoverStroke`: a thin gradient stroke inside each face's rounded edge, faded in on hover and keyboard focus.
  * - Reduced motion: no tilt, lift or intro; the flip is a quick crossfade (CSS, keyed on data-flipped) instead of a
  *   rotation.
  */
@@ -46,6 +47,8 @@ export interface TiltedCardProps {
   imageProps?: Pick<ImgHTMLAttributes<HTMLImageElement>, 'srcSet' | 'sizes' | 'loading' | 'decoding'>;
   /** UXDA: the accessible name of the card button (defaults to captionText or altText). */
   ariaLabel?: string;
+  /** UXDA: a CSS gradient for a thin stroke around both faces on hover and keyboard focus (TiltedCard.css). */
+  hoverStroke?: string;
   scaleOnHover?: number;
   rotateAmplitude?: number;
   showTooltip?: boolean;
@@ -154,6 +157,7 @@ const TiltedCard = ({
   aspectRatio,
   imageProps,
   ariaLabel,
+  hoverStroke,
   scaleOnHover = 1.05,
   rotateAmplitude = 12,
   showTooltip = true,
@@ -592,10 +596,12 @@ const TiltedCard = ({
         width: toLength(containerWidth),
         height: aspectRatio ? undefined : toLength(containerHeight),
         perspective: toLength(perspective),
+        ...(hoverStroke ? ({ '--tc-stroke': hoverStroke } as CSSProperties) : {}),
         ...style
       }}
       data-interactive={interactive ? '' : undefined}
       data-flipped={isFlipped ? '' : undefined}
+      data-stroke={hoverStroke ? '' : undefined}
       tabIndex={interactive ? 0 : undefined}
       role={interactive ? 'button' : undefined}
       aria-pressed={flippable ? isFlipped : undefined}

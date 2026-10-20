@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, LogOut, Shield, Trophy, UserRound } from "lucide-react";
+import { Home, LogOut, Shield, Sparkles, Trophy, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UxdaLockup } from "@/components/uxda-lockup";
 import { RubberNav } from "@/components/rubber-nav/RubberNav";
@@ -30,7 +30,8 @@ export function SiteHeader({ profile }: { profile: Profile }) {
           <RubberNav
             items={[
               { href: "/", label: "Home", icon: <Home aria-hidden />, exact: true },
-              { href: "/heroes", label: "Heroes", icon: <Trophy aria-hidden /> },
+              { href: "/leaderboard", label: "Leaderboard", icon: <Trophy aria-hidden /> },
+              { href: "/heroes", label: "Heroes", icon: <Sparkles aria-hidden /> },
               { href: "/profile", label: "Profile", icon: <UserRound aria-hidden /> },
               ...(profile.is_admin ? [{ href: "/admin", label: "Admin", icon: <Shield aria-hidden /> }] : []),
             ]}

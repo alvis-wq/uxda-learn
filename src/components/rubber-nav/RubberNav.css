@@ -29,18 +29,28 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Very narrow phones (the header keeps the nav in the true centre, so its side columns must still fit the logo and actions). */
+/*
+ * Very narrow phones (the header keeps the nav in the true centre, so its side columns must still fit the logo and
+ * actions). Sized for the admin's five icons: at 375px the nav must stay under ~175px.
+ */
 @media (max-width: 25rem) {
   .rubber-nav {
-    --rn-pad: 8px;
-    --rn-min: 36px;
+    --rn-pad: 6px;
+    --rn-min: 32px;
+  }
+}
+
+@media (max-width: 23rem) {
+  .rubber-nav {
+    --rn-pad: 5px;
+    --rn-min: 28px;
   }
 }
 
 @media (max-width: 21.25rem) {
   .rubber-nav {
-    --rn-pad: 6px;
-    --rn-min: 32px;
+    --rn-pad: 4px;
+    --rn-min: 25px;
   }
 }
 

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { validateHeroesFile } from "../src/lib/heroes";
-import { loginAs } from "./helpers";
+import { heroForEmail, validateHeroesFile } from "../src/lib/heroes";
+import { loginAs, TEST_EMAILS } from "./helpers";
 import { requireTestProject } from "./project";
 
 requireTestProject();
@@ -23,19 +23,12 @@ async function rowSizes(page: Page): Promise<number[]> {
   return rows;
 }
 
-test("/leaderboard redirects to /heroes, keeping the group", async ({ page }) => {
-  await loginAs(page, "strategist");
-  await page.goto("/leaderboard?group=designers");
-  await expect(page).toHaveURL(/\/heroes\?group=designers$/);
-  await expect(page.getByRole("link", { name: "Designers" })).toHaveAttribute("aria-current", "page");
-});
-
-test("page structure: Heroes, the leaderboard, then the Superhero Team in file order", async ({ page }) => {
+test("/heroes is the Superhero Team only, in file order; /leaderboard is its own page", async ({ page }) => {
   await loginAs(page, "strategist");
   await page.goto("/heroes");
   await expect(page).toHaveTitle("Heroes · UXDA Learn");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Heroes");
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["UXDA Learn Leaderboard", "UXDA Superhero Team"]);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("UXDA Superhero Team");
+  await expect(page.getByRole("navigation", { name: "Leaderboard groups" })).toHaveCount(0);
   await expect(page.getByText("Meet the heroes behind UXDA: who they are and what makes them super.")).toBeVisible();
 
   await expect(cards(page)).toHaveCount(HEROES.length);
@@ -87,6 +80,8 @@ test.describe("tilt and flip (full motion)", () => {
     await c.hover({ position: { x: 10, y: 10 } });
     await expect.poll(() => rotateY(c)).toBeLessThan(-3); // tilted toward the pointer
     await expect(c).not.toHaveAttribute("data-flipped");
+    // The violet stroke shows on hover.
+    await expect.poll(() => c.locator(".tilted-card__front").evaluate((e) => getComputedStyle(e, "::after").opacity)).toBe("1");
 
     await c.click();
     await expect(c).toHaveAttribute("aria-pressed", "true");
@@ -134,4 +129,30 @@ test("reduced motion: no tilt, the flip is a crossfade", async ({ page }) => {
   await expect(back(c)).toHaveCSS("opacity", "1");
   expect(await rotateY(c)).toBe(0);
   expect(await body(c).evaluate((e) => e.style.transform)).toMatch(/rotateX\(0deg\) rotateY\(0deg\) scale\(1\)/);
+});
+
+test("/leaderboard: the leaderboard only", async ({ page }) => {
+  await loginAs(page, "strategist");
+  await page.goto("/leaderboard");
+  await expect(page).toHaveURL(/\/leaderboard$/); // no redirect any more
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("UXDA Learn Leaderboard");
+  await expect(page.getByTestId("hero-grid")).toHaveCount(0);
+});
+
+test("reduced motion: the hover stroke appears without a fade", async ({ page }) => {
+  await loginAs(page, "strategist");
+  await page.goto("/heroes");
+  const front = card(page, 0).locator(".tilted-card__front");
+  expect(await front.evaluate((e) => getComputedStyle(e, "::after").transitionDuration)).toBe("0s");
+  await card(page, 0).hover();
+  expect(await front.evaluate((e) => getComputedStyle(e, "::after").opacity)).toBe("1");
+});
+
+test("profile: no hero for the email → no avatar and no Your hero block", async ({ page }) => {
+  expect(heroForEmail(HEROES, TEST_EMAILS.strategist)).toBeUndefined();
+  await loginAs(page, "strategist");
+  await page.goto("/profile");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByTestId("hero-avatar")).toHaveCount(0);
+  await expect(page.getByTestId("your-hero")).toHaveCount(0);
 });

@@ -57,7 +57,20 @@ test.describe("home page", () => {
     await expect(page.getByTestId("hero-rank").getByRole("link", { name: /hidden from the leaderboard/ })).toBeVisible();
     await page.getByTestId("hero-rank").getByRole("link", { name: /hidden from the leaderboard/ }).click();
     await expect(page).toHaveURL(/\/profile$/);
-    // ...and it is a home-page thing only.
+    // The profile has it too — one, not a leftover from home plus its own.
+    await expect(page.getByTestId("aurora")).toHaveCount(1);
+  });
+
+  test("the same aurora on Leaderboard, Heroes and Profile, not elsewhere", async ({ page }) => {
+    await loginAs(page, "designer");
+    for (const path of ["/leaderboard", "/heroes", "/profile"]) {
+      await page.goto(path);
+      const aurora = page.getByTestId("aurora");
+      await expect(aurora, path).toHaveCount(1);
+      await expect(aurora, path).toHaveCSS("position", "fixed");
+      await expect(aurora, path).toHaveCSS("z-index", "-10");
+    }
+    await page.goto("/challenges/e2e-quiz");
     await expect(page.getByTestId("aurora")).toHaveCount(0);
   });
 
@@ -158,7 +171,7 @@ test.describe("home page", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     }
     // Below 1024px the nav is icon-only (its links keep their accessible names).
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Heroes" }).locator("span")).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Leaderboard" }).locator("span")).toBeHidden();
   });
 
   test("required challenges and categories are cards: Start CTA, meta row, one link per card", async ({ page }) => {
