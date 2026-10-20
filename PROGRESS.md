@@ -949,3 +949,8 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Profile: the round avatar and the "Your hero" block are gone; the person's hero card (same tilt, flip, hover stroke) sits in the header (PageHeader `leading`) left of the name block, 180px wide, the name block vertically centred. Below 640px: the card (160px) centred above the name block, which is centred too. No hero: the header is unchanged. The card's screen-reader name is plain text there (the h1 already names them).
 - `avatar` face boxes stay in heroes.yaml and `HeroAvatar` stays (unused) for later, e.g. the header nav.
 - Checks: `npm run check` ✅ · `npm run build` ✅. Header with and without a hero on a temporary page (removed): axe clean, no overflow, card 180/160px, name centred against the card on desktop and below it on phones, in light and dark. e2e profile check updated, not run: no test project.
+
+## Profile hero card: front only (on `main`)
+
+- `HeroCard flippable={false}` (profile header): no back, no flip on click/tap/Enter/Space, no "Click/Tap to flip" hint; tilt and the violet hover stroke stay. Not a button and not focusable (the stroke shows on hover); TiltedCard gives a non-interactive card with `ariaLabel` role="img", so it's an image named "Alvis, Vision". /heroes cards unchanged (button, aria-pressed, hint, flip).
+- Checks: `npm run check` ✅ · `npm run build` ✅. Both modes on a temporary page (removed): role/name/no aria-pressed/no tabindex, no back face, hover tilts and shows the stroke, click + Enter don't flip, Tab skips it to the /heroes card; axe clean at 1280/375.

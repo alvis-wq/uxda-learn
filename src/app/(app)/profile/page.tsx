@@ -112,7 +112,7 @@ export default async function ProfilePage() {
         leading={
           hero && (
             <div className="w-40 shrink-0 sm:w-45" data-testid="profile-hero">
-              <HeroCard hero={hero} image={heroPortrait(hero, "(min-width: 640px) 180px, 160px")} index={0} nameAs="p" />
+              <HeroCard hero={hero} image={heroPortrait(hero, "(min-width: 640px) 180px, 160px")} index={0} flippable={false} />
             </div>
           )
         }

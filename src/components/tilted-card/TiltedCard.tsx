@@ -4,7 +4,8 @@
  * TiltedCard — from React Bits (https://reactbits.dev, TiltedCard-TS-CSS, MIT). Local changes, marked "UXDA:":
  * - `aspectRatio`: the card fills its container's width at that ratio (no fixed px size).
  * - `imageProps`: extra <img> attributes (srcSet, sizes, loading) so the portrait can use next/image's optimized URLs.
- * - `ariaLabel`: the button's accessible name (the visible faces are presentational inside role="button").
+ * - `ariaLabel`: the button's accessible name (the visible faces are presentational inside role="button"); on a card
+ *   that can't be clicked or flipped it makes the figure role="img" with that name.
  * - Settings ref synced in a layout effect instead of during render (React Compiler lint).
  * - `hoverStroke`: a thin gradient stroke inside each face's rounded edge, faded in on hover and keyboard focus.
  * - Reduced motion: no tilt, lift or intro; the flip is a quick crossfade (CSS, keyed on data-flipped) instead of a
@@ -45,7 +46,7 @@ export interface TiltedCardProps {
   aspectRatio?: string;
   /** UXDA: extra attributes for the image (srcSet, sizes, loading, decoding). */
   imageProps?: Pick<ImgHTMLAttributes<HTMLImageElement>, 'srcSet' | 'sizes' | 'loading' | 'decoding'>;
-  /** UXDA: the accessible name of the card button (defaults to captionText or altText). */
+  /** UXDA: the accessible name of the card button (defaults to captionText or altText), or of a non-interactive card as an image. */
   ariaLabel?: string;
   /** UXDA: a CSS gradient for a thin stroke around both faces on hover and keyboard focus (TiltedCard.css). */
   hoverStroke?: string;
@@ -603,9 +604,9 @@ const TiltedCard = ({
       data-flipped={isFlipped ? '' : undefined}
       data-stroke={hoverStroke ? '' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      role={interactive ? 'button' : undefined}
+      role={interactive ? 'button' : ariaLabel ? 'img' : undefined}
       aria-pressed={flippable ? isFlipped : undefined}
-      aria-label={interactive ? ariaLabel || captionText || altText : undefined}
+      aria-label={interactive ? ariaLabel || captionText || altText : ariaLabel}
       onClick={interactive ? activate : undefined}
       onKeyDown={onKeyDown}
     >
