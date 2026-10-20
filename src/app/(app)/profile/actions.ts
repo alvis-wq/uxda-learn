@@ -23,6 +23,6 @@ export async function setLeaderboardVisibility(visible: boolean): Promise<{ erro
   if (error) return { error: "Couldn't save your preference. Please try again." };
 
   revalidatePath("/profile");
-  revalidatePath("/leaderboard");
+  revalidatePath("/heroes");
   return {};
 }

@@ -1,0 +1,118 @@
+# UXDA Superhero Team — shown on the Heroes page.
+# Order = display order. The first two (both Captain America) form the top row.
+heroes:
+  - person: Linda
+    hero: Captain America
+    image: /heroes/linda.jpg
+    description: Leads through trust and discipline, combining strategic and financial precision with real care for people.
+    traits: [Strategic, Disciplined, Empathetic, Principled, Reliable]
+  - person: Alex
+    hero: Captain America
+    image: /heroes/alex.jpg
+    description: Driven by a bold vision, he challenged the status quo, shaped UXDA's methodology and inspires everyone to aim higher.
+    traits: [Visionary, Strategic, Courageous, Inspiring, Transformational]
+  - person: Inese
+    hero: Athena
+    image: /heroes/inese.jpg
+    description: Sees what others miss, finds hidden value in complex financial products and guides people through complexity.
+    traits: [Wise, Strategic, Empathetic, Insightful, Detail-Oriented]
+  - person: Oksana
+    hero: Wonder Woman
+    image: /heroes/oksana.jpg
+    description: Strength guided by empathy — her creative signature turns complex challenges into emotionally engaging experiences.
+    traits: [Empathetic, Resilient, Creative, Determined, Insightful]
+  - person: Arita
+    hero: Flora
+    image: /heroes/arita.jpg
+    description: With UXDA since the earliest days, she helps ideas, projects and people grow, bringing calm strength and harmony.
+    traits: [Wise, Empathetic, Analytical, Nurturing, Dedicated]
+  - person: Andrew
+    hero: Batman
+    image: /heroes/andrew.jpg
+    description: UXDA's technology mastermind — brings interfaces to life through motion, and whatever he touches starts working.
+    traits: [Intelligent, Innovative, Creative, Precise, Resourceful]
+  - person: Santa
+    hero: Superwoman
+    image: /heroes/santa.jpg
+    description: Fearless and sharp-eyed, she turns complexity into clear solutions, with strength always guided by kindness.
+    traits: [Fearless, Strategic, Resilient, Optimistic, Growth-Oriented]
+  - person: Raitis
+    hero: Iron Man
+    image: /heroes/raitis.jpg
+    description: Brings static visuals to life through precise animation and never stops experimenting with new tools.
+    traits: [Inventive, Precise, Curious, Reliable, Technologically Brilliant]
+  - person: Tamāra
+    hero: Monica Rambeau
+    image: /heroes/tamara.jpg
+    description: Turns challenges into energy, spots details others miss thanks to 12 years in banking, and communicates with warmth.
+    traits: [Energetic, Courageous, Resilient, Communicative, Supportive]
+  - person: Vents
+    hero: Thor
+    image: /heroes/vents.jpg
+    description: Quiet confidence, an analytical mind and artistic talent — and he grows stronger with every challenge.
+    traits: [Analytical, Creative, Humble, Precise, Growth-Oriented]
+  - person: Jelena
+    hero: Shuri
+    image: /heroes/jelena.jpg
+    description: A creative spark with a strong sense of aesthetics, growing fast and finding fresh, unexpected solutions.
+    traits: [Creative, Innovative, Curious, Determined, Optimistic]
+  - person: Anastasija
+    hero: Alice in Wonderland
+    image: /heroes/anastasija.jpg
+    description: Adapts to every surprise and asks the right questions to bring clarity to complex financial processes.
+    traits: [Curious, Adaptable, Empathetic, Positive, Creative]
+  - person: Roberts
+    hero: Aquaman
+    image: /heroes/roberts.jpg
+    description: Stays calm in unpredictable waters, solving complex design challenges with patience and precision.
+    traits: [Calm, Creative, Persistent, Precise, Adaptable]
+  - person: Agnese
+    hero: Jane Foster (Mighty Thor)
+    image: /heroes/agnese.jpg
+    description: Embraces new challenges, learns fast and turns positive energy into action, helping everyone around her grow.
+    traits: [Curious, Empathetic, Courageous, Reliable, Positive Energy]
+  - person: Diana
+    hero: Rapunzel
+    image: /heroes/diana.jpg
+    description: Her optimism, warmth and reliability make the team a little brighter every day.
+    traits: [Kind, Optimistic, Warm, Reliable, Supportive]
+  - person: Žanna
+    hero: Black Widow
+    image: /heroes/zanna.jpg
+    description: A strategist who never gives up, reads people well and drives projects forward with clear purpose.
+    traits: [Intelligent, Strategic, Persistent, Communicative, Empathetic]
+  - person: Alvis
+    hero: Vision
+    image: /heroes/alvis.jpg
+    description: The logical empath — plans several steps ahead, notices overlooked user needs and stays calm under pressure.
+    traits: [Rational, Analytical, Structured, Insightful, Calm]
+  - person: Sergejs
+    hero: Wolverine
+    image: /heroes/sergejs.jpg
+    description: Tough, direct and loyal — questions the plan when needed, with a dry sense of humour, and always sees the mission through.
+    traits: [Resilient, Direct, Loyal, Determined, Reliable]
+  - person: Kristīne
+    hero: Invisible Woman
+    image: /heroes/kristine.jpg
+    description: Quiet but powerful — learns fast, stays calm under pressure and creates clarity and stability.
+    traits: [Analytical, Adaptable, Calm, Collaborative, Insightful]
+  - person: Deniss
+    hero: Spider-Man
+    image: /heroes/deniss.jpg
+    description: Sees connections first, links business goals and user needs into one clear vision, and owns his work.
+    traits: [Strategic, Adaptable, Curious, Communicative, Fast Learner]
+  - person: Elīna
+    hero: Shadowcat
+    image: /heroes/elina.jpg
+    description: Moves past barriers that stop others, approaching the unknown with curiosity, kindness and courage.
+    traits: [Adaptable, Curious, Quick Learner, Friendly, Positive]
+  - person: Katrīna
+    hero: Hawkeye (Kate Bishop)
+    image: /heroes/katrina.jpg
+    description: Builds her strength through determination and initiative, with ambition, emotional intelligence and kindness.
+    traits: [Determined, Proactive, Empathetic, Courageous, Fast Learner]
+  - person: Roberts C
+    hero: Star-Lord
+    image: /heroes/roberts-c.jpg
+    description: A natural connector who brings people together with humour and loyalty, and keeps spirits up under pressure.
+    traits: [Charismatic, Sociable, Adaptable, Humorous, Loyal]

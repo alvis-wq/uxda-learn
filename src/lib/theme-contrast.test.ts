@@ -41,6 +41,7 @@ const PAIRS: [string, string][] = [
   ["destructive", "tile"],
   ["warning", "tile"],
   ["card-foreground", "card"],
+  ["brand-text", "card"], // hero name on the back of a hero card
   ["popover-foreground", "popover"],
   ["muted-foreground", "background"],
   ["muted-foreground", "card"],

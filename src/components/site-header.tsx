@@ -30,7 +30,7 @@ export function SiteHeader({ profile }: { profile: Profile }) {
           <RubberNav
             items={[
               { href: "/", label: "Home", icon: <Home aria-hidden />, exact: true },
-              { href: "/leaderboard", label: "Leaderboard", icon: <Trophy aria-hidden /> },
+              { href: "/heroes", label: "Heroes", icon: <Trophy aria-hidden /> },
               { href: "/profile", label: "Profile", icon: <UserRound aria-hidden /> },
               ...(profile.is_admin ? [{ href: "/admin", label: "Admin", icon: <Shield aria-hidden /> }] : []),
             ]}

@@ -31,7 +31,7 @@ const LEARNER_PAGES = [
   "/challenges/e2e-quiz",
   "/challenges/e2e-screenshot",
   "/challenges/e2e-ack",
-  "/leaderboard",
+  "/heroes",
   "/profile",
   "/does-not-exist",
 ];
