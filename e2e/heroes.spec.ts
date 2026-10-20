@@ -9,9 +9,11 @@ test.describe.configure({ mode: "serial" });
 
 const HEROES = validateHeroesFile(path.resolve(__dirname, ".."));
 const cards = (page: Page) => page.getByTestId("hero-grid").getByRole("article");
-const inner = (card: Locator) => card.locator(".hero-card-inner");
-const back = (card: Locator) => card.locator(".hero-card-back");
-const flippedTransform = /^matrix3d\(-1,/; // rotateY(180deg)
+const card = (page: Page, i: number) => page.getByTestId("hero-grid").getByRole("button").nth(i);
+const body = (c: Locator) => c.locator(".tilted-card__body");
+const back = (c: Locator) => c.locator(".tilted-card__back");
+/** The body's inline transform: the tilt (rotateX/rotateY) plus the flip (rotateY + 180). */
+const rotateY = async (c: Locator) => Number((await body(c).evaluate((e) => e.style.transform)).match(/rotateY\((-?[\d.]+)deg\)/)?.[1] ?? 0);
 
 /** Number of cards in each visual row (by their top edge). */
 async function rowSizes(page: Page): Promise<number[]> {
@@ -38,14 +40,20 @@ test("page structure: Heroes, the leaderboard, then the Superhero Team in file o
 
   await expect(cards(page)).toHaveCount(HEROES.length);
   // Each card is named by the person, and both sides' text is in the accessibility tree.
-  const first = cards(page).first();
-  await expect(page.getByRole("article", { name: HEROES[0].person, exact: true }).first()).toBeAttached();
+  // Each card: an article named by the person, both sides' text readable, and a flip toggle named after them.
+  const first = page.getByRole("article", { name: HEROES[0].person, exact: true }).first();
   await expect(first).toContainText(HEROES[0].hero);
   await expect(first).toContainText(HEROES[0].description);
-  await expect(first.getByRole("listitem")).toHaveText(HEROES[0].traits);
-  // Portraits are lazy next/image files.
-  await expect(first.getByRole("img", { name: `Portrait of ${HEROES[0].person}` })).toHaveAttribute("loading", "lazy");
-  await expect(first.getByRole("img")).toHaveAttribute("src", /\/_next\/image\?url=%2Fheroes%2F/);
+  await expect(first.getByRole("list", { name: `${HEROES[0].person}'s traits` }).getByRole("listitem")).toHaveText(HEROES[0].traits);
+  await expect(card(page, 0)).toHaveAccessibleName(`${HEROES[0].person}, ${HEROES[0].hero}`);
+  await expect(card(page, 0)).toHaveAttribute("aria-pressed", "false");
+  // Portraits: next/image's optimized URLs, lazy, 3:4.
+  const img = first.locator("img");
+  await expect(img).toHaveAttribute("loading", "lazy");
+  await expect(img).toHaveAttribute("src", /\/_next\/image\?url=%2Fheroes%2F/);
+  await expect(img).toHaveAttribute("srcset", /\/_next\/image\?url=%2Fheroes%2F/);
+  const box = (await card(page, 0).boundingBox())!;
+  expect(box.height / box.width).toBeCloseTo(4 / 3, 2);
 });
 
 for (const [width, perRow] of [
@@ -69,50 +77,61 @@ for (const [width, perRow] of [
   });
 }
 
-test.describe("flip (full motion)", () => {
+test.describe("tilt and flip (full motion)", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("flips on hover and on keyboard focus, with a visible focus ring", async ({ page }) => {
+  test("hover only tilts; click, Enter and Space flip; visible focus ring", async ({ page }) => {
     await loginAs(page, "strategist");
     await page.goto("/heroes");
-    const card = cards(page).first();
-    await expect(inner(card)).not.toHaveCSS("transform", flippedTransform);
+    const c = card(page, 0);
+    await c.hover({ position: { x: 10, y: 10 } });
+    await expect.poll(() => rotateY(c)).toBeLessThan(-3); // tilted toward the pointer
+    await expect(c).not.toHaveAttribute("data-flipped");
 
-    await card.hover();
-    await expect(inner(card)).toHaveCSS("transform", flippedTransform);
+    await c.click();
+    await expect(c).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(() => rotateY(c)).toBeGreaterThan(160);
+    await c.click();
+    await expect(c).toHaveAttribute("aria-pressed", "false");
+
     await page.mouse.move(0, 0);
-    await expect(inner(card)).not.toHaveCSS("transform", flippedTransform);
-
-    await card.focus();
+    await c.focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab"); // keyboard focus → :focus-visible
-    await expect(card).toBeFocused();
-    await expect(inner(card)).toHaveCSS("transform", flippedTransform);
-    await expect(card).not.toHaveCSS("box-shadow", "none");
+    await expect(c).toBeFocused();
+    expect(await c.evaluate((e) => getComputedStyle(e, "::after").borderTopWidth)).toBe("3px");
+    await page.keyboard.press("Enter");
+    await expect(c).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Space");
+    await expect(c).toHaveAttribute("aria-pressed", "false");
   });
 });
 
 test.describe("flip on tap (touch)", () => {
   test.use({ reducedMotion: "no-preference", hasTouch: true, isMobile: true, viewport: { width: 375, height: 812 } });
 
-  test("a tap flips the card, a second tap flips it back", async ({ page }) => {
+  test("a tap flips the card, a second tap flips it back; the hint says Tap", async ({ page }) => {
     await loginAs(page, "strategist");
     await page.goto("/heroes");
-    const card = cards(page).first();
-    await card.tap();
-    await expect(card).toHaveAttribute("data-flipped", "true");
-    await expect(inner(card)).toHaveCSS("transform", flippedTransform);
-    await card.tap();
-    await expect(card).not.toHaveAttribute("data-flipped");
+    const c = card(page, 0);
+    await expect(c.getByText("Tap to flip")).toBeVisible();
+    await c.tap();
+    await expect(c).toHaveAttribute("data-flipped", "");
+    await expect.poll(() => rotateY(c)).toBeGreaterThan(160);
+    await c.tap();
+    await expect(c).not.toHaveAttribute("data-flipped");
   });
 });
 
-test("reduced motion: no 3D flip, the back crossfades in", async ({ page }) => {
+test("reduced motion: no tilt, the flip is a crossfade", async ({ page }) => {
   await loginAs(page, "strategist");
   await page.goto("/heroes");
-  const card = cards(page).first();
-  await expect(back(card)).toHaveCSS("opacity", "0");
-  await card.hover();
-  await expect(back(card)).toHaveCSS("opacity", "1");
-  await expect(inner(card)).toHaveCSS("transform", "none");
+  const c = card(page, 0);
+  await expect(c.getByText("Click to flip")).toBeVisible();
+  await c.hover({ position: { x: 10, y: 10 } });
+  await expect(back(c)).toHaveCSS("opacity", "0");
+  await c.click();
+  await expect(back(c)).toHaveCSS("opacity", "1");
+  expect(await rotateY(c)).toBe(0);
+  expect(await body(c).evaluate((e) => e.style.transform)).toMatch(/rotateX\(0deg\) rotateY\(0deg\) scale\(1\)/);
 });

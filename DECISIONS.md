@@ -372,3 +372,5 @@
 - Unticking "Everyone" in Featured for keeps it featured for each offered track — turning it off is the switch's job.
 - Heroes data validated in next.config.ts — the page is dynamic, so only the config is guaranteed to run at build time; a bad heroes.yaml fails the build there.
 - Hero top row via grid column starts (card 1 starts one in, card 3 back at column 1; a 6-column grid on tablet) — keeps the team one list for screen readers instead of two.
+- TiltedCard vendored with marked local changes rather than wrapped — fluid 3:4 sizing, next/image URLs and the reduced-motion crossfade all need to reach inside its render loop and markup.
+- Hero card text repeated in a screen-reader-only block — the card is role="button" (TiltedCard's flip), whose content isn't read on its own, so both sides stay readable whatever the flip state.
