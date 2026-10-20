@@ -1,16 +1,9 @@
 # UXDA Superhero Team — shown on the Heroes page.
-# Order = display order. The first two (both Captain America) form the top row.
+# Order = display order (as on the UXDA team page). The first two (both Captain America) form the top row.
 # email: the person's UXDA login (lowercase) — their profile shows this hero.
 # avatar (optional): the face in the portrait, for the round profile avatar — centre x/y and the crop's width
 #   (size), all as fractions of the portrait's width/height. Default { x: 0.5, y: 0.25, size: 0.3 }.
 heroes:
-  - person: Linda
-    hero: Captain America
-    image: /heroes/linda.jpg
-    email: linda@uxdesignagency.com
-    avatar: { x: 0.55, y: 0.22, size: 0.32 }
-    description: Leads through trust and discipline, combining strategic and financial precision with real care for people.
-    traits: [Strategic, Disciplined, Empathetic, Principled, Reliable]
   - person: Alex
     hero: Captain America
     image: /heroes/alex.jpg
@@ -18,6 +11,20 @@ heroes:
     avatar: { x: 0.5, y: 0.2, size: 0.3 }
     description: Driven by a bold vision, he challenged the status quo, shaped UXDA's methodology and inspires everyone to aim higher.
     traits: [Visionary, Strategic, Courageous, Inspiring, Transformational]
+  - person: Linda
+    hero: Captain America
+    image: /heroes/linda.jpg
+    email: linda@uxdesignagency.com
+    avatar: { x: 0.55, y: 0.22, size: 0.32 }
+    description: Leads through trust and discipline, combining strategic and financial precision with real care for people.
+    traits: [Strategic, Disciplined, Empathetic, Principled, Reliable]
+  - person: Ernests
+    hero: Ant-Man
+    image: /heroes/ernests.jpg
+    email: ernests@uxdesignagency.com
+    avatar: { x: 0.5, y: 0.33, size: 0.32 }
+    description: Proves that small, smart actions can have an extraordinary impact — practical, analytical and curious, he makes thoughtful improvements that create real results.
+    traits: [Resourceful, Analytical, Curious, Practical, Grounded]
   - person: Inese
     hero: Athena
     image: /heroes/inese.jpg
@@ -95,55 +102,6 @@ heroes:
     avatar: { x: 0.5, y: 0.23, size: 0.3 }
     description: Stays calm in unpredictable waters, solving complex design challenges with patience and precision.
     traits: [Calm, Creative, Persistent, Precise, Adaptable]
-  - person: Agnese
-    hero: Jane Foster (Mighty Thor)
-    image: /heroes/agnese.jpg
-    email: agnese@uxdesignagency.com
-    avatar: { x: 0.5, y: 0.32, size: 0.16 }
-    description: Embraces new challenges, learns fast and turns positive energy into action, helping everyone around her grow.
-    traits: [Curious, Empathetic, Courageous, Reliable, Positive Energy]
-  - person: Diana
-    hero: Rapunzel
-    image: /heroes/diana.jpg
-    email: diana@uxdesignagency.com
-    avatar: { x: 0.5, y: 0.3, size: 0.32 }
-    description: Her optimism, warmth and reliability make the team a little brighter every day.
-    traits: [Kind, Optimistic, Warm, Reliable, Supportive]
-  - person: Žanna
-    hero: Black Widow
-    image: /heroes/zanna.jpg
-    email: zanna@uxdesignagency.com
-    avatar: { x: 0.52, y: 0.31, size: 0.2 }
-    description: A strategist who never gives up, reads people well and drives projects forward with clear purpose.
-    traits: [Intelligent, Strategic, Persistent, Communicative, Empathetic]
-  - person: Alvis
-    hero: Vision
-    image: /heroes/alvis.jpg
-    email: alvis@uxdesignagency.com
-    avatar: { x: 0.5, y: 0.3, size: 0.25 }
-    description: The logical empath — plans several steps ahead, notices overlooked user needs and stays calm under pressure.
-    traits: [Rational, Analytical, Structured, Insightful, Calm]
-  - person: Sergejs
-    hero: Wolverine
-    image: /heroes/sergejs.jpg
-    email: sergejs@uxdesignagency.com
-    avatar: { x: 0.48, y: 0.22, size: 0.22 }
-    description: Tough, direct and loyal — questions the plan when needed, with a dry sense of humour, and always sees the mission through.
-    traits: [Resilient, Direct, Loyal, Determined, Reliable]
-  - person: Kristīne
-    hero: Invisible Woman
-    image: /heroes/kristine.jpg
-    email: kristine@uxdesignagency.com
-    avatar: { x: 0.47, y: 0.27, size: 0.2 }
-    description: Quiet but powerful — learns fast, stays calm under pressure and creates clarity and stability.
-    traits: [Analytical, Adaptable, Calm, Collaborative, Insightful]
-  - person: Deniss
-    hero: Spider-Man
-    image: /heroes/deniss.jpg
-    email: deniss@uxdesignagency.com
-    avatar: { x: 0.5, y: 0.28, size: 0.22 }
-    description: Sees connections first, links business goals and user needs into one clear vision, and owns his work.
-    traits: [Strategic, Adaptable, Curious, Communicative, Fast Learner]
   - person: Elīna
     hero: Shadowcat
     image: /heroes/elina.jpg
@@ -165,3 +123,52 @@ heroes:
     avatar: { x: 0.54, y: 0.39, size: 0.22 }
     description: A natural connector who brings people together with humour and loyalty, and keeps spirits up under pressure.
     traits: [Charismatic, Sociable, Adaptable, Humorous, Loyal]
+  - person: Žanna
+    hero: Black Widow
+    image: /heroes/zanna.jpg
+    email: zanna@uxdesignagency.com
+    avatar: { x: 0.52, y: 0.31, size: 0.2 }
+    description: A strategist who never gives up, reads people well and drives projects forward with clear purpose.
+    traits: [Intelligent, Strategic, Persistent, Communicative, Empathetic]
+  - person: Alvis
+    hero: Vision
+    image: /heroes/alvis.jpg
+    email: alvis@uxdesignagency.com
+    avatar: { x: 0.5, y: 0.3, size: 0.25 }
+    description: The logical empath — plans several steps ahead, notices overlooked user needs and stays calm under pressure.
+    traits: [Rational, Analytical, Structured, Insightful, Calm]
+  - person: Diana
+    hero: Rapunzel
+    image: /heroes/diana.jpg
+    email: diana@uxdesignagency.com
+    avatar: { x: 0.5, y: 0.3, size: 0.32 }
+    description: Her optimism, warmth and reliability make the team a little brighter every day.
+    traits: [Kind, Optimistic, Warm, Reliable, Supportive]
+  - person: Sergejs
+    hero: Wolverine
+    image: /heroes/sergejs.jpg
+    email: sergejs@uxdesignagency.com
+    avatar: { x: 0.48, y: 0.22, size: 0.22 }
+    description: Tough, direct and loyal — questions the plan when needed, with a dry sense of humour, and always sees the mission through.
+    traits: [Resilient, Direct, Loyal, Determined, Reliable]
+  - person: Agnese
+    hero: Jane Foster (Mighty Thor)
+    image: /heroes/agnese.jpg
+    email: agnese@uxdesignagency.com
+    avatar: { x: 0.5, y: 0.32, size: 0.16 }
+    description: Embraces new challenges, learns fast and turns positive energy into action, helping everyone around her grow.
+    traits: [Curious, Empathetic, Courageous, Reliable, Positive Energy]
+  - person: Kristīne
+    hero: Invisible Woman
+    image: /heroes/kristine.jpg
+    email: kristine@uxdesignagency.com
+    avatar: { x: 0.47, y: 0.27, size: 0.2 }
+    description: Quiet but powerful — learns fast, stays calm under pressure and creates clarity and stability.
+    traits: [Analytical, Adaptable, Calm, Collaborative, Insightful]
+  - person: Deniss
+    hero: Spider-Man
+    image: /heroes/deniss.jpg
+    email: deniss@uxdesignagency.com
+    avatar: { x: 0.5, y: 0.28, size: 0.22 }
+    description: Sees connections first, links business goals and user needs into one clear vision, and owns his work.
+    traits: [Strategic, Adaptable, Curious, Communicative, Fast Learner]

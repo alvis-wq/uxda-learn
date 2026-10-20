@@ -954,3 +954,8 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 - `HeroCard flippable={false}` (profile header): no back, no flip on click/tap/Enter/Space, no "Click/Tap to flip" hint; tilt and the violet hover stroke stay. Not a button and not focusable (the stroke shows on hover); TiltedCard gives a non-interactive card with `ariaLabel` role="img", so it's an image named "Alvis, Vision". /heroes cards unchanged (button, aria-pressed, hint, flip).
 - Checks: `npm run check` ✅ · `npm run build` ✅. Both modes on a temporary page (removed): role/name/no aria-pressed/no tabindex, no back face, hover tilts and shows the stroke, click + Enter don't flip, Tab skips it to the /heroes card; axe clean at 1280/375.
+
+## Heroes: Ernests added, team-page order (on `main`)
+
+- Ernests (Ant-Man, ernests@, portrait 600×800, avatar face box set from the portrait) added; heroes.yaml reordered to the team page: Alex, Linda (the Captain America top row), Ernests, Inese, … Kristīne, Deniss — 24 heroes.
+- Checks: `npm run check` ✅ (heroes.yaml schema + every portrait) · `npm run build` ✅ (build-time validation).
