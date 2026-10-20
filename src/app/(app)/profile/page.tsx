@@ -4,7 +4,6 @@ import { MessageSquareText } from "lucide-react";
 import { GLOW_CLEARANCE_CSS } from "@/components/aurora/geometry";
 import { PageAurora } from "@/components/aurora/page-aurora";
 import { EmptyState } from "@/components/empty-state";
-import { HeroAvatar } from "@/components/hero-avatar";
 import { HeroCard } from "@/components/hero-card";
 import { heroPortrait } from "@/components/hero-portrait";
 import { PageHeader } from "@/components/page-header";
@@ -28,7 +27,7 @@ export default async function ProfilePage() {
   const profile = await requireOnboardedProfile();
   const supabase = await createClient();
   const jobTitle = await getJobTitle(profile.email);
-  // Their card from the UXDA Superhero Team, if they're on it (matched by email, case-insensitive).
+  // Their card from the UXDA Superhero Team in the header, if they're on it (matched by email, case-insensitive).
   const hero = heroForEmail(loadHeroes(), profile.email);
   const { data: subs, error } = await supabase
     .from("submissions")
@@ -110,7 +109,13 @@ export default async function ProfilePage() {
     <main className="mx-auto grid w-full max-w-5xl gap-8 px-4 pt-10" style={{ paddingBottom: GLOW_CLEARANCE_CSS }}>
       <PageAurora />
       <PageHeader
-        leading={hero && <HeroAvatar hero={hero} size={64} />}
+        leading={
+          hero && (
+            <div className="w-40 shrink-0 sm:w-45" data-testid="profile-hero">
+              <HeroCard hero={hero} image={heroPortrait(hero, "(min-width: 640px) 180px, 160px")} index={0} nameAs="p" />
+            </div>
+          )
+        }
         title={profile.full_name ?? profile.email}
         subtitle={jobTitle}
         description={`${profile.email}${profile.track ? ` · ${TRACK_LABEL[profile.track]}` : ""}`}
@@ -128,17 +133,6 @@ export default async function ProfilePage() {
           </Card>
         ))}
       </section>
-
-      {hero && (
-        <section aria-labelledby="your-hero-heading" className="grid gap-3" data-testid="your-hero">
-          <h2 id="your-hero-heading" className="text-lg font-semibold">
-            Your hero
-          </h2>
-          <div className="w-40 sm:w-48">
-            <HeroCard hero={hero} image={heroPortrait(hero, "192px")} index={0} />
-          </div>
-        </section>
-      )}
 
       <Card>
         <CardContent>

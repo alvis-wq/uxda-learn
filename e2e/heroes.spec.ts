@@ -148,11 +148,10 @@ test("reduced motion: the hover stroke appears without a fade", async ({ page })
   expect(await front.evaluate((e) => getComputedStyle(e, "::after").opacity)).toBe("1");
 });
 
-test("profile: no hero for the email → no avatar and no Your hero block", async ({ page }) => {
+test("profile: no hero for the email → the header has the name block only", async ({ page }) => {
   expect(heroForEmail(HEROES, TEST_EMAILS.strategist)).toBeUndefined();
   await loginAs(page, "strategist");
   await page.goto("/profile");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByTestId("hero-avatar")).toHaveCount(0);
-  await expect(page.getByTestId("your-hero")).toHaveCount(0);
+  await expect(page.getByTestId("profile-hero")).toHaveCount(0);
 });

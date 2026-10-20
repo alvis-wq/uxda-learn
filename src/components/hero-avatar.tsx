@@ -7,6 +7,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
  * A round avatar cropped to the face in a hero's portrait (heroes.yaml `avatar`: face centre and crop width as
  * fractions of the 600×800 portrait). The portrait is scaled so the crop fills the circle and shifted so the face is
  * centred; the centre is clamped so the crop never runs off the portrait. Decorative: the name sits next to it.
+ * Not used at the moment (the profile shows the full hero card); kept for a future spot such as the header nav.
  */
 export function HeroAvatar({ hero, size }: { hero: Hero; size: number }) {
   const a = hero.avatar ?? DEFAULT_AVATAR;

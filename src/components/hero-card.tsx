@@ -14,14 +14,25 @@ export type HeroImage = { src: string } & NonNullable<TiltedCardProps["imageProp
  * The card is a toggle button named after the person, and the text inside a button isn't read out on its own, so both
  * sides' text is repeated once in a screen-reader-only block next to it.
  */
-export function HeroCard({ hero, image, index }: { hero: Hero; image: HeroImage; index: number }) {
+export function HeroCard({
+  hero,
+  image,
+  index,
+  nameAs: Name = "h3",
+}: {
+  hero: Hero;
+  image: HeroImage;
+  index: number;
+  /** The person's name in the screen-reader block: a heading in the /heroes list, plain text where the page already names them. */
+  nameAs?: "h3" | "p";
+}) {
   const nameId = useId();
   const { src, ...imageProps } = image;
 
   return (
     <article aria-labelledby={nameId}>
       <div className="sr-only">
-        <h3 id={nameId}>{hero.person}</h3>
+        <Name id={nameId}>{hero.person}</Name>
         <p>{hero.hero}</p>
         <p>{hero.description}</p>
         <ul aria-label={`${hero.person}'s traits`}>
