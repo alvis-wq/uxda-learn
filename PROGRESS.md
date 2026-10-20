@@ -959,3 +959,8 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 - Ernests (Ant-Man, ernests@, portrait 600×800, avatar face box set from the portrait) added; heroes.yaml reordered to the team page: Alex, Linda (the Captain America top row), Ernests, Inese, … Kristīne, Deniss — 24 heroes.
 - Checks: `npm run check` ✅ (heroes.yaml schema + every portrait) · `npm run build` ✅ (build-time validation).
+
+## Heroes: one even grid (on `main`)
+
+- The special top row is gone: all 24 cards in one grid in heroes.yaml order, 4 per row (desktop, row 1 = Alex, Linda, Ernests, Inese as on the team page), 3 (tablet), 2 (mobile). Column-start logic, its comments, the Captain America unit check and the "top row of 2" e2e assertions removed; e2e now checks even rows, file order in row 1 and no offset.
+- Checks: `npm run check` ✅ · `npm run build` ✅.

@@ -15,8 +15,6 @@ describe("heroes.yaml", () => {
   it("the real file is valid and every portrait exists", () => {
     const heroes = validateHeroesFile(path.resolve(__dirname, "../.."));
     expect(heroes.length).toBeGreaterThan(2);
-    // The top row: the first two are both Captain America.
-    expect(heroes.slice(0, 2).map((h) => h.hero)).toEqual(["Captain America", "Captain America"]);
   });
 
   it("parses a valid file", () => {

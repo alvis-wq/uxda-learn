@@ -54,18 +54,20 @@ for (const [width, perRow] of [
   [820, 3],
   [375, 2],
 ] as const) {
-  test(`${width}px: top row of 2 (centred), then ${perRow} per row, no horizontal overflow`, async ({ page }) => {
+  test(`${width}px: one even grid, ${perRow} per row in file order, no horizontal overflow`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await loginAs(page, "strategist");
     await page.goto("/heroes");
     const rows = await rowSizes(page);
-    expect(rows[0]).toBe(2);
-    expect(rows.slice(1, -1).every((n) => n === perRow), rows.join(",")).toBe(true);
+    expect(rows.slice(0, -1).every((n) => n === perRow), rows.join(",")).toBe(true);
+    expect(rows.at(-1)).toBeLessThanOrEqual(perRow);
+    // Row 1 is the first heroes in the file (desktop: Alex, Linda, Ernests, Inese — as on the team page).
+    const firstRow = HEROES.slice(0, perRow).map((h) => h.person);
+    for (const [i, person] of firstRow.entries()) await expect(cards(page).nth(i)).toHaveAccessibleName(person);
 
+    // The first card starts at the grid's left edge (no offset row).
     const grid = (await page.getByTestId("hero-grid").boundingBox())!;
-    const a = (await cards(page).nth(0).boundingBox())!;
-    const b = (await cards(page).nth(1).boundingBox())!;
-    expect((a.x + b.x + b.width) / 2).toBeCloseTo(grid.x + grid.width / 2, 0);
+    expect((await cards(page).nth(0).boundingBox())!.x).toBeCloseTo(grid.x, 0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 }

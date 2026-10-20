@@ -1,5 +1,5 @@
 # UXDA Superhero Team — shown on the Heroes page.
-# Order = display order (as on the UXDA team page). The first two (both Captain America) form the top row.
+# Order = display order (as on the UXDA team page), in one even grid.
 # email: the person's UXDA login (lowercase) — their profile shows this hero.
 # avatar (optional): the face in the portrait, for the round profile avatar — centre x/y and the crop's width
 #   (size), all as fractions of the portrait's width/height. Default { x: 0.5, y: 0.25, size: 0.3 }.
