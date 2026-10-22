@@ -71,4 +71,5 @@ Mobile-friendly. Every list has an empty state; every async action has loading +
   make it pass. Never disable RLS to make something work.
 - Commit after each completed phase: `phase N: <summary>`. Push only if `origin` exists.
 - Prefer server components; client components only where interaction needs it.
-- Regenerate DB types after every migration: `npm run db:types`.
+- Database changes: Claude writes the migration; Alvis runs `npm run db:push` and `npm run db:types`
+  in the VS Code terminal. Claude doesn't run them.
