@@ -22,7 +22,11 @@
  * 10. Leads: only a lead (or admin) can call the team_* functions, which return status/score columns only and no test
  *     attempts; users can't flag themselves; set_user_lead needs an admin actor and audits; RLS on submissions and
  *     profiles is unchanged for a lead.
- * 11. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
+ * 11. Academy: users see published resources only (editors and admins see drafts too), never the quiz keys, and can't
+ *     write resources, completions or attempts; users can't flag themselves editors; set_user_academy_editor needs an
+ *     admin actor and audits; team_academy() is for leads and admins and returns completion columns only; nothing is
+ *     published without 5 questions; the `academy` bucket is public and users can't upload to it.
+ * 12. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
  *     rename_staff_email and set_user_track need an admin actor (seed excepted), are audited in staff_audit (none for a
  *     no-op), and users can't call them or read the audit.
  */
@@ -53,10 +57,16 @@ const EXPECTED_TABLES = [
   "submission_import_audit",
   "staff_titles",
   "staff_audit",
+  "academy_resources",
+  "academy_quiz_keys",
+  "academy_completions",
+  "academy_quiz_attempts",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
 const SENTINEL_PATH = "zz-check-db-path";
+const ACADEMY_SENTINEL = "zz-check-db academy";
+const ACADEMY_SENTINEL_URL = "https://example.com/zz-check-db-academy";
 
 const SENTINEL_TITLE_EMAIL = `zz-check-db-${randomBytes(4).toString("hex")}@example.com`;
 const SENTINEL_TITLE_RENAMED = SENTINEL_TITLE_EMAIL.replace("zz-check-db-", "zz-check-db-renamed-");
@@ -90,6 +100,8 @@ type Client = ReturnType<typeof anonClient>;
 
 type PrivateTable =
   | "challenge_keys"
+  | "academy_quiz_keys"
+  | "academy_resources"
   | "admin_allowlist"
   | "allowed_email_domains"
   | "challenge_settings_audit"
@@ -593,6 +605,100 @@ async function main() {
     }
     await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
 
+    console.log("Academy");
+    await admin.from("profiles").update({ is_admin: false, is_lead: false, is_academy_editor: false }).eq("id", userId);
+    const quizQs = Array.from({ length: 5 }, (_, i) => ({ id: `q${i + 1}`, kind: "single", prompt: "?", options: [{ id: "a", label: "x" }, { id: "b", label: "y" }], points: 1 }));
+    const { data: acad, error: acadErr } = await admin
+      .from("academy_resources")
+      .insert([
+        { kind: "blog", title: ACADEMY_SENTINEL, url: ACADEMY_SENTINEL_URL, status: "published", questions: quizQs },
+        { kind: "book", title: `${ACADEMY_SENTINEL} draft`, status: "draft" },
+      ])
+      .select("id,status");
+    if (acadErr || acad?.length !== 2) throw new Error(`academy sentinels: ${acadErr?.message}`);
+    const pubId = acad.find((r) => r.status === "published")!.id;
+    const draftId = acad.find((r) => r.status === "draft")!.id;
+    await admin.from("academy_quiz_keys").insert({ resource_id: pubId, answer_key: { q1: "a" } });
+
+    const { data: seenAcad } = await authed.from("academy_resources").select("id").in("id", [pubId, draftId]);
+    if (seenAcad?.length === 1 && seenAcad[0].id === pubId) pass("a user sees the published resource and not the draft");
+    else fail(`a user's Academy resources: ${JSON.stringify(seenAcad)}`);
+    await expectNoRows(authed, "academy_quiz_keys", "authenticated user");
+    await expectNoRows(anonClient(), "academy_resources", "anon");
+    const writes = await Promise.all([
+      authed.from("academy_resources").insert({ kind: "blog", title: "hack", url: "https://example.com/hack" }),
+      authed.from("academy_resources").update({ title: "hacked" }).eq("id", pubId).select("id"),
+      authed.from("academy_completions").insert({ user_id: userId, resource_id: pubId }),
+      authed.from("academy_quiz_attempts").insert({ user_id: userId, resource_id: pubId, correct: 5, passed: true }),
+      authed.from("academy_quiz_keys").insert({ resource_id: draftId, answer_key: {} }),
+    ]);
+    const { data: stillTitle } = await admin.from("academy_resources").select("title").eq("id", pubId).single();
+    const { count: myDone } = await admin.from("academy_completions").select("user_id", { count: "exact", head: true }).eq("user_id", userId);
+    if (writes.every((w) => w.error || (Array.isArray(w.data) && w.data.length === 0)) && stillTitle?.title === ACADEMY_SENTINEL && !myDone) {
+      pass("a user cannot write Academy resources, keys, completions or quiz tries");
+    } else {
+      fail("a user COULD write to an Academy table");
+    }
+    const unpublishable = await admin.from("academy_resources").update({ status: "published" }).eq("id", draftId);
+    if (unpublishable.error) pass("a resource can't be published without 5 questions");
+    else fail("a resource WAS published without a quiz");
+
+    const { error: selfEditorErr } = await authed.from("profiles").update({ is_academy_editor: true }).eq("id", userId);
+    const { error: userEditorRpc } = await authed.rpc("set_user_academy_editor", { p_user: userId, p_value: true, p_actor: userId });
+    const editorNotAdmin = await admin.rpc("set_user_academy_editor", { p_user: userId, p_value: true, p_actor: userId });
+    const { data: notEditor } = await admin.from("profiles").select("is_academy_editor").eq("id", userId).single();
+    if (selfEditorErr && userEditorRpc && editorNotAdmin.error && notEditor?.is_academy_editor === false) {
+      pass("a user can't make themselves an Academy editor, and set_user_academy_editor needs an admin actor");
+    } else {
+      fail("the Academy editor flag COULD be set by a non-admin");
+    }
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const editorOn = await admin.rpc("set_user_academy_editor", { p_user: userId, p_value: true, p_actor: userId });
+    const editorAgain = await admin.rpc("set_user_academy_editor", { p_user: userId, p_value: true, p_actor: userId });
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    const { data: editorAudit } = await admin.from("profile_flag_audit").select("old_value,new_value").eq("profile_id", userId).eq("field", "is_academy_editor");
+    if (editorOn.data === true && editorAgain.data === false && editorAudit?.length === 1 && editorAudit[0].new_value === true) {
+      pass("set_user_academy_editor sets the flag and writes one audit row (none for a no-op)");
+    } else {
+      fail(`set_user_academy_editor: ${editorOn.error?.message ?? JSON.stringify({ editorAgain: editorAgain.data, editorAudit })}`);
+    }
+    const { data: editorSees } = await authed.from("academy_resources").select("id").in("id", [pubId, draftId]);
+    if (editorSees?.length === 2) pass("an Academy editor also sees drafts");
+    else fail(`an Academy editor sees ${editorSees?.length ?? 0} of the 2 sentinel resources`);
+    await expectNoRows(authed, "academy_quiz_keys", "Academy editor");
+    const editorWrite = await authed.from("academy_resources").update({ title: "hacked" }).eq("id", pubId).select("id");
+    if (editorWrite.error || !editorWrite.data?.length) pass("an Academy editor still can't write resources directly (server actions only)");
+    else fail("an Academy editor COULD write academy_resources directly");
+    await admin.from("profiles").update({ is_academy_editor: false }).eq("id", userId);
+
+    const upload = await authed.storage.from("academy").upload(`img/${randomBytes(4).toString("hex")}.png`, new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { contentType: "image/png" });
+    if (upload.error) pass(`a user cannot upload to the academy bucket (${upload.error.message})`);
+    else fail("a user COULD upload to the academy bucket");
+    const { data: bucket } = await admin.storage.getBucket("academy");
+    if (bucket?.public) pass("the academy bucket is public (thumbnails and covers)");
+    else fail(`the academy bucket: ${JSON.stringify(bucket)}`);
+
+    await admin.from("academy_completions").insert([
+      { user_id: userId, resource_id: pubId, is_imported: true },
+      { user_id: userId, resource_id: draftId },
+    ]);
+    const { data: myCompletions } = await authed.from("academy_completions").select("resource_id");
+    if (myCompletions?.length === 2) pass("a user reads their own completions");
+    else fail(`a user's completions: ${JSON.stringify(myCompletions)}`);
+    const teamRefused = await authed.rpc("team_academy");
+    if (teamRefused.error?.code === "42501") pass("team_academy refuses someone who is neither lead nor admin (42501)");
+    else fail("a non-lead COULD call team_academy");
+    await admin.from("profiles").update({ is_lead: true }).eq("id", userId);
+    const team = await authed.rpc("team_academy");
+    await admin.from("profiles").update({ is_lead: false }).eq("id", userId);
+    const myTeamRows = (team.data ?? []).filter((r) => r.user_id === userId);
+    const teamKeys = Object.keys(team.data?.[0] ?? {}).sort().join();
+    if (!team.error && myTeamRows.length === 1 && myTeamRows[0].resource_id === pubId && teamKeys === "completed_at,is_imported,resource_id,user_id") {
+      pass("a lead's team_academy returns completion columns only, for published resources only");
+    } else {
+      fail(`team_academy: ${team.error?.message ?? JSON.stringify({ myTeamRows, teamKeys })}`);
+    }
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -603,6 +709,12 @@ async function main() {
       if (outsider.user) await admin.auth.admin.deleteUser(outsider.user.id);
     }
   } finally {
+    const { data: acadLeft } = await admin.from("academy_resources").select("id").like("title", `${ACADEMY_SENTINEL}%`);
+    const acadIds = (acadLeft ?? []).map((r) => r.id);
+    if (acadIds.length) {
+      await admin.from("academy_completions").delete().in("resource_id", acadIds);
+      await admin.from("academy_resources").delete().in("id", acadIds); // keys and tries cascade
+    }
     await admin.from("staff_titles").delete().in("email", [SENTINEL_TITLE_EMAIL, SENTINEL_TITLE_RENAMED]);
     await admin.from("staff_audit").delete().in("email", [SENTINEL_TITLE_EMAIL, SENTINEL_TITLE_RENAMED, email.toLowerCase()]);
     await admin.from("submission_import_audit").delete().eq("challenge_slug", SENTINEL_CHALLENGE);

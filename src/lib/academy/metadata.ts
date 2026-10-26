@@ -126,6 +126,23 @@ function meta(html: string, keys: string[]): string | null {
   return null;
 }
 
+/**
+ * Drop a site-name suffix from a page title: "Post title • UXDA | Financial UX Design" on theuxda.com → "Post title".
+ * The title is cut at the first " • ", " | ", " – " or " — " whose following part names the site (a word of 3+
+ * letters that is part of the host name); titles without such a part are left alone.
+ */
+export function cleanTitle(title: string, pageUrl: string): string {
+  let host: string;
+  try {
+    host = new URL(pageUrl).hostname.replace(/^www\./, "").split(".").slice(0, -1).join("").toLowerCase();
+  } catch {
+    return title;
+  }
+  const parts = title.split(/\s+[•|–—]\s+/);
+  const cut = parts.findIndex((part, i) => i > 0 && (part.toLowerCase().match(/[a-z]{3,}/g) ?? []).some((w) => host.includes(w)));
+  return cut > 0 ? parts.slice(0, cut).join(" – ").trim() : title;
+}
+
 export type LinkPreview = { title: string | null; description: string | null; imageUrl: string | null };
 
 /** Title, description and picture of a page, from Open Graph / Twitter / plain meta tags. */
@@ -144,7 +161,7 @@ export function parseLinkPreview(html: string, pageUrl: string): LinkPreview {
       imageUrl = null;
     }
   }
-  return { title: title || null, description: description || null, imageUrl };
+  return { title: title ? cleanTitle(title, pageUrl) : null, description: description || null, imageUrl };
 }
 
 /** The readable text of a page: <article> or <main> when there is one, without scripts, styles, nav and markup. */

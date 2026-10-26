@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { cleanBlurb, decodeEntities, extractText, isPrivateAddress, isbnFromUrl, parseLinkPreview, safeFetch, sniffImageType } = await import("./metadata");
+const { cleanBlurb, cleanTitle, decodeEntities, extractText, isPrivateAddress, isbnFromUrl, parseLinkPreview, safeFetch, sniffImageType } = await import("./metadata");
 
 // The head of a theuxda.com blog post, trimmed (the tags the preview reads).
 const BLOG_HEAD = `<!doctype html><html><head>
@@ -15,7 +15,7 @@ const BLOG_HEAD = `<!doctype html><html><head>
 describe("parseLinkPreview", () => {
   it("reads Open Graph title, description and picture, resolving a relative picture URL", () => {
     expect(parseLinkPreview(BLOG_HEAD, "https://theuxda.com/blog/banking-ux-beyond-mobile-app")).toEqual({
-      title: "Bank-as-a-Product: Mobile Banking App Redesign is Not Enough • UXDA | Financial UX Design",
+      title: "Bank-as-a-Product: Mobile Banking App Redesign is Not Enough",
       description: "Discover why a best-in-class mobile app isn’t enough to deliver great banking UX & more.",
       imageUrl: "https://theuxda.com/storage/app/media/blog/hero.png",
     });
@@ -28,6 +28,15 @@ describe("parseLinkPreview", () => {
 
   it("returns nulls for a page without any", () => {
     expect(parseLinkPreview("<html></html>", "https://example.com/")).toEqual({ title: null, description: null, imageUrl: null });
+  });
+});
+
+describe("cleanTitle", () => {
+  it("drops a suffix that names the site, and leaves other titles alone", () => {
+    expect(cleanTitle("Post • UXDA | Financial UX Design", "https://theuxda.com/blog/x")).toBe("Post");
+    expect(cleanTitle("Episode 12 | The UXDA Podcast", "https://podcasts.theuxda.com/12")).toBe("Episode 12");
+    expect(cleanTitle("Design | Research | Delivery", "https://example.com/")).toBe("Design | Research | Delivery");
+    expect(cleanTitle("Banking-as-a-Service – what it means", "https://theuxda.com/")).toBe("Banking-as-a-Service – what it means");
   });
 });
 
