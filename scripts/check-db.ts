@@ -612,7 +612,8 @@ async function main() {
       .from("academy_resources")
       .insert([
         { kind: "blog", title: ACADEMY_SENTINEL, url: ACADEMY_SENTINEL_URL, status: "published", questions: quizQs },
-        { kind: "book", title: `${ACADEMY_SENTINEL} draft`, status: "draft" },
+        // Same keys in both rows: in a bulk insert a key missing from one row is sent as null, not its default.
+        { kind: "book", title: `${ACADEMY_SENTINEL} draft`, url: null, status: "draft", questions: [] },
       ])
       .select("id,status");
     if (acadErr || acad?.length !== 2) throw new Error(`academy sentinels: ${acadErr?.message}`);
@@ -680,7 +681,7 @@ async function main() {
 
     await admin.from("academy_completions").insert([
       { user_id: userId, resource_id: pubId, is_imported: true },
-      { user_id: userId, resource_id: draftId },
+      { user_id: userId, resource_id: draftId, is_imported: false },
     ]);
     const { data: myCompletions } = await authed.from("academy_completions").select("resource_id");
     if (myCompletions?.length === 2) pass("a user reads their own completions");
