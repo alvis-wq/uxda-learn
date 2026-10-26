@@ -972,4 +972,4 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Data only through `team_members()` / `team_submissions()` / `team_acknowledgements()` (security definer, 42501 for anyone else, no test attempts, no answers/feedback/emails). RLS unchanged.
 - Nav: Team icon for leads who aren't admins; admins get "Team progress" in the admin menu (keeps the nav at five icons).
 - Pure builder `src/lib/team/progress.ts` + unit tests; `canSeeTeam` + test; `setUserLead` tests; `scripts/check-db.ts` Leads section; `e2e/leads.spec.ts`.
-- Checks: `npm run check` ✅ · `npm run build` ✅. The matrix with sample data on a temporary page (removed): axe clean, no page overflow at 1280/375 in light and dark. **Needs `npm run db:push` + `npm run db:types`**, then `npm run db:check`. e2e not run: no test project.
+- Checks: `npm run check` ✅ · `npm run build` ✅. The matrix with sample data on a temporary page (removed): axe clean, no page overflow at 1280/375 in light and dark. Migration applied by Alvis (`db:push`), types regenerated (identical to the hand edits), `db:check` all passed (Leads section included). e2e not run: no test project.
