@@ -171,7 +171,7 @@ test.describe("home page", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     }
     // Below 1024px the nav is icon-only (its links keep their accessible names).
-    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Leaderboard" }).locator("span")).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Top" }).locator("span")).toBeHidden();
   });
 
   test("required challenges and categories are cards: Start CTA, meta row, one link per card", async ({ page }) => {

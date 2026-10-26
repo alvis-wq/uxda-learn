@@ -8,6 +8,7 @@ import { buildTeamMatrix } from "@/lib/team/progress";
 import { isTrack, SELECTABLE_TRACKS, type Track } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { TeamMatrixView } from "./team-matrix";
+import { TeamSections } from "./team-sections";
 
 export const metadata: Metadata = { title: "Team progress · UXDA Learn" };
 
@@ -76,6 +77,7 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
         description="Who has finished which challenge, by category. Scores are the best published attempt; a path is one column, done when every milestone has a score."
       />
 
+      <TeamSections current="challenges" />
       <div className="mb-6 grid gap-3">
         <FilterPills label="Filter by track" items={trackFilters} />
         {matrix.categories.length > 1 && <FilterPills label="Filter by category" items={categoryFilters} />}

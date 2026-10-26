@@ -11,13 +11,17 @@ test.describe("main navigation (RubberNav)", () => {
   test("real links, active item follows the route, Admin only for admins", async ({ page }) => {
     await loginAs(page, "strategist");
     const nav = mainNav(page);
-    await expect(nav.getByRole("link")).toHaveCount(4); // Home, Leaderboard, Heroes, Profile
+    await expect(nav.getByRole("link")).toHaveCount(5); // Home, Top, Academy, Heroes, Profile
     await expect(nav.getByRole("link", { name: "Admin" })).toHaveCount(0);
     await expect(nav.locator("a[aria-current=page]")).toHaveAttribute("aria-label", "Home");
 
-    await nav.getByRole("link", { name: "Leaderboard" }).click();
+    await nav.getByRole("link", { name: "Top" }).click();
     await expect(page).toHaveURL(/\/leaderboard$/);
-    await expect(nav.locator("a[aria-current=page]")).toHaveAttribute("aria-label", "Leaderboard");
+    await expect(nav.locator("a[aria-current=page]")).toHaveAttribute("aria-label", "Top");
+    await expect(nav.locator("a[aria-current=page]")).toHaveCount(1);
+    await nav.getByRole("link", { name: "Academy" }).click();
+    await expect(page).toHaveURL(/\/academy$/);
+    await expect(nav.locator("a[aria-current=page]")).toHaveAttribute("aria-label", "Academy");
     await expect(nav.locator("a[aria-current=page]")).toHaveCount(1);
     await nav.getByRole("link", { name: "Heroes" }).click();
     await expect(page).toHaveURL(/\/heroes$/);
@@ -38,7 +42,7 @@ test.describe("main navigation (RubberNav)", () => {
     await page.keyboard.press("ArrowRight");
     await expect(page).toHaveURL(/\/$/);
     await page.keyboard.press("Tab");
-    await expect(nav.getByRole("link", { name: "Leaderboard" })).toBeFocused();
+    await expect(nav.getByRole("link", { name: "Top" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/leaderboard$/);
   });
@@ -47,13 +51,13 @@ test.describe("main navigation (RubberNav)", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await loginAs(page, "admin");
     const nav = mainNav(page);
-    for (const name of ["Home", "Leaderboard", "Heroes", "Profile", "Admin"]) {
+    for (const name of ["Home", "Top", "Academy", "Heroes", "Profile", "Admin"]) {
       await expect(nav.getByRole("link", { name })).toBeVisible();
       await expect(nav.getByRole("link", { name }).locator("span")).toBeHidden(); // the text label is hidden
     }
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    // All five (admin) icons fit between the logo and the actions, at 375px and 320px.
+    // All six (admin) icons fit between the logo and the actions, at 375px and 320px.
     for (const width of [375, 320]) {
       await page.setViewportSize({ width, height: 812 });
       const navBox = (await nav.boundingBox())!;
@@ -70,7 +74,7 @@ test.describe("page entry animation", () => {
 
   test("runs on route change without leaving styles behind or touching the header", async ({ page }) => {
     await loginAs(page, "strategist");
-    await mainNav(page).getByRole("link", { name: "Leaderboard" }).click();
+    await mainNav(page).getByRole("link", { name: "Top" }).click();
     await expect(page).toHaveURL(/\/leaderboard$/);
     await expect(page.getByRole("heading", { name: "UXDA Learn Leaderboard" })).toBeVisible();
 
@@ -105,7 +109,7 @@ test.describe("page entry animation", () => {
     await expect(page.getByRole("heading", { name: "Welcome, Test" })).toBeVisible();
     await page.waitForLoadState("networkidle");
     const nav = mainNav(page);
-    await nav.getByRole("link", { name: "Leaderboard" }).click();
+    await nav.getByRole("link", { name: "Top" }).click();
     await expect(page).toHaveURL(/\/leaderboard$/);
     await nav.getByRole("link", { name: "Profile" }).click();
     await expect(page).toHaveURL(/\/profile$/);

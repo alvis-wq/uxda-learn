@@ -5,6 +5,7 @@ import { UxdaLockup } from "@/components/uxda-lockup";
 import { RubberNav } from "@/components/rubber-nav/RubberNav";
 import { StickyHeader } from "@/components/sticky-header";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UxdaX } from "@/components/uxda-x";
 import { canSeeTeam } from "@/lib/auth/roles";
 import type { Profile } from "@/lib/auth/session";
 
@@ -31,10 +32,12 @@ export function SiteHeader({ profile }: { profile: Profile }) {
           <RubberNav
             items={[
               { href: "/", label: "Home", icon: <Home aria-hidden />, exact: true },
-              { href: "/leaderboard", label: "Leaderboard", icon: <Trophy aria-hidden /> },
+              { href: "/leaderboard", label: "Top", icon: <Trophy aria-hidden /> },
+              // Centre slot, everyone. The UXDA X; `special` is the hook for its own look (styled later).
+              { href: "/academy", label: "Academy", icon: <UxdaX />, special: true },
               { href: "/heroes", label: "Heroes", icon: <Sparkles aria-hidden /> },
               { href: "/profile", label: "Profile", icon: <UserRound aria-hidden /> },
-              // Five icons at most (the narrow-phone sizes in RubberNav.css): admins reach Team from the admin menu.
+              // Six icons at most (the narrow-phone sizes in RubberNav.css): admins reach Team from the admin menu.
               ...(profile.is_admin
                 ? [{ href: "/admin", label: "Admin", icon: <Shield aria-hidden /> }]
                 : canSeeTeam(profile)

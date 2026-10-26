@@ -10,6 +10,8 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
+      // 32px on the narrowest phones, so the header's six nav icons still fit between the logo and the actions.
+      className="max-[340px]:size-8"
       aria-label="Toggle dark mode"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >

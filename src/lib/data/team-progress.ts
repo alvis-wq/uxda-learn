@@ -1,6 +1,7 @@
 import "server-only";
 import { requireLead } from "@/lib/auth/lead";
 import { createClient } from "@/lib/supabase/server";
+import type { TeamAcademyInput } from "@/lib/team/academy";
 import type { TeamInput } from "@/lib/team/progress";
 
 /**
@@ -40,5 +41,27 @@ export async function loadTeamInput(): Promise<TeamInput> {
       max_score: Number(s.max_score),
     })),
     acknowledgements: acknowledgements.data ?? [],
+  };
+}
+
+/**
+ * The Team page's Academy view: people from team_members(), published resources through RLS, and completions only
+ * through team_academy() (which refuses anyone who isn't a lead or an admin).
+ */
+export async function loadTeamAcademyInput(): Promise<TeamAcademyInput> {
+  await requireLead();
+  const supabase = await createClient();
+  const [members, resources, completions] = await Promise.all([
+    supabase.rpc("team_members"),
+    supabase.from("academy_resources").select("id,kind,title,sort_key").eq("status", "published"),
+    supabase.rpc("team_academy"),
+  ]);
+  for (const res of [members, resources, completions]) {
+    if (res.error) throw new Error(`Couldn't load Academy progress: ${res.error.message}`);
+  }
+  return {
+    members: (members.data ?? []).map((m) => ({ id: m.id, full_name: m.full_name ?? null })),
+    resources: resources.data ?? [],
+    completions: completions.data ?? [],
   };
 }

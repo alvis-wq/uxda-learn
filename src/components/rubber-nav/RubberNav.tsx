@@ -19,7 +19,8 @@ import { animate, useMotionValue, useReducedMotion } from 'motion/react';
 
 import './RubberNav.css';
 
-export type RubberNavItem = { href: string; label: string; icon: ReactNode; exact?: boolean };
+/** `special`: an item with a look of its own (the Academy's centre slot), via `.rubber-nav__item--special`. */
+export type RubberNavItem = { href: string; label: string; icon: ReactNode; exact?: boolean; special?: boolean };
 
 type Slot = { l: number; r: number };
 
@@ -203,7 +204,7 @@ export function RubberNav({ items, 'aria-label': ariaLabel = 'Main' }: { items: 
           draggable={false}
           aria-label={item.label}
           aria-current={i === index ? 'page' : undefined}
-          className="rubber-nav__item"
+          className={item.special ? 'rubber-nav__item rubber-nav__item--special' : 'rubber-nav__item'}
         >
           <ItemContent item={item} />
         </Link>

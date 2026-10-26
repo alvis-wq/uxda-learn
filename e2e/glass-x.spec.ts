@@ -310,7 +310,7 @@ test.describe("post-sign-in loader (motion)", () => {
     await page.reload();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(loader(page)).toHaveCount(0);
-    await page.getByRole("link", { name: "Leaderboard" }).first().click();
+    await page.getByRole("link", { name: "Top" }).first().click();
     await expect(page).toHaveURL(/\/leaderboard/);
     await page.getByRole("link", { name: "Home" }).first().click();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
