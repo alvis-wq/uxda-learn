@@ -57,6 +57,12 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   Admins see it too, without the flag. Read-only. RLS isn't widened for leads: the data comes only from the
   `team_members()` / `team_submissions()` / `team_acknowledgements()` functions, which refuse anyone else and return no
   answers, feedback, images or emails.
+- UXDA Academy (`/academy`): blog posts, podcast episodes and books in the database (`academy_resources`), not
+  /content. Done = pass the resource's 5-question quiz (4 of 5), graded on the server; answers in `academy_quiz_keys`
+  (service role only). Separate from points and the leaderboard. Academy editors (`profiles.is_academy_editor`,
+  switched in Admin → Users, audited) and admins manage it (Admin → Academy; editors at `/academy/manage`); Claude
+  drafts quizzes (`ANTHROPIC_API_KEY`, server-only), an editor checks them. Leads/admins see progress via
+  `team_academy()`. Every outside fetch goes through `safeFetch` (SSRF guard).
 - Never delete challenges that have submissions — archive them. Content changes bump `version`.
 - Content files own content (brief, questions, rubric, points, type, audiences). The admin panel
   owns `status`, `required_for`, `due_at`: files set them only on creation, content:sync never

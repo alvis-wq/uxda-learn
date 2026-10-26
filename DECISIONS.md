@@ -382,3 +382,18 @@
 - Team matrix: a path is one column (done when every milestone the person can see has a score, else "x/y"), milestones never get their own; columns nobody shown can see are dropped; categories in sort order, columns by difficulty then title like the category page.
 - Admins reach Team from the admin menu ("Team progress"), not a sixth nav icon — the narrow-phone nav is sized for five; leads who aren't admins get a Team icon in Admin's place.
 - The 403 page no longer says "admins only" — /team returns it too.
+- Academy resources live in the database, not /content — editors add them in the app from a link, several a week, without a deploy or content:sync.
+- Academy quizzes stored like challenges (public questions on the resource, answers in a service-role-only keys table) — the same guarantee that the key never reaches a client, and the shared grader.
+- Academy quiz = exactly 5 single-choice questions with 4 options, pass at 4 — the shape Alvis asked for; options are shuffled when saved so the stored order never gives the answer away.
+- Failed Academy tries show which questions were wrong, not the answers, and allow unlimited retries — it's a reading check, not an exam; every try is recorded.
+- Academy is separate from points and the leaderboard — reading and listening shouldn't outweigh challenge work; Academy has its own counts and a Team view.
+- Claude drafts quizzes in the app (claude-opus-5-5, structured output checked again with Zod), an editor checks them — editors aren't the people who run Claude Code, and new posts should be completable the day they're added. Bulk-imported quizzes go live unchecked, flagged "To check".
+- Academy editor is a flag like Lead/Tester (audited in profile_flag_audit) — same switch, audit and refusal pattern; admins can always manage the Academy.
+- Admins manage the Academy in Admin → Academy; editors who aren't admins use /academy/manage — the same shared pages, because /admin is admin-only by design.
+- Academy writes go through server actions with the service role, no client write policies — same rule as submissions; RLS only lets editors read drafts.
+- Thumbnails and covers are copied into a public `academy` bucket, not hotlinked — other sites' images can change or vanish, and the next/image optimiser stays limited to our own artwork (rendered `unoptimized`).
+- Link details read from Open Graph tags with a small parser, book details from Open Library — no extra dependency; Google Books' keyless quota was exhausted when tried.
+- Every outside fetch is SSRF-guarded (http(s) only, no private/loopback/link-local address on any redirect hop, timeout, size cap) — editors are staff, but the server shouldn't fetch whatever it's handed.
+- Academy tabs and filters are links with URL state, like the leaderboard groups — server-rendered, shareable, no client state.
+- Nav: Academy is the centre slot for everyone; "Leaderboard" shortened to "Top"; six icons fit by narrowing slots to 26/24px (still ≥ 24px targets) and the theme toggle to 32px under 340px.
+- Imported spreadsheet reads become completions flagged is_imported (no quiz) and don't count as "last completed" on the Team view — they happened before the app.
