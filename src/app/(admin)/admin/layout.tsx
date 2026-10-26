@@ -16,6 +16,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <NavLink href="/team" label="Team progress" icon={null} showLabel />
           <NavLink href="/admin/acknowledgements" label="Acknowledgements" icon={null} showLabel />
           <NavLink href="/admin/content" label="Content" icon={null} showLabel />
+          <NavLink href="/admin/academy" label="Academy" icon={null} showLabel />
         </nav>
         <Button asChild variant="outline" size="sm">
           {/* Plain <a>: the route handler returns a file download. */}
