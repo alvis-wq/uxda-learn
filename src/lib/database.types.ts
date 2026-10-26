@@ -575,6 +575,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_admin: boolean
+          is_lead: boolean
           is_tester: boolean
           show_on_leaderboard: boolean
           track: Database["public"]["Enums"]["track"] | null
@@ -586,6 +587,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_admin?: boolean
+          is_lead?: boolean
           is_tester?: boolean
           show_on_leaderboard?: boolean
           track?: Database["public"]["Enums"]["track"] | null
@@ -597,6 +599,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_admin?: boolean
+          is_lead?: boolean
           is_tester?: boolean
           show_on_leaderboard?: boolean
           track?: Database["public"]["Enums"]["track"] | null
@@ -920,6 +923,7 @@ export type Database = {
         Returns: string
       }
       is_admin: { Args: never; Returns: boolean }
+      is_lead: { Args: never; Returns: boolean }
       is_tester: { Args: never; Returns: boolean }
       move_featured: {
         Args: {
@@ -989,6 +993,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_user_lead: {
+        Args: { p_actor: string; p_user: string; p_value: boolean }
+        Returns: boolean
+      }
       set_user_tester: {
         Args: { p_actor: string; p_user: string; p_value: boolean }
         Returns: boolean
@@ -1000,6 +1008,35 @@ export type Database = {
           p_user: string
         }
         Returns: boolean
+      }
+      team_acknowledgements: {
+        Args: never
+        Returns: {
+          acknowledged_at: string
+          challenge_slug: string
+          user_id: string
+        }[]
+      }
+      team_members: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          track: Database["public"]["Enums"]["track"]
+        }[]
+      }
+      team_submissions: {
+        Args: never
+        Returns: {
+          attempt: number
+          challenge_slug: string
+          final_score: number
+          max_score: number
+          published_at: string
+          status: Database["public"]["Enums"]["submission_status"]
+          user_id: string
+        }[]
       }
       undo_import: {
         Args: { p_actor: string; p_source: string; p_submission: string }

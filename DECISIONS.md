@@ -375,3 +375,10 @@
 - Hero card text repeated in a screen-reader-only block — the card is role="button" (TiltedCard's flip), whose content isn't read on its own, so both sides stay readable whatever the flip state.
 - Hero avatar crop stored per hero in heroes.yaml (`avatar` face box) — face position and size vary too much between portraits for one fixed crop; optional, with a default.
 - Narrow-phone nav slots shrink (32 → 28 → 25px wide, still ≥ 24px targets) rather than dropping an item — five icons must fit between logo and actions down to 320px.
+- Lead is a flag like Tester (`profiles.is_lead`, set_user_lead(), audited in profile_flag_audit) — the same switch, audit and refusal pattern; admins can always see the Team page without it.
+- Leads read team progress through three security definer functions (team_members / team_submissions / team_acknowledgements), not wider RLS — widening submissions_select or profiles_select would hand a lead everyone's answers, feedback and emails straight from the API.
+- The Team page ignores show_on_leaderboard — that setting hides people from their peers on the leaderboard, not from the people who look after the team.
+- No email on the Team page — name and track identify people; team_members() doesn't return it.
+- Team matrix: a path is one column (done when every milestone the person can see has a score, else "x/y"), milestones never get their own; columns nobody shown can see are dropped; categories in sort order, columns by difficulty then title like the category page.
+- Admins reach Team from the admin menu ("Team progress"), not a sixth nav icon — the narrow-phone nav is sized for five; leads who aren't admins get a Team icon in Admin's place.
+- The 403 page no longer says "admins only" — /team returns it too.

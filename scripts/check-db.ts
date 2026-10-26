@@ -19,7 +19,10 @@
  *  9. Paths: drafts only for testers whose track can see them; users can't write paths; set_path_status audits and can
  *     publish the milestones with the path; import_submission needs an admin actor and a published path, numbers the
  *     attempt, refuses past full points and is audited; undo_import removes it; users can't call either.
- * 10. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
+ * 10. Leads: only a lead (or admin) can call the team_* functions, which return status/score columns only and no test
+ *     attempts; users can't flag themselves; set_user_lead needs an admin actor and audits; RLS on submissions and
+ *     profiles is unchanged for a lead.
+ * 11. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
  *     rename_staff_email and set_user_track need an admin actor (seed excepted), are audited in staff_audit (none for a
  *     no-op), and users can't call them or read the audit.
  */
@@ -332,6 +335,63 @@ async function main() {
     const mine = board?.find((r) => r.user_id === userId);
     if (mine && Number(mine.total_score) === 1 && mine.completed === 1) pass("the leaderboard counts the real attempts and not the test ones");
     else fail(`leaderboard row: ${JSON.stringify(mine)}`);
+
+    console.log("Leads");
+    // The temp user has 3 real and 4 test attempts on the published sentinel here; not an admin, not a lead.
+    const teamCalls = () => Promise.all([authed.rpc("team_members"), authed.rpc("team_submissions"), authed.rpc("team_acknowledgements")]);
+    const refused = (await teamCalls()).every((r) => r.error?.code === "42501");
+    if (refused) pass("a user who is neither lead nor admin cannot call the team_* functions (42501)");
+    else fail("a non-lead COULD call a team_* function");
+    const { error: selfLeadErr } = await authed.from("profiles").update({ is_lead: true }).eq("id", userId);
+    const { data: notLead } = await admin.from("profiles").select("is_lead").eq("id", userId).single();
+    if (selfLeadErr && notLead?.is_lead === false) pass("user cannot make themselves a lead");
+    else fail("user COULD set is_lead on their profile");
+    const { error: userLeadRpc } = await authed.rpc("set_user_lead", { p_user: userId, p_value: true, p_actor: userId });
+    if (userLeadRpc) pass(`user cannot call set_user_lead (${userLeadRpc.code ?? userLeadRpc.message})`);
+    else fail("user COULD call set_user_lead");
+    const leadNotAdmin = await admin.rpc("set_user_lead", { p_user: userId, p_value: true, p_actor: userId });
+    if (leadNotAdmin.error) pass("set_user_lead refuses an actor who is not an admin");
+    else fail("set_user_lead ACCEPTED a non-admin actor");
+    await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
+    const leadOn = await admin.rpc("set_user_lead", { p_user: userId, p_value: true, p_actor: userId });
+    const leadAgain = await admin.rpc("set_user_lead", { p_user: userId, p_value: true, p_actor: userId });
+    await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
+    const { data: leadAudit } = await admin
+      .from("profile_flag_audit")
+      .select("old_value,new_value,changed_by")
+      .eq("profile_id", userId)
+      .eq("field", "is_lead");
+    if (leadOn.data === true && leadAgain.data === false && leadAudit?.length === 1 && leadAudit[0].old_value === false &&
+        leadAudit[0].new_value === true && leadAudit[0].changed_by === userId) {
+      pass("set_user_lead sets the flag and writes one audit row (none for a no-op)");
+    } else {
+      fail(`set_user_lead: ${leadOn.error?.message ?? JSON.stringify({ leadOn: leadOn.data, leadAgain: leadAgain.data, leadAudit })}`);
+    }
+    const [members, teamSubs, teamAcks] = await teamCalls();
+    const myTeamSubs = (teamSubs.data ?? []).filter((r) => r.user_id === userId && r.challenge_slug === SENTINEL_CHALLENGE);
+    if (!members.error && !teamSubs.error && !teamAcks.error && members.data?.some((m) => m.id === userId) && myTeamSubs.length === 3) {
+      pass("a lead can call the team_* functions, and team_submissions leaves out test attempts");
+    } else {
+      fail(`a lead's team_* calls: ${members.error?.message ?? teamSubs.error?.message ?? teamAcks.error?.message ?? JSON.stringify({ myTeamSubs })}`);
+    }
+    const memberKeys = Object.keys(members.data?.[0] ?? {}).sort().join();
+    const subKeys = Object.keys(teamSubs.data?.[0] ?? {}).sort().join();
+    if (memberKeys === "avatar_url,full_name,id,track" && subKeys === "attempt,challenge_slug,final_score,max_score,published_at,status,user_id") {
+      pass("the team_* functions return only status and score columns (no email, answers or feedback)");
+    } else {
+      fail(`team_* columns: ${JSON.stringify({ memberKeys, subKeys })}`);
+    }
+    const { data: leadSubs } = await authed.from("submissions").select("user_id");
+    const { data: leadProfiles } = await authed.from("profiles").select("id");
+    if (leadSubs?.every((r) => r.user_id === userId) && leadProfiles?.every((r) => r.id === userId)) {
+      pass("a lead still reads only their own submissions and profile directly (RLS unchanged)");
+    } else {
+      fail("a lead CAN READ other people's submissions or profiles directly");
+    }
+    await admin.from("profiles").update({ is_lead: false }).eq("id", userId);
+    if ((await teamCalls()).every((r) => r.error?.code === "42501")) pass("with the lead flag off again, the team_* functions refuse");
+    else fail("team_* functions STILL ANSWER after the lead flag was turned off");
+
     await admin.from("submissions").delete().eq("challenge_slug", SENTINEL_CHALLENGE);
     const feedbackWrite = await authed.from("challenge_feedback").insert({ challenge_slug: SENTINEL_CHALLENGE, user_id: userId, body: "hi" });
     if (feedbackWrite.error) pass(`user cannot write feedback directly (${feedbackWrite.error.code ?? feedbackWrite.error.message})`);

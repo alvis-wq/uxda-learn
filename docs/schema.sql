@@ -26,6 +26,9 @@ create table profiles (
   is_admin boolean not null default false,
   -- Can see and take DRAFT challenges their track can see (RLS: challenges_select); service role sets it, audited.
   is_tester boolean not null default false,
+  -- Can see the Team page (everyone's status + best score per challenge) via the team_* functions; admins can too
+  -- without it. Service role sets it, audited. No RLS is widened for it.
+  is_lead boolean not null default false,
   show_on_leaderboard boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -244,11 +247,12 @@ create table challenge_settings_audit (
 );
 create index challenge_settings_audit_slug_idx on challenge_settings_audit (challenge_slug, changed_at desc);
 
--- Who changed a user's flag (today: the tester switch on Admin → Users). Written only by set_user_tester().
+-- Who changed a user's flag (the tester and lead switches on Admin → Users). Written only by set_user_tester() /
+-- set_user_lead().
 create table profile_flag_audit (
   id bigint generated always as identity primary key,
   profile_id uuid not null references profiles(id) on delete cascade,
-  field text not null check (field in ('is_tester')),
+  field text not null check (field in ('is_tester', 'is_lead')),
   old_value boolean,
   new_value boolean not null,
   changed_by uuid references profiles(id) on delete set null,
@@ -330,6 +334,11 @@ language sql stable security definer set search_path = public as $$
   select coalesce((select is_tester from profiles where id = auth.uid()), false);
 $$;
 
+create or replace function public.is_lead() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select is_lead from profiles where id = auth.uid()), false);
+$$;
+
 -- Does the signed-in user's track appear in this audience list ('all' = everyone)?
 create or replace function public.my_track_sees(a audience[]) returns boolean
 language sql stable security definer set search_path = public as $$
@@ -394,6 +403,17 @@ $$;
 -- No-op (returns false, no audit row) when the value doesn't change. Service role only.
 -- Full body: supabase/migrations/20261014100000_testers.sql
 -- function public.set_user_tester(p_user uuid, p_value boolean, p_actor uuid) returns boolean
+
+-- Sets profiles.is_lead the same way (actor must be an admin, audited, no-op returns false). Service role only.
+-- Full body: supabase/migrations/20261026090000_leads.sql
+-- function public.set_user_lead(p_user uuid, p_value boolean, p_actor uuid) returns boolean
+
+-- Team progress for the Team page. Each raises 42501 unless the caller is a lead or an admin, and returns only these
+-- columns (no answers, feedback, images or email). Callable by authenticated. Bodies: 20261026090000_leads.sql.
+-- team_members() -> (id, full_name, avatar_url, track): every onboarded profile, show_on_leaderboard ignored.
+-- team_submissions() -> (user_id, challenge_slug, attempt, status, final_score, max_score, published_at): real
+--   attempts only (not is_test).
+-- team_acknowledgements() -> (user_id, challenge_slug, acknowledged_at).
 
 -- Staff titles and tracks. Full bodies: supabase/migrations/20261018090000_staff_titles.sql. All service role only; each
 -- writes a staff_audit row and is a no-op (returns false, no audit row) when nothing changes.
@@ -490,7 +510,7 @@ create policy challenge_settings_audit_select on challenge_settings_audit for se
 -- No write policies or grants: written only by set_challenge_setting() (service role).
 
 create policy profile_flag_audit_select on profile_flag_audit for select to authenticated using (public.is_admin());
--- No write policies or grants: written only by set_user_tester() (service role, actor must be an admin).
+-- No write policies or grants: written only by set_user_tester() / set_user_lead() (service role, actor must be an admin).
 
 create policy challenge_feedback_select on challenge_feedback for select to authenticated using (public.is_admin());
 -- No write policies or grants: written by a server action (service role) for testers on a draft they can see.

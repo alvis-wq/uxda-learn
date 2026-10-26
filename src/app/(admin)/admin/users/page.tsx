@@ -8,7 +8,7 @@ import { notSignedIn, titleIndex } from "@/lib/staff-titles";
 import { createClient } from "@/lib/supabase/server";
 import { summarizeScores } from "@/lib/submissions/rules";
 import { PendingStaffRow, TitleField } from "./title-controls";
-import { AdminSwitch, TesterSwitch, TrackSelect } from "./user-controls";
+import { AdminSwitch, LeadSwitch, TesterSwitch, TrackSelect } from "./user-controls";
 
 export const metadata: Metadata = { title: "Users · Admin · UXDA Learn" };
 
@@ -44,6 +44,7 @@ export default async function AdminUsersPage() {
                 <TableHead className="hidden text-right md:table-cell">Completed</TableHead>
                 <TableHead className="hidden text-right md:table-cell">Pending</TableHead>
                 <TableHead>Tester</TableHead>
+                <TableHead>Lead</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead className="hidden md:table-cell">Joined</TableHead>
               </TableRow>
@@ -71,6 +72,9 @@ export default async function AdminUsersPage() {
                     <TableCell className="hidden text-right tabular-nums md:table-cell">{s.pending}</TableCell>
                     <TableCell>
                       <TesterSwitch userId={p.id} name={name} isTester={p.is_tester} />
+                    </TableCell>
+                    <TableCell>
+                      <LeadSwitch userId={p.id} name={name} isLead={p.is_lead} />
                     </TableCell>
                     <TableCell>
                       <AdminSwitch userId={p.id} name={name} isAdmin={p.is_admin} isSelf={p.id === me.id} />

@@ -98,6 +98,24 @@ export async function setUserTester(userId: string, isTester: boolean): Promise<
   return { ok: true };
 }
 
+/**
+ * Turn the lead switch on or off: a lead sees the Team page (everyone's status and best score per challenge). Goes
+ * through set_user_lead(), which updates the profile and writes the audit row in one transaction; the SQL function
+ * refuses a non-admin actor too.
+ */
+export async function setUserLead(userId: string, isLead: boolean): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return NOT_ADMIN;
+  const id = userIdSchema.safeParse(userId);
+  const flag = z.boolean().safeParse(isLead);
+  if (!id.success || !flag.success) return { ok: false, error: "Invalid input." };
+
+  const { error } = await createAdminClient().rpc("set_user_lead", { p_user: id.data, p_value: flag.data, p_actor: admin.id });
+  if (error) return { ok: false, error: "Couldn't update lead access." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 export async function setUserAdmin(userId: string, isAdmin: boolean): Promise<ActionResult> {
   const admin = await getAdminOrNull();
   if (!admin) return NOT_ADMIN;

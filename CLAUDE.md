@@ -52,6 +52,11 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   and never counted — not in points, leaderboard, completed, required progress or exports. Every read of
   `submissions` must filter on `is_test` (a test enforces it). After publishing, the tester starts fresh; only
   admins still see the old test attempts.
+- Leads (`profiles.is_lead`, switched in Admin → Users, audited) see the Team page (`/team`): everyone onboarded as
+  rows, every published challenge and path as columns by category, with status, best score and completion date.
+  Admins see it too, without the flag. Read-only. RLS isn't widened for leads: the data comes only from the
+  `team_members()` / `team_submissions()` / `team_acknowledgements()` functions, which refuse anyone else and return no
+  answers, feedback, images or emails.
 - Never delete challenges that have submissions — archive them. Content changes bump `version`.
 - Content files own content (brief, questions, rubric, points, type, audiences). The admin panel
   owns `status`, `required_for`, `due_at`: files set them only on creation, content:sync never

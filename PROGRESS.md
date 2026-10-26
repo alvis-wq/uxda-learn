@@ -964,3 +964,12 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 - The special top row is gone: all 24 cards in one grid in heroes.yaml order, 4 per row (desktop, row 1 = Alex, Linda, Ernests, Inese as on the team page), 3 (tablet), 2 (mobile). Column-start logic, its comments, the Captain America unit check and the "top row of 2" e2e assertions removed; e2e now checks even rows, file order in row 1 and no offset.
 - Checks: `npm run check` ✅ · `npm run build` ✅.
+
+## Lead role and Team progress (on `main`)
+
+- New role **Lead**: `profiles.is_lead` (migration `20261026090000_leads.sql`), a "Lead" switch on Admin → Users (`setUserLead` → `set_user_lead()`, admin actor only, audited in profile_flag_audit). A lead is read-only and not an admin.
+- `/team` (route group `(lead)`, 403 for everyone but leads and admins): a matrix of everyone onboarded × every published challenge and path, grouped under category headers. Cells: done (best score, e.g. 8/10; a path's milestones x/y), in progress (paths), awaiting review, changes requested, not started, not for their track; a "Done x/y" column right after the name; legend; track and category filters; hover title and screen-reader text per cell with score and completion date. Scrolls sideways inside its box on phones, sticky name column.
+- Data only through `team_members()` / `team_submissions()` / `team_acknowledgements()` (security definer, 42501 for anyone else, no test attempts, no answers/feedback/emails). RLS unchanged.
+- Nav: Team icon for leads who aren't admins; admins get "Team progress" in the admin menu (keeps the nav at five icons).
+- Pure builder `src/lib/team/progress.ts` + unit tests; `canSeeTeam` + test; `setUserLead` tests; `scripts/check-db.ts` Leads section; `e2e/leads.spec.ts`.
+- Checks: `npm run check` ✅ · `npm run build` ✅. The matrix with sample data on a temporary page (removed): axe clean, no page overflow at 1280/375 in light and dark. **Needs `npm run db:push` + `npm run db:types`**, then `npm run db:check`. e2e not run: no test project.

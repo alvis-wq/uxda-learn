@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { SELECTABLE_TRACKS, TRACK_LABEL, isSelectableTrack, isTrack } from "@/lib/tracks";
-import { setUserAdmin, setUserTester, setUserTrack } from "../actions";
+import { setUserAdmin, setUserLead, setUserTester, setUserTrack } from "../actions";
 
 export function TrackSelect({ userId, name, track }: { userId: string; name: string; track: string | null }) {
   const [pending, start] = useTransition();
@@ -95,3 +95,23 @@ export function TesterSwitch({ userId, name, isTester }: { userId: string; name:
   );
 }
 
+/** Leads see the Team page: who has finished which challenge, by category. Admins see it anyway. */
+export function LeadSwitch({ userId, name, isLead }: { userId: string; name: string; isLead: boolean }) {
+  const [pending, start] = useTransition();
+  const [checked, setChecked] = useOptimistic(isLead);
+  return (
+    <Switch
+      checked={checked}
+      disabled={pending}
+      aria-label={`Lead access for ${name}`}
+      onCheckedChange={(next) =>
+        start(async () => {
+          setChecked(next);
+          const res = await setUserLead(userId, next);
+          if (!res.ok) toast.error(res.error);
+          else toast.success(next ? `${name} can now see team progress.` : `${name} can no longer see team progress.`);
+        })
+      }
+    />
+  );
+}
