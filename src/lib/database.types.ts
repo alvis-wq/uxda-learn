@@ -14,6 +14,195 @@ export type Database = {
   }
   public: {
     Tables: {
+      academy_completions: {
+        Row: {
+          completed_at: string
+          is_imported: boolean
+          resource_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          is_imported?: boolean
+          resource_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          is_imported?: boolean
+          resource_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_completions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "academy_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academy_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academy_quiz_attempts: {
+        Row: {
+          correct: number
+          created_at: string
+          id: string
+          passed: boolean
+          resource_id: string
+          user_id: string
+        }
+        Insert: {
+          correct: number
+          created_at?: string
+          id?: string
+          passed: boolean
+          resource_id: string
+          user_id: string
+        }
+        Update: {
+          correct?: number
+          created_at?: string
+          id?: string
+          passed?: boolean
+          resource_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_quiz_attempts_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "academy_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academy_quiz_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academy_quiz_keys: {
+        Row: {
+          answer_key: Json
+          resource_id: string
+        }
+        Insert: {
+          answer_key?: Json
+          resource_id: string
+        }
+        Update: {
+          answer_key?: Json
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_quiz_keys_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: true
+            referencedRelation: "academy_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      academy_resources: {
+        Row: {
+          author: string | null
+          blog_id: string | null
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_path: string | null
+          kind: string
+          number: number | null
+          published_at: string | null
+          questions: Json
+          quiz_reviewed: boolean
+          sort_key: number
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          url: string | null
+        }
+        Insert: {
+          author?: string | null
+          blog_id?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_path?: string | null
+          kind: string
+          number?: number | null
+          published_at?: string | null
+          questions?: Json
+          quiz_reviewed?: boolean
+          sort_key?: number
+          status?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string | null
+        }
+        Update: {
+          author?: string | null
+          blog_id?: string | null
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_path?: string | null
+          kind?: string
+          number?: number | null
+          published_at?: string | null
+          questions?: Json
+          quiz_reviewed?: boolean
+          sort_key?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_resources_blog_id_fkey"
+            columns: ["blog_id"]
+            isOneToOne: true
+            referencedRelation: "academy_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academy_resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academy_resources_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       acknowledgements: {
         Row: {
           acknowledged_at: string
@@ -574,6 +763,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_academy_editor: boolean
           is_admin: boolean
           is_lead: boolean
           is_tester: boolean
@@ -586,6 +776,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_academy_editor?: boolean
           is_admin?: boolean
           is_lead?: boolean
           is_tester?: boolean
@@ -598,6 +789,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_academy_editor?: boolean
           is_admin?: boolean
           is_lead?: boolean
           is_tester?: boolean
@@ -922,6 +1114,7 @@ export type Database = {
         }
         Returns: string
       }
+      is_academy_editor: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_lead: { Args: never; Returns: boolean }
       is_tester: { Args: never; Returns: boolean }
@@ -993,6 +1186,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_user_academy_editor: {
+        Args: { p_actor: string; p_user: string; p_value: boolean }
+        Returns: boolean
+      }
       set_user_lead: {
         Args: { p_actor: string; p_user: string; p_value: boolean }
         Returns: boolean
@@ -1008,6 +1205,15 @@ export type Database = {
           p_user: string
         }
         Returns: boolean
+      }
+      team_academy: {
+        Args: never
+        Returns: {
+          completed_at: string
+          is_imported: boolean
+          resource_id: string
+          user_id: string
+        }[]
       }
       team_acknowledgements: {
         Args: never

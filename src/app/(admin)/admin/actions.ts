@@ -116,6 +116,28 @@ export async function setUserLead(userId: string, isLead: boolean): Promise<Acti
   return { ok: true };
 }
 
+/**
+ * Turn the Academy editor switch on or off: an editor adds and edits Academy blog posts, podcasts, books and their
+ * quizzes. Goes through set_user_academy_editor() (updates the profile and writes the audit row in one transaction; it
+ * refuses a non-admin actor too).
+ */
+export async function setUserAcademyEditor(userId: string, isEditor: boolean): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return NOT_ADMIN;
+  const id = userIdSchema.safeParse(userId);
+  const flag = z.boolean().safeParse(isEditor);
+  if (!id.success || !flag.success) return { ok: false, error: "Invalid input." };
+
+  const { error } = await createAdminClient().rpc("set_user_academy_editor", {
+    p_user: id.data,
+    p_value: flag.data,
+    p_actor: admin.id,
+  });
+  if (error) return { ok: false, error: "Couldn't update Academy editor access." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 export async function setUserAdmin(userId: string, isAdmin: boolean): Promise<ActionResult> {
   const admin = await getAdminOrNull();
   if (!admin) return NOT_ADMIN;

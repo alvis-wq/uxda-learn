@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { SELECTABLE_TRACKS, TRACK_LABEL, isSelectableTrack, isTrack } from "@/lib/tracks";
-import { setUserAdmin, setUserLead, setUserTester, setUserTrack } from "../actions";
+import { setUserAcademyEditor, setUserAdmin, setUserLead, setUserTester, setUserTrack } from "../actions";
 
 export function TrackSelect({ userId, name, track }: { userId: string; name: string; track: string | null }) {
   const [pending, start] = useTransition();
@@ -110,6 +110,27 @@ export function LeadSwitch({ userId, name, isLead }: { userId: string; name: str
           const res = await setUserLead(userId, next);
           if (!res.ok) toast.error(res.error);
           else toast.success(next ? `${name} can now see team progress.` : `${name} can no longer see team progress.`);
+        })
+      }
+    />
+  );
+}
+
+/** Academy editors add and edit Academy blog posts, podcasts, books and their quizzes. Admins can anyway. */
+export function AcademyEditorSwitch({ userId, name, isEditor }: { userId: string; name: string; isEditor: boolean }) {
+  const [pending, start] = useTransition();
+  const [checked, setChecked] = useOptimistic(isEditor);
+  return (
+    <Switch
+      checked={checked}
+      disabled={pending}
+      aria-label={`Academy editor access for ${name}`}
+      onCheckedChange={(next) =>
+        start(async () => {
+          setChecked(next);
+          const res = await setUserAcademyEditor(userId, next);
+          if (!res.ok) toast.error(res.error);
+          else toast.success(next ? `${name} can now edit the Academy.` : `${name} can no longer edit the Academy.`);
         })
       }
     />
