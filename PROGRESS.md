@@ -987,8 +987,3 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Checks: `npm run check` ✅ · `npm run build` ✅. Live: page reading, picture download and Open Library lookups on real links ✅; the spreadsheet parses ✅. Not run: the migration (Alvis), `db:check`, e2e (no test project), AI drafting (no `ANTHROPIC_API_KEY` locally yet), the import itself.
 - Migration applied by Alvis (`db:push`), types regenerated (same as the hand edits but one relationship flag), `db:check` all passed (Academy section included; its sentinel inserts first failed: a bulk insert sends a key missing from one row as null, so both rows now carry the same keys).
 - To do (Alvis): set `ANTHROPIC_API_KEY` in `.env.local` and Vercel; dry-run the import, fill `scripts/academy-people.json`, then `--apply` (~210 quiz drafts, roughly $10 of API use).
-
-## Design system reference
-
-- `docs/design-system.md`: the UXDA Learn visual language written down for reuse elsewhere — principles, colour tokens (light/dark, from `globals.css`), Urbanist type scale and font caveats, radius/layout/elevation, component specs, motion, brand moments (glass X, aurora), accessibility checklist, a copy-paste plain-HTML/presentation starter, and Tailwind + shadcn setup notes.
-- Checks: every hex in the doc cross-checked against the source; the HTML starter rendered in Chromium in dark and light with Urbanist loaded. Docs only, no code changes.
