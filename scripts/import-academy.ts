@@ -9,7 +9,8 @@
  * Reads the sheets UXDA BLOG (blog posts), UXDA ACADEMY and OTHER INSIGHTFUL BOOKS (books). For each resource not yet
  * in the Academy (posts by link, books by title) it reads the details (the post's page; Open Library for books),
  * copies the picture into the `academy` bucket, has Claude draft the quiz and publishes it, marked "not checked" for
- * an editor to look over. A resource whose quiz can't be drafted stays a draft and is listed at the end.
+ * an editor to look over. A resource whose quiz can't be drafted stays a draft and is listed at the end; the next run
+ * tries its quiz again.
  * Then everyone marked as read becomes a completion flagged imported (no quiz). People are matched by name (see
  * matchPerson); `scripts/academy-people.json` ({ "Sheet name": "email" }) settles names that don't match on their own.
  * Running it again skips what's already there. Podcast episodes aren't in the sheet with links: add them in the app.
@@ -33,7 +34,8 @@ import {
 import { adminClient } from "./lib/supabase";
 import { IMAGE_TYPES, downloadImage, lookupBook, readPage } from "../src/lib/academy/metadata";
 import { splitQuiz } from "../src/lib/academy/quiz";
-import { draftQuiz } from "../src/lib/academy/quiz-ai";
+import { draftQuiz, type QuizSource } from "../src/lib/academy/quiz-ai";
+import type { ResourceKind } from "../src/lib/academy/resources";
 
 const MAPPING_FILE = "scripts/academy-people.json";
 const CONCURRENCY = 4;
@@ -123,7 +125,7 @@ async function main() {
     console.error(`--as ${actorEmail}: no admin with that email has signed in.`);
     process.exit(1);
   }
-  const { data: existing, error: existingError } = await db.from("academy_resources").select("id,kind,url,title,status");
+  const { data: existing, error: existingError } = await db.from("academy_resources").select("id,kind,url,title,author,description,status,questions");
   if (existingError) throw new Error(`read academy_resources: ${existingError.message}`);
   const idByKey = new Map(existing.map((r) => [resourceKey(r), r.id]));
 
@@ -143,8 +145,11 @@ async function main() {
   const seen = new Set<string>();
   const unique = toCreate.filter((r) => (seen.has(resourceKey(r)) ? false : (seen.add(resourceKey(r)), true)));
   const batch = unique.slice(0, limit);
+  // Resources from the sheet that an earlier run saved as a draft because their quiz couldn't be drafted: try again.
+  const retryIds = new Set(fromSheet.map((r) => idByKey.get(resourceKey(r))));
+  const retry = existing.filter((r) => retryIds.has(r.id) && r.status === "draft" && Array.isArray(r.questions) && r.questions.length === 0);
   const blogs = fromSheet.filter((r) => r.kind === "blog").length;
-  console.log(`\nResources: ${blogs} blog posts, ${fromSheet.length - blogs} books in the sheet; ${fromSheet.length - toCreate.length} already in the Academy; ${batch.length} to add${batch.length < unique.length ? ` (of ${unique.length}, --limit)` : ""}.`);
+  console.log(`\nResources: ${blogs} blog posts, ${fromSheet.length - blogs} books in the sheet; ${fromSheet.length - toCreate.length} already in the Academy; ${batch.length} to add${batch.length < unique.length ? ` (of ${unique.length}, --limit)` : ""}${retry.length ? `; ${retry.length} drafts without a quiz to try again` : ""}.`);
   const completions = fromSheet.flatMap((r) => r.people.filter((p) => p.done && people.has(p.name)).map((p) => ({ r, userId: people.get(p.name)! })));
   const unmatchedReads = fromSheet.reduce((n, r) => n + r.people.filter((p) => p.done && !people.has(p.name)).length, 0);
   console.log(`Completions: ${completions.length} to import${unmatchedReads ? `, ${unmatchedReads} skipped (people not matched)` : ""}.`);
@@ -159,6 +164,32 @@ async function main() {
   // Resources
   const failed: string[] = [];
   const startedAt = new Date().toISOString();
+
+  /** Claude drafts the quiz and the resource is published, marked "not checked"; if that fails it stays a draft. */
+  async function quizAndPublish(id: string, label: string, source: QuizSource) {
+    try {
+      const quiz = await draftQuiz(source);
+      const { questions, answerKey } = splitQuiz(quiz);
+      const key = await db.from("academy_quiz_keys").upsert({ resource_id: id, answer_key: answerKey });
+      if (key.error) throw new Error(key.error.message);
+      const pub = await db
+        .from("academy_resources")
+        .update({ questions, quiz_reviewed: false, status: "published", published_at: startedAt })
+        .eq("id", id);
+      if (pub.error) throw new Error(pub.error.message);
+      console.log(`  ✓ ${label}`);
+    } catch (e) {
+      failed.push(`${source.title}: quiz not drafted (${e instanceof Error ? e.message : e}); left as a draft`);
+      console.log(`  ~ ${label}: saved as a draft without a quiz`);
+    }
+  }
+
+  await pool(retry, CONCURRENCY, async (r, i) => {
+    const label = `[retry ${i + 1}/${retry.length}] ${r.title}`;
+    const text = r.kind === "blog" && r.url ? await readPage(r.url).then((p) => p.text).catch(() => null) : null;
+    await quizAndPublish(r.id, label, { kind: r.kind as ResourceKind, title: r.title, author: r.author, description: r.description, text });
+  });
+
   await pool(batch, CONCURRENCY, async (r, i) => {
     const label = `[${i + 1}/${batch.length}] ${r.title}`;
     try {
@@ -211,21 +242,7 @@ async function main() {
       if (error || !row) throw new Error(`insert: ${error?.message}`);
       idByKey.set(resourceKey(r), row.id);
 
-      try {
-        const quiz = await draftQuiz({ kind: r.kind, title, author, description, text });
-        const { questions, answerKey } = splitQuiz(quiz);
-        const key = await db.from("academy_quiz_keys").upsert({ resource_id: row.id, answer_key: answerKey });
-        if (key.error) throw new Error(key.error.message);
-        const pub = await db
-          .from("academy_resources")
-          .update({ questions, quiz_reviewed: false, status: "published", published_at: startedAt })
-          .eq("id", row.id);
-        if (pub.error) throw new Error(pub.error.message);
-        console.log(`  ✓ ${label}`);
-      } catch (e) {
-        failed.push(`${r.title}: quiz not drafted (${e instanceof Error ? e.message : e}); left as a draft`);
-        console.log(`  ~ ${label}: saved as a draft without a quiz`);
-      }
+      await quizAndPublish(row.id, label, { kind: r.kind, title, author, description, text });
     } catch (e) {
       failed.push(`${r.title}: ${e instanceof Error ? e.message : e}`);
       console.log(`  ✗ ${label}`);

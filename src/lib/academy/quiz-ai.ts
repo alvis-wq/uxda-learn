@@ -80,7 +80,10 @@ export async function draftQuiz(source: QuizSource): Promise<QuizDraft> {
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) throw new QuizDraftError("Claude is busy right now. Try again in a minute.");
     if (error instanceof Anthropic.AuthenticationError) throw new QuizDraftError("The Anthropic API key isn't valid.");
-    if (error instanceof Anthropic.APIError) throw new QuizDraftError(`Claude couldn't draft the quiz (${error.status ?? "error"}). Try again or write it by hand.`);
+    if (error instanceof Anthropic.APIError) {
+      console.error(`draftQuiz: ${error.status} ${error.message}`); // the API's reason, for the server log
+      throw new QuizDraftError(`Claude couldn't draft the quiz (${error.status ?? "error"}). Try again or write it by hand.`);
+    }
     throw new QuizDraftError("Couldn't reach Claude. Try again or write the questions by hand.");
   }
   if (response.stop_reason === "refusal") throw new QuizDraftError("Claude declined to draft this one. Write the questions by hand.");
