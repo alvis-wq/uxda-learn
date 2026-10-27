@@ -64,7 +64,9 @@ export async function draftQuiz(source: QuizSource): Promise<QuizDraft> {
   if (source.kind !== "book" && !source.text?.trim() && !source.description?.trim()) {
     throw new QuizDraftError("There's no text to draft from. Write the questions by hand.");
   }
-  const client = new Anthropic();
+  // A key that isn't scoped to a workspace has to name one on every request.
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  const client = new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
   let response;
   try {
     response = await client.beta.messages.parse({
