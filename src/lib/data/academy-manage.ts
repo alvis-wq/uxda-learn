@@ -2,6 +2,7 @@ import "server-only";
 import { joinQuiz, type QuizDraft } from "@/lib/academy/quiz";
 import type { AcademyResourceRow } from "@/lib/academy/resources";
 import { requireAcademyEditor } from "@/lib/auth/academy-editor";
+import { allRows } from "@/lib/supabase/all-rows";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,9 +19,11 @@ export type ManagedResource = Pick<
 export async function loadManagedResources(): Promise<ManagedResource[]> {
   await requireAcademyEditor();
   const supabase = await createClient();
+  const admin = createAdminClient();
   const [resources, completions] = await Promise.all([
     supabase.from("academy_resources").select("id,kind,title,url,status,quiz_reviewed,blog_id,image_path,sort_key,updated_at,questions"),
-    createAdminClient().from("academy_completions").select("resource_id"),
+    // Every completion (well past the 1,000-row page), counted per resource below.
+    allRows((from, to) => admin.from("academy_completions").select("resource_id").order("user_id").order("resource_id").range(from, to)),
   ]);
   if (resources.error) throw new Error(`Couldn't load the Academy: ${resources.error.message}`);
   if (completions.error) throw new Error(`Couldn't load completions: ${completions.error.message}`);

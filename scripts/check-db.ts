@@ -350,7 +350,10 @@ async function main() {
 
     console.log("Leads");
     // The temp user has 3 real and 4 test attempts on the published sentinel here; not an admin, not a lead.
-    const teamCalls = () => Promise.all([authed.rpc("team_members"), authed.rpc("team_submissions"), authed.rpc("team_acknowledgements")]);
+    // Only the check user's rows: the full results can pass the API's 1,000-row page.
+    const checkUserId = userId; // a const keeps its narrowing inside the closure
+    const teamCalls = () =>
+      Promise.all([authed.rpc("team_members"), authed.rpc("team_submissions").eq("user_id", checkUserId), authed.rpc("team_acknowledgements").eq("user_id", checkUserId)]);
     const refused = (await teamCalls()).every((r) => r.error?.code === "42501");
     if (refused) pass("a user who is neither lead nor admin cannot call the team_* functions (42501)");
     else fail("a non-lead COULD call a team_* function");
@@ -699,7 +702,7 @@ async function main() {
     if (teamRefused.error?.code === "42501") pass("team_academy refuses someone who is neither lead nor admin (42501)");
     else fail("a non-lead COULD call team_academy");
     await admin.from("profiles").update({ is_lead: true }).eq("id", userId);
-    const team = await authed.rpc("team_academy");
+    const team = await authed.rpc("team_academy").eq("user_id", userId); // the full result is past 1,000 rows
     await admin.from("profiles").update({ is_lead: false }).eq("id", userId);
     const myTeamRows = (team.data ?? []).filter((r) => r.user_id === userId);
     const teamKeys = Object.keys(team.data?.[0] ?? {}).sort().join();

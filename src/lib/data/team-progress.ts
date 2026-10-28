@@ -1,5 +1,6 @@
 import "server-only";
 import { requireLead } from "@/lib/auth/lead";
+import { allRows } from "@/lib/supabase/all-rows";
 import { createClient } from "@/lib/supabase/server";
 import type { TeamAcademyInput } from "@/lib/team/academy";
 import type { TeamInput } from "@/lib/team/progress";
@@ -23,8 +24,9 @@ export async function loadTeamInput(): Promise<TeamInput> {
       .from("paths")
       .select("slug,title,category_slug,status,audiences,sequential,milestones")
       .eq("status", "published"),
-    supabase.rpc("team_submissions"),
-    supabase.rpc("team_acknowledgements"),
+    // One row per attempt / acknowledgement: these can pass the 1,000-row page.
+    allRows((from, to) => supabase.rpc("team_submissions").order("user_id").order("challenge_slug").order("attempt").range(from, to)),
+    allRows((from, to) => supabase.rpc("team_acknowledgements").order("user_id").order("challenge_slug").range(from, to)),
   ]);
   for (const res of [members, categories, challenges, paths, submissions, acknowledgements]) {
     if (res.error) throw new Error(`Couldn't load team progress: ${res.error.message}`);
@@ -54,7 +56,8 @@ export async function loadTeamAcademyInput(): Promise<TeamAcademyInput> {
   const [members, resources, completions] = await Promise.all([
     supabase.rpc("team_members"),
     supabase.from("academy_resources").select("id,kind,title,sort_key").eq("status", "published"),
-    supabase.rpc("team_academy"),
+    // One row per person per completed resource: well past 1,000 already.
+    allRows((from, to) => supabase.rpc("team_academy").order("user_id").order("resource_id").range(from, to)),
   ]);
   for (const res of [members, resources, completions]) {
     if (res.error) throw new Error(`Couldn't load Academy progress: ${res.error.message}`);
