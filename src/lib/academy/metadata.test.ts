@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { cleanBlurb, cleanTitle, decodeEntities, extractText, isPrivateAddress, isbnFromUrl, parseLinkPreview, safeFetch, sniffImageType } = await import("./metadata");
+const { bestBookDoc, cleanBlurb, cleanTitle, decodeEntities, extractText, isPrivateAddress, isbnFromUrl, parseLinkPreview, safeFetch, sniffImageType } = await import("./metadata");
 
 // The head of a theuxda.com blog post, trimmed (the tags the preview reads).
 const BLOG_HEAD = `<!doctype html><html><head>
@@ -94,5 +94,20 @@ describe("helpers", () => {
   it("cleans Open Library blurbs and decodes entities", () => {
     expect(cleanBlurb("A classic book. ([source][1])\n\n----------\n[1]: https://example.com")).toBe("A classic book.");
     expect(decodeEntities("A &amp; B &#8217; &#x2014; &bogus;")).toBe("A & B ’ — &bogus;");
+  });
+});
+
+describe("bestBookDoc", () => {
+  const doc = (title: string, extra: { cover_i?: number; edition_count?: number } = {}) => ({ key: `/works/${title}`, title, ...extra });
+
+  it("only takes a result whose title matches, preferring one with a cover, then the most editions", () => {
+    const docs = [
+      doc("Summary: Blue Ocean Strategy"),
+      doc("Blue ocean strategy", { edition_count: 9 }),
+      doc("Blue Ocean Strategy", { cover_i: 1, edition_count: 2 }),
+      doc("Blue Ocean Strategy, Expanded Edition", { cover_i: 2, edition_count: 5 }),
+    ];
+    expect(bestBookDoc(docs, "BLUE OCEAN STRATEGY")?.cover_i).toBe(2);
+    expect(bestBookDoc([doc("The Psychology of Everyday Things", { cover_i: 3 })], "The Design of Everyday Things")).toBeUndefined();
   });
 });

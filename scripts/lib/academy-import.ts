@@ -167,12 +167,7 @@ export function matchPerson(name: string, profiles: Profile[], mapping: Record<s
 
 // Books from Open Library -----------------------------------------------------------------------------------------
 
-/** Whether an Open Library title is the book we asked for: the first (up to) three words of the shorter title agree. */
-export function titlesMatch(a: string, b: string): boolean {
-  const [x, y] = [words(a), words(b)].sort((p, q) => p.length - q.length);
-  if (x.length === 0) return false;
-  return x.slice(0, 3).every((w, i) => y[i] === w);
-}
+export { titlesMatch } from "../../src/lib/academy/resources";
 
 /** Identity of a resource across runs: the link for posts, title for books. */
 export function resourceKey(r: { kind: string; url: string | null; title: string }): string {

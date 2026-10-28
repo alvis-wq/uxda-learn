@@ -100,3 +100,18 @@ export function groupBooks(items: AcademyItem[]): { category: BookCategory; book
     books: books.filter((b) => (b.category === "academy" ? "academy" : "other") === category),
   })).filter((g) => g.books.length > 0);
 }
+
+const titleWords = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter(Boolean);
+
+/** Whether a found book title is the one we asked for: the first (up to) three words of the shorter title agree. */
+export function titlesMatch(a: string, b: string): boolean {
+  const [x, y] = [titleWords(a), titleWords(b)].sort((p, q) => p.length - q.length);
+  if (x.length === 0) return false;
+  return x.slice(0, 3).every((w, i) => y[i] === w);
+}

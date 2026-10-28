@@ -24,7 +24,8 @@
     "reset:users": "tsx scripts/reset-user-data.ts",
     "eval:pull": "tsx scripts/eval-pull.ts",
     "eval:push": "tsx scripts/eval-push.ts",
-    "academy:import": "tsx --conditions=react-server scripts/import-academy.ts"
+    "academy:import": "tsx --conditions=react-server scripts/import-academy.ts",
+    "academy:fill": "tsx --conditions=react-server scripts/fill-academy-details.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.135.0",
@@ -64,6 +65,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "exceljs": "4.4.0",
+    "sharp": "0.35.5",
     "supabase": "^2.120.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

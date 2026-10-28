@@ -2,6 +2,7 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { z } from "zod";
+import { titlesMatch } from "@/lib/academy/resources";
 
 /**
  * Reading other sites for the Academy: a link's title, description and picture (blog posts, podcast episodes), an
@@ -46,8 +47,8 @@ async function assertPublicHost(url: URL) {
   if (addresses.length === 0 || addresses.some(isPrivateAddress)) throw new FetchError("That link points somewhere the server can't read.");
 }
 
-/** Fetch a public URL (following up to 4 redirects, each checked) and return its body, at most 2 MB. */
-export async function safeFetch(input: string, accept: string): Promise<{ url: string; contentType: string; body: Uint8Array }> {
+/** Fetch a public URL (following up to 4 redirects, each checked) and return its body, at most `maxBytes` (2 MB). */
+export async function safeFetch(input: string, accept: string, maxBytes = MAX_BYTES): Promise<{ url: string; contentType: string; body: Uint8Array }> {
   let url: URL;
   try {
     url = new URL(input);
@@ -67,7 +68,7 @@ export async function safeFetch(input: string, accept: string): Promise<{ url: s
     }
     if (!res.ok) throw new FetchError(`The site answered ${res.status}.`);
     const declared = Number(res.headers.get("content-length") ?? 0);
-    if (declared > MAX_BYTES) throw new FetchError("That page is too big to read.");
+    if (declared > maxBytes) throw new FetchError("That page is too big to read.");
     const reader = res.body?.getReader();
     const chunks: Uint8Array[] = [];
     let size = 0;
@@ -75,7 +76,7 @@ export async function safeFetch(input: string, accept: string): Promise<{ url: s
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_BYTES) {
+      if (size > maxBytes) {
         await reader.cancel();
         throw new FetchError("That page is too big to read.");
       }
@@ -205,12 +206,19 @@ export function sniffImageType(b: Uint8Array): ImageType | null {
   return null;
 }
 
-/** Download a picture (a thumbnail or cover) for storing in our bucket. */
-export async function downloadImage(url: string): Promise<{ type: ImageType; body: Uint8Array }> {
-  const res = await safeFetch(url, "image/png,image/jpeg,image/webp");
+/**
+ * Download a picture (a thumbnail or cover) for storing in our bucket: at most 4 MB, the bucket's limit. A script
+ * that shrinks pictures before storing them can allow more (`maxBytes`).
+ */
+export async function downloadImage(url: string, maxBytes = MAX_IMAGE_BYTES): Promise<{ type: ImageType; body: Uint8Array }> {
+  let res;
+  try {
+    res = await safeFetch(url, "image/png,image/jpeg,image/webp", maxBytes);
+  } catch (e) {
+    throw e instanceof FetchError && /too big/.test(e.message) ? new FetchError(`The picture is bigger than ${maxBytes / 1024 / 1024} MB.`) : e;
+  }
   const type = sniffImageType(res.body);
   if (!type) throw new FetchError("The picture isn't a PNG, JPEG or WebP.");
-  if (res.body.byteLength > MAX_IMAGE_BYTES) throw new FetchError("The picture is bigger than 4 MB.");
   return { type, body: res.body };
 }
 
@@ -227,9 +235,12 @@ const searchDocSchema = z.object({
   title: z.string(),
   author_name: z.array(z.string()).optional(),
   cover_i: z.number().optional(),
+  edition_count: z.number().optional(),
 });
 const searchSchema = z.object({ docs: z.array(searchDocSchema) });
 const workSchema = z.object({ description: z.union([z.string(), z.object({ value: z.string() })]).optional() });
+const editionSchema = z.object({ title: z.string(), covers: z.array(z.number()).optional() });
+type SearchDoc = z.infer<typeof searchDocSchema>;
 
 export type BookInfo = { title: string; author: string | null; description: string | null; coverUrl: string | null };
 
@@ -247,20 +258,34 @@ export function cleanBlurb(s: string): string {
     .trim();
 }
 
+async function searchBooks(params: Record<string, string>): Promise<SearchDoc[]> {
+  const q = new URLSearchParams({ ...params, limit: "10", fields: "key,title,author_name,cover_i,edition_count" });
+  const search = searchSchema.safeParse(await getJson(`https://openlibrary.org/search.json?${q}`));
+  return search.success ? search.data.docs : [];
+}
+
+/** Of Open Library's results, the one for this title: its title matches; one with a cover, then the most editions. */
+export function bestBookDoc<T extends SearchDoc>(docs: T[], title: string): T | undefined {
+  return docs
+    .filter((d) => titlesMatch(title, d.title))
+    .sort((a, b) => Number(!!b.cover_i) - Number(!!a.cover_i) || (b.edition_count ?? 0) - (a.edition_count ?? 0))[0];
+}
+
 /**
- * Look a book up on Open Library: by the ISBN in its link when there is one, otherwise by title (and author). The
- * cover comes from covers.openlibrary.org and the blurb from the work record. Null when nothing matches.
+ * Look a book up on Open Library: by the ISBN in its link when there is one, otherwise by title — with the author,
+ * then without (Open Library spells authors its own way: "Donald A. Norman"), then as a free search. The cover comes
+ * from covers.openlibrary.org and the blurb from the work record. Null when nothing matches.
  */
 export async function lookupBook({ title, author, url }: { title?: string | null; author?: string | null; url?: string | null }): Promise<BookInfo | null> {
   const isbn = url ? isbnFromUrl(url) : null;
-  const q = new URLSearchParams({ limit: "1", fields: "key,title,author_name,cover_i" });
-  if (isbn) q.set("isbn", isbn);
-  else if (title) {
-    q.set("title", title);
-    if (author) q.set("author", author);
-  } else return null;
-  const search = searchSchema.safeParse(await getJson(`https://openlibrary.org/search.json?${q}`));
-  const doc = search.success ? search.data.docs[0] : undefined;
+  let doc = isbn ? (await searchBooks({ isbn }))[0] : undefined;
+  if (!doc && title) {
+    const attempts: Record<string, string>[] = [...(author ? [{ title, author }] : []), { title }, { q: author ? `${title} ${author}` : title }];
+    for (const params of attempts) {
+      doc = bestBookDoc(await searchBooks(params), title);
+      if (doc) break;
+    }
+  }
   if (!doc) return null;
   let description: string | null = null;
   if (/^\/works\/OL\d+W$/.test(doc.key)) {
@@ -268,10 +293,25 @@ export async function lookupBook({ title, author, url }: { title?: string | null
     const d = work.success ? work.data.description : undefined;
     description = d ? cleanBlurb(typeof d === "string" ? d : d.value) || null : null;
   }
+  // Open Library repeats authors in different spellings ("Emery Reves, E. Reves, EMERY REVES").
+  const authors = [...new Map((doc.author_name ?? []).map((a) => [a.toLowerCase().replace(/[^a-z]/g, ""), a])).values()];
   return {
     title: doc.title,
-    author: doc.author_name?.join(", ") ?? null,
+    author: authors.length ? authors.slice(0, 3).join(", ") : null,
     description,
     coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : null,
   };
+}
+
+/**
+ * A cover for an ISBN (say, one Claude suggested), only when Open Library's edition for it is the book we mean (its
+ * title matches) and has a cover — a wrong ISBN gives no picture, never someone else's.
+ */
+export async function coverForIsbn(isbn: string, title: string): Promise<string | null> {
+  const clean = isbn.replace(/[\s-]/g, "").toUpperCase();
+  if (!/^(\d{9}[\dX]|\d{13})$/.test(clean)) return null;
+  const edition = editionSchema.safeParse(await getJson(`https://openlibrary.org/isbn/${clean}.json`).catch(() => null));
+  if (!edition.success || !titlesMatch(title, edition.data.title)) return null;
+  const id = edition.data.covers?.find((c) => c > 0);
+  return id ? `https://covers.openlibrary.org/b/id/${id}-L.jpg` : null;
 }

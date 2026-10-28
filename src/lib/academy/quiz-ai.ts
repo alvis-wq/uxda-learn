@@ -58,15 +58,19 @@ function sourcePrompt(s: QuizSource): string {
 
 export class QuizDraftError extends Error {}
 
+function anthropic() {
+  // A key that isn't scoped to a workspace has to name one on every request.
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  return new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
+}
+
 /** Ask Claude for a quiz. Throws QuizDraftError with a message an editor can act on. */
 export async function draftQuiz(source: QuizSource): Promise<QuizDraft> {
   if (!process.env.ANTHROPIC_API_KEY) throw new QuizDraftError("AI drafting isn't set up (ANTHROPIC_API_KEY is missing). Write the questions by hand.");
   if (source.kind !== "book" && !source.text?.trim() && !source.description?.trim()) {
     throw new QuizDraftError("There's no text to draft from. Write the questions by hand.");
   }
-  // A key that isn't scoped to a workspace has to name one on every request.
-  const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
-  const client = new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
+  const client = anthropic();
   let response;
   try {
     response = await client.beta.messages.parse({
@@ -97,4 +101,41 @@ export async function draftQuiz(source: QuizSource): Promise<QuizDraft> {
     throw new QuizDraftError(`Claude's draft didn't fit the quiz rules (${where}). Try again.`);
   }
   return parsed.data;
+}
+
+const bookSchema = z.object({
+  known: z.boolean(),
+  description: z.string(),
+  isbns: z.array(z.string()),
+});
+
+const BOOK_SYSTEM = `You help fill in a reading list for UXDA, a financial UX design agency. Given a book's title (and maybe author), say whether you know this specific book well.
+- known: true only if you are confident which book this is and what it is about. Internal documents, playbooks, slide decks or anything you can't place: false.
+- description: when known, 2-3 plain sentences on what the book is about and why a designer or strategist would read it (under 400 characters, no markdown, no praise words like "must-read"). Otherwise an empty string.
+- isbns: when known, up to 3 ISBN-13s of its English editions you are confident of. Otherwise an empty list.`;
+
+export type BookDetails = { description: string | null; isbns: string[] };
+
+/**
+ * What Claude knows about a book, for filling in a missing blurb and finding a cover (the ISBNs are checked against
+ * Open Library before a cover is used). Null when Claude doesn't know the book or the call fails.
+ */
+export async function describeBook({ title, author }: { title: string; author?: string | null }): Promise<BookDetails | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  try {
+    const response = await anthropic().beta.messages.parse({
+      model: MODEL,
+      max_tokens: 2000,
+      output_config: { effort: "low", format: betaZodOutputFormat(bookSchema) },
+      system: BOOK_SYSTEM,
+      messages: [{ role: "user", content: `Title: ${title}${author ? `\nAuthor: ${author}` : ""}` }],
+    });
+    const out = bookSchema.safeParse(response.parsed_output);
+    if (!out.success || !out.data.known) return null;
+    const description = out.data.description.trim();
+    return { description: description && description.length <= 600 ? description : null, isbns: out.data.isbns.slice(0, 3) };
+  } catch (error) {
+    if (error instanceof Anthropic.APIError) console.error(`describeBook: ${error.status} ${error.message}`);
+    return null;
+  }
 }
