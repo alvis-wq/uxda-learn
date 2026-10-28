@@ -25,8 +25,9 @@ describe("parseBlogSheet", () => {
           { name: "Roberts C.", done: false },
           { name: "Žanna", done: true },
         ],
+        episode: null,
       },
-      expect.objectContaining({ number: 2, title: "UXDA Methodology", category: "UX Trends", people: expect.arrayContaining([{ name: "Roberts C.", done: true }]) }),
+      expect.objectContaining({ number: 2, episode: "88", title: "UXDA Methodology", category: "UX Trends", people: expect.arrayContaining([{ name: "Roberts C.", done: true }]) }),
     ]);
   });
 });

@@ -41,7 +41,8 @@ async function seed() {
     .single();
   const { data: pod } = await db
     .from("academy_resources")
-    .insert({ kind: "podcast", title: `${PREFIX} episode`, url: "https://example.com/e2e-academy-episode", blog_id: blog!.id, status: "published", questions: QUESTIONS })
+    // Podcast episodes have no quiz (for now): a listener switches them to done.
+    .insert({ kind: "podcast", title: `${PREFIX} episode`, url: "https://example.com/e2e-academy-episode", blog_id: blog!.id, status: "published", questions: [] })
     .select("id")
     .single();
   const { data: book } = await db
@@ -49,7 +50,7 @@ async function seed() {
     .insert({ kind: "book", title: `${PREFIX} book`, author: "A. Author", category: "academy", status: "published", questions: QUESTIONS })
     .select("id")
     .single();
-  await db.from("academy_quiz_keys").insert([blog, pod, book].map((r) => ({ resource_id: r!.id, answer_key: KEY })));
+  await db.from("academy_quiz_keys").insert([blog, book].map((r) => ({ resource_id: r!.id, answer_key: KEY })));
 }
 
 test.describe.configure({ mode: "serial" });
@@ -103,6 +104,21 @@ test.describe("Academy", () => {
       { correct: 3, passed: false },
       { correct: 5, passed: true },
     ]);
+  });
+
+  test("a podcast episode switches to done without a quiz, and back", async ({ page }) => {
+    await loginAs(page, "strategist");
+    await page.goto("/academy");
+    const episode = page.locator('[data-testid="academy-item"][data-kind="podcast"]').filter({ hasText: `${PREFIX} episode` });
+    await episode.getByRole("switch").click();
+    await expect(page.getByTestId("academy-quiz")).toHaveCount(0);
+    await expect(episode.getByRole("switch")).toBeChecked();
+    await page.reload();
+    await expect(episode).toHaveAttribute("data-done", "true");
+    await episode.getByRole("switch").click();
+    await expect(episode.getByRole("switch")).not.toBeChecked();
+    await page.reload();
+    await expect(episode).toHaveAttribute("data-done", "false");
   });
 
   test("Academy management: 403 for others, editors get /academy/manage, admins Admin → Academy", async ({ page }) => {

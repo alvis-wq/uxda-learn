@@ -16,11 +16,14 @@ export const BOOK_CATEGORY_LABEL: Record<BookCategory, string> = {
   other: "Other insightful books",
 };
 
-/** What the Academy page needs of one resource. */
+/**
+ * What the Academy page needs of one resource. `has_quiz` false: a podcast episode without a quiz (for now), switched
+ * to done directly.
+ */
 export type AcademyItem = Pick<
   AcademyResourceRow,
   "id" | "kind" | "title" | "url" | "description" | "image_path" | "author" | "category" | "blog_id" | "sort_key"
-> & { done: boolean };
+> & { done: boolean; has_quiz: boolean };
 
 /** Public URL of a thumbnail or cover in the `academy` bucket. */
 export function academyImageUrl(path: string | null | undefined): string | null {

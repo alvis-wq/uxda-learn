@@ -10,7 +10,7 @@ vi.mock("@/lib/auth/session", () => ({ getCurrentUser, getCurrentProfile }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
 vi.mock("next/cache", () => ({ revalidatePath }));
 
-const { getAcademyQuiz, submitAcademyQuiz } = await import("./actions");
+const { getAcademyQuiz, setAcademyDone, submitAcademyQuiz } = await import("./actions");
 
 type Row = Record<string, unknown>;
 const RES = "5b0c4b1e-9a51-4f5e-8f6a-2b9d6f0f8c11";
@@ -40,6 +40,21 @@ function fakeDb(tables: Record<string, Row[]>) {
           upsert: async (row: Row) => {
             writes.push({ table, op: "upsert", row });
             return { error: null };
+          },
+          // delete().eq(…)…: the filters collect on the builder; awaiting it records what would be removed.
+          delete: () => {
+            const del = {
+              eq: (k: string, v: unknown) => {
+                filters.push((r) => r[k] === v);
+                return del;
+              },
+              then: (resolve: (v: { error: null }) => void) => {
+                for (const row of rows()) writes.push({ table, op: "delete", row });
+                tables[table] = (tables[table] ?? []).filter((r) => !filters.every((f) => f(r)));
+                resolve({ error: null });
+              },
+            };
+            return del;
           },
         };
         return builder;
@@ -113,6 +128,59 @@ describe("submitAcademyQuiz", () => {
     db = fakeDb({ academy_resources: [{ id: RES, status: "archived", questions }], academy_quiz_keys: [{ resource_id: RES, answer_key: answerKey }] });
     createAdminClient.mockReturnValue(db.client);
     await expect(submitAcademyQuiz(RES, right)).resolves.toMatchObject({ ok: false });
+    expect(db.writes).toEqual([]);
+  });
+});
+
+describe("setAcademyDone", () => {
+  const POD = "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f";
+  beforeEach(() => {
+    db = fakeDb({
+      academy_resources: [
+        { id: RES, status: "published", questions },
+        { id: POD, status: "published", questions: [] },
+      ],
+      academy_completions: [],
+    });
+    createAdminClient.mockReturnValue(db.client);
+  });
+
+  it("marks a resource without a quiz done, and back (only the user's own completion)", async () => {
+    await expect(setAcademyDone(POD, true)).resolves.toEqual({ ok: true });
+    expect(db.writes).toEqual([{ table: "academy_completions", op: "upsert", row: { user_id: USER.id, resource_id: POD } }]);
+
+    db = fakeDb({
+      academy_resources: [{ id: POD, status: "published", questions: [] }],
+      academy_completions: [
+        { user_id: USER.id, resource_id: POD, is_imported: false },
+        { user_id: "someone-else", resource_id: POD, is_imported: false },
+      ],
+    });
+    createAdminClient.mockReturnValue(db.client);
+    await expect(setAcademyDone(POD, false)).resolves.toEqual({ ok: true });
+    expect(db.writes).toEqual([{ table: "academy_completions", op: "delete", row: { user_id: USER.id, resource_id: POD, is_imported: false } }]);
+    expect(revalidatePath).toHaveBeenCalledWith("/academy");
+  });
+
+  it("never removes an imported completion", async () => {
+    db = fakeDb({
+      academy_resources: [{ id: POD, status: "published", questions: [] }],
+      academy_completions: [{ user_id: USER.id, resource_id: POD, is_imported: true }],
+    });
+    createAdminClient.mockReturnValue(db.client);
+    await setAcademyDone(POD, false);
+    expect(db.writes).toEqual([]);
+  });
+
+  it("refuses a resource with a quiz, an unpublished one, a bad id and a signed-out user", async () => {
+    await expect(setAcademyDone(RES, true)).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/quick check/) });
+    await expect(setAcademyDone("nope", true)).resolves.toMatchObject({ ok: false });
+    await expect(setAcademyDone(POD, "yes" as unknown as boolean)).resolves.toMatchObject({ ok: false });
+    db = fakeDb({ academy_resources: [{ id: POD, status: "draft", questions: [] }], academy_completions: [] });
+    createAdminClient.mockReturnValue(db.client);
+    await expect(setAcademyDone(POD, true)).resolves.toMatchObject({ ok: false });
+    getCurrentUser.mockResolvedValue(null);
+    await expect(setAcademyDone(POD, true)).resolves.toMatchObject({ ok: false });
     expect(db.writes).toEqual([]);
   });
 });

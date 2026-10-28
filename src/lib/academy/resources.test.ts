@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { academyImageUrl, filterRows, groupBooks, pairBlogsAndPodcasts, parseShowFilter, progressByKind, type AcademyItem } from "./resources";
 
 function item(id: string, kind: AcademyItem["kind"], sort_key: number, extra: Partial<AcademyItem> = {}): AcademyItem {
-  return { id, kind, title: id, url: null, description: null, image_path: null, author: null, category: null, blog_id: null, sort_key, done: false, ...extra };
+  return { id, kind, title: id, url: null, description: null, image_path: null, author: null, category: null, blog_id: null, sort_key, done: false, has_quiz: true, ...extra };
 }
 
 describe("pairBlogsAndPodcasts", () => {

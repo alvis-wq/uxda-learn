@@ -314,7 +314,8 @@ export async function markQuizReviewed(id: string): Promise<ManageResult> {
 const statusSchema = z.enum(["draft", "published", "archived"]);
 
 /**
- * Publish (everyone sees it), back to draft, or archive. Publishing needs a full quiz (the table refuses it too).
+ * Publish (everyone sees it), back to draft, or archive. Publishing needs a full quiz (the table refuses it too),
+ * except for a podcast episode: no quiz for now, a listener switches it to done.
  * Resources people have completed are never deleted, only archived.
  */
 export async function setResourceStatus(id: string, statusInput: string): Promise<ManageResult> {
@@ -324,9 +325,10 @@ export async function setResourceStatus(id: string, statusInput: string): Promis
   const status = statusSchema.safeParse(statusInput);
   if (!rid.success || !status.success) return { ok: false, error: "Invalid input." };
   const admin = createAdminClient();
-  const { data: r } = await admin.from("academy_resources").select("questions,published_at").eq("id", rid.data).maybeSingle();
+  const { data: r } = await admin.from("academy_resources").select("kind,questions,published_at").eq("id", rid.data).maybeSingle();
   if (!r) return { ok: false, error: "Not found." };
-  if (status.data === "published" && (!Array.isArray(r.questions) || r.questions.length !== 5)) {
+  const count = Array.isArray(r.questions) ? r.questions.length : -1;
+  if (status.data === "published" && count !== 5 && !(r.kind === "podcast" && count === 0)) {
     return { ok: false, error: "Add the 5 quiz questions before publishing." };
   }
   const { error } = await admin

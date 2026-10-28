@@ -143,6 +143,14 @@ describe("setResourceStatus", () => {
     await expect(actions.setResourceStatus(BLOG, "published")).resolves.toEqual({ ok: true });
     expect(db.tables.academy_resources[0]).toMatchObject({ status: "published", published_at: expect.any(String) });
   });
+
+  it("publishes a podcast episode without a quiz, but not with part of one", async () => {
+    const pod = db.tables.academy_resources.find((r) => r.id === POD)!;
+    await expect(actions.setResourceStatus(POD, "published")).resolves.toEqual({ ok: true });
+    expect(pod).toMatchObject({ status: "published" });
+    pod.questions = [1, 2];
+    await expect(actions.setResourceStatus(POD, "published")).resolves.toMatchObject({ ok: false });
+  });
 });
 
 describe("deleteDraftResource", () => {

@@ -9,39 +9,14 @@
  * edition has a matching title and a cover. Never overwrites a picture or description that's already there; what
  * can't be found is listed for an editor (Admin → Academy). Pictures over 1 MB are shrunk first.
  */
-import sharp from "sharp";
 import "./lib/env";
+import { arg, picture, picturePath, pool } from "./lib/academy-scripts";
 import { adminClient } from "./lib/supabase";
-import { IMAGE_TYPES, coverForIsbn, downloadImage, lookupBook, readPage } from "../src/lib/academy/metadata";
+import { coverForIsbn, lookupBook, readPage } from "../src/lib/academy/metadata";
 import { describeBook } from "../src/lib/academy/quiz-ai";
 import { titlesMatch } from "../src/lib/academy/resources";
 
 const CONCURRENCY = 4;
-// Blog hero images can be 5 MB; the Academy shows them about 164px tall. Bigger than 1 MB → shrunk to a 1600px JPEG.
-const MAX_DOWNLOAD = 16 * 1024 * 1024;
-const SHRINK_ABOVE = 1024 * 1024;
-
-async function picture(url: string): Promise<{ type: keyof typeof IMAGE_TYPES; body: Uint8Array } | null> {
-  // One retry: Open Library's covers come from archive.org, which now and then drops a connection.
-  const get = () => downloadImage(url, MAX_DOWNLOAD).catch(() => null);
-  const pic = (await get()) ?? (await new Promise((r) => setTimeout(r, 2000)).then(get));
-  if (!pic || pic.body.byteLength <= SHRINK_ABOVE) return pic;
-  const body = await sharp(pic.body).resize({ width: 1600, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer().catch(() => null);
-  return body ? { type: "image/jpeg", body: new Uint8Array(body) } : null;
-}
-
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
-
-/** Run `fn` over `items`, at most `n` at a time. */
-async function pool<T>(items: T[], n: number, fn: (item: T) => Promise<void>) {
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
-    while (next < items.length) await fn(items[next++]);
-  }));
-}
 
 async function main() {
   const apply = process.argv.includes("--apply");
@@ -108,7 +83,7 @@ async function main() {
       if (!r.image_path && imageUrl) {
         const pic = await picture(imageUrl);
         if (pic) {
-          const path = `img/${crypto.randomUUID()}.${IMAGE_TYPES[pic.type]}`;
+          const path = picturePath(pic.type);
           if (apply) {
             const up = await db.storage.from("academy").upload(path, pic.body, { contentType: pic.type });
             if (!up.error) update.image_path = path;

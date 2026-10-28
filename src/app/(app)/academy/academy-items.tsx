@@ -55,7 +55,7 @@ export function ResourceRowItem({ item }: { item: AcademyItem }) {
         <TitleLink item={item} className="line-clamp-2 leading-snug font-medium" />
         {item.description && <p className="text-muted-foreground line-clamp-3 text-sm">{item.description}</p>}
         <div className="mt-auto pt-1">
-          <DoneSwitch resourceId={item.id} title={item.title} done={item.done} />
+          <DoneSwitch resourceId={item.id} title={item.title} done={item.done} hasQuiz={item.has_quiz} />
         </div>
       </div>
     </article>
@@ -90,7 +90,7 @@ export function BookCard({ item }: { item: AcademyItem }) {
         {item.author && <p className="text-meta text-foreground/80">{item.author}</p>}
         {item.description && <p className="text-muted-foreground line-clamp-4 text-sm">{item.description}</p>}
         <div className="mt-auto pt-2">
-          <DoneSwitch resourceId={item.id} title={item.title} done={item.done} />
+          <DoneSwitch resourceId={item.id} title={item.title} done={item.done} hasQuiz={item.has_quiz} />
         </div>
       </div>
     </article>

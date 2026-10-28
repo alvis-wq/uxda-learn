@@ -11,7 +11,7 @@ import { deleteDraftResource, setResourceStatus } from "@/lib/academy/manage-act
 const LABEL: Record<string, string> = { draft: "Draft", published: "Published", archived: "Archived" };
 
 /** Publish / unpublish / archive / restore, and delete for an unused draft. */
-export function StatusControls({ base, id, status, hasQuiz, deletable }: { base: string; id: string; status: string; hasQuiz: boolean; deletable: boolean }) {
+export function StatusControls({ base, id, status, canPublish, deletable }: { base: string; id: string; status: string; canPublish: boolean; deletable: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -43,7 +43,7 @@ export function StatusControls({ base, id, status, hasQuiz, deletable }: { base:
       <Badge variant={status === "published" ? "default" : "secondary"}>{LABEL[status] ?? status}</Badge>
       {pending && <Loader2 className="text-muted-foreground size-4 animate-spin" aria-label="Saving" />}
       {status === "draft" && (
-        <Button size="sm" onClick={() => setStatus("published", "Published: everyone can see it now.")} disabled={pending || !hasQuiz} title={hasQuiz ? undefined : "Add the quiz first"}>
+        <Button size="sm" onClick={() => setStatus("published", "Published: everyone can see it now.")} disabled={pending || !canPublish} title={canPublish ? undefined : "Add the quiz first"}>
           Publish
         </Button>
       )}

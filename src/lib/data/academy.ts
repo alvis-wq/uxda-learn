@@ -12,12 +12,17 @@ export async function loadAcademyItems(userId: string): Promise<AcademyItem[]> {
   const [resources, completions] = await Promise.all([
     supabase
       .from("academy_resources")
-      .select("id,kind,title,url,description,image_path,author,category,blog_id,sort_key")
+      .select("id,kind,title,url,description,image_path,author,category,blog_id,sort_key,questions")
       .eq("status", "published"),
     supabase.from("academy_completions").select("resource_id").eq("user_id", userId),
   ]);
   if (resources.error) throw new Error(`Couldn't load the Academy: ${resources.error.message}`);
   if (completions.error) throw new Error(`Couldn't load your Academy progress: ${completions.error.message}`);
   const done = new Set((completions.data ?? []).map((c) => c.resource_id));
-  return (resources.data ?? []).map((r) => ({ ...r, done: done.has(r.id) }));
+  // The questions stay on the server: the page only needs to know whether there is a quiz.
+  return (resources.data ?? []).map(({ questions, ...r }) => ({
+    ...r,
+    done: done.has(r.id),
+    has_quiz: Array.isArray(questions) && questions.length > 0,
+  }));
 }

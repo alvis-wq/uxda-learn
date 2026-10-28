@@ -50,6 +50,11 @@ function FilterLinks({ base, filters, field, options }: { base: string; filters:
   );
 }
 
+/** A quiz to write or check. Podcast episodes need none (for now): listeners switch them to done. */
+function quizToDo(r: { kind: string; hasQuiz: boolean; quiz_reviewed: boolean }) {
+  return r.hasQuiz ? !r.quiz_reviewed : r.kind !== "podcast";
+}
+
 export async function AcademyManageList({ base, filters }: { base: string; filters: ListFilters }) {
   const all = await loadManagedResources();
   const kind = RESOURCE_KINDS.includes(filters.kind as ResourceKind) ? filters.kind : undefined;
@@ -57,9 +62,9 @@ export async function AcademyManageList({ base, filters }: { base: string; filte
   const review = filters.review === "todo" ? "todo" : undefined;
   const f = { kind, status, review };
   const shown = all
-    .filter((r) => (!kind || r.kind === kind) && (!status || r.status === status) && (!review || (r.hasQuiz && !r.quiz_reviewed) || !r.hasQuiz))
+    .filter((r) => (!kind || r.kind === kind) && (!status || r.status === status) && (!review || quizToDo(r)))
     .sort((a, b) => b.sort_key - a.sort_key || a.title.localeCompare(b.title));
-  const toReview = all.filter((r) => r.status !== "archived" && (!r.hasQuiz || !r.quiz_reviewed)).length;
+  const toReview = all.filter((r) => r.status !== "archived" && quizToDo(r)).length;
   const blogTitles = new Map(all.filter((r) => r.kind === "blog").map((r) => [r.id, r.title]));
 
   return (
@@ -136,7 +141,9 @@ function ManageRow({ r, base, blogTitle }: { r: ManagedResource; base: string; b
         <Badge variant={r.status === "published" ? "default" : r.status === "draft" ? "secondary" : "outline"}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
       </TableCell>
       <TableCell>
-        {!r.hasQuiz ? <Badge variant="destructive">No quiz</Badge> : r.quiz_reviewed ? <Badge variant="outline">Checked</Badge> : <Badge variant="secondary">To check</Badge>}
+        {!r.hasQuiz ? (
+          r.kind === "podcast" ? <Badge variant="outline">Not needed</Badge> : <Badge variant="destructive">No quiz</Badge>
+        ) : r.quiz_reviewed ? <Badge variant="outline">Checked</Badge> : <Badge variant="secondary">To check</Badge>}
       </TableCell>
       <TableCell className="text-right tabular-nums">{r.completions}</TableCell>
     </TableRow>
@@ -187,14 +194,18 @@ export async function AcademyManageEdit({ base, id }: { base: string; id: string
             Done by {r.completions} {r.completions === 1 ? "person" : "people"} · {r.attempts} quiz {r.attempts === 1 ? "try" : "tries"}
           </p>
         </div>
-        <StatusControls base={base} id={r.id} status={r.status} hasQuiz={!!r.quiz} deletable={r.status === "draft" && r.completions === 0 && r.attempts === 0} />
+        <StatusControls base={base} id={r.id} status={r.status} canPublish={!!r.quiz || kind === "podcast"} deletable={r.status === "draft" && r.completions === 0 && r.attempts === 0} />
       </div>
 
       <section aria-labelledby="quiz-heading" className="grid gap-3">
         <h2 id="quiz-heading" className="text-lg font-semibold">
           Quiz
         </h2>
-        <QuizEditor id={r.id} quiz={r.quiz} reviewed={r.quiz_reviewed} />
+        {kind === "podcast" && !r.quiz ? (
+          <p className="text-muted-foreground text-sm">Podcast episodes don&apos;t have a quiz for now: listeners switch them to done.</p>
+        ) : (
+          <QuizEditor id={r.id} quiz={r.quiz} reviewed={r.quiz_reviewed} />
+        )}
       </section>
 
       <section aria-labelledby="details-heading" className="grid gap-3">

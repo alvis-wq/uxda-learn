@@ -16,7 +16,6 @@
  * Running it again skips what's already there. Podcast episodes aren't in the sheet with links: add them in the app.
  */
 import { existsSync, readFileSync } from "node:fs";
-import ExcelJS from "exceljs";
 import "./lib/env";
 import {
   ACADEMY_SHEET,
@@ -28,9 +27,9 @@ import {
   parseOtherBooksSheet,
   resourceKey,
   titlesMatch,
-  type Grid,
   type SheetResource,
 } from "./lib/academy-import";
+import { arg, pool, readWorkbook } from "./lib/academy-scripts";
 import { adminClient } from "./lib/supabase";
 import { IMAGE_TYPES, downloadImage, lookupBook, readPage } from "../src/lib/academy/metadata";
 import { splitQuiz } from "../src/lib/academy/quiz";
@@ -39,45 +38,6 @@ import type { ResourceKind } from "../src/lib/academy/resources";
 
 const MAPPING_FILE = "scripts/academy-people.json";
 const CONCURRENCY = 4;
-
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
-
-function cellValue(v: ExcelJS.CellValue): string | number | boolean | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
-  if (v instanceof Date) return v.toISOString();
-  if (typeof v === "object") {
-    if ("richText" in v) return v.richText.map((t) => t.text).join("");
-    if ("text" in v && typeof v.text === "string") return v.text; // hyperlink cell
-    if ("hyperlink" in v && typeof v.hyperlink === "string") return v.hyperlink;
-    if ("result" in v) return cellValue(v.result as ExcelJS.CellValue); // formula
-  }
-  return String(v);
-}
-
-function toGrid(ws: ExcelJS.Worksheet): Grid {
-  const grid: Grid = [];
-  ws.eachRow({ includeEmpty: true }, (row, n) => {
-    const cells: Grid[number] = [];
-    for (let c = 1; c <= ws.columnCount; c++) cells.push(cellValue(row.getCell(c).value));
-    grid[n - 1] = cells;
-  });
-  return Array.from(grid, (r) => r ?? []);
-}
-
-/** Run `fn` over `items`, at most `n` at a time. */
-async function pool<T>(items: T[], n: number, fn: (item: T, i: number) => Promise<void>) {
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      await fn(items[i], i);
-    }
-  }));
-}
 
 async function main() {
   const apply = process.argv.includes("--apply");
@@ -94,13 +54,7 @@ async function main() {
     process.exit(1);
   }
 
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile(file);
-  const sheet = (name: string) => {
-    const ws = wb.getWorksheet(name);
-    if (!ws) throw new Error(`The file has no sheet called "${name}".`);
-    return toGrid(ws);
-  };
+  const sheet = await readWorkbook(file);
   const fromSheet: SheetResource[] = [
     ...parseBlogSheet(sheet(BLOG_SHEET)),
     ...parseAcademySheet(sheet(ACADEMY_SHEET)),

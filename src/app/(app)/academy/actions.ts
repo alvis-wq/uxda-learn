@@ -72,3 +72,32 @@ export async function submitAcademyQuiz(resourceId: string, rawAnswers: unknown)
   }
   return { ok: true, ...result };
 }
+
+export type DoneResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Switch a resource without a quiz (for now: podcast episodes) to done, or back. Only for published resources with no
+ * questions: anything with a quiz is completed by passing it. Switching back removes the user's own completion, never
+ * one imported from the old spreadsheet.
+ */
+export async function setAcademyDone(resourceId: string, done: boolean): Promise<DoneResult> {
+  const user = await getCurrentUser();
+  const profile = await getCurrentProfile();
+  if (!user || !profile) return SIGNED_OUT;
+  const id = idSchema.safeParse(resourceId);
+  if (!id.success || typeof done !== "boolean") return NOT_FOUND;
+
+  const admin = createAdminClient();
+  const resource = await admin.from("academy_resources").select("questions").eq("id", id.data).eq("status", "published").maybeSingle();
+  if (resource.error) return { ok: false, error: "Couldn't save that. Please try again." };
+  if (!resource.data) return NOT_FOUND;
+  if (!Array.isArray(resource.data.questions) || resource.data.questions.length > 0) {
+    return { ok: false, error: "This one has a quick check: pass it to mark it done." };
+  }
+  const write = done
+    ? await admin.from("academy_completions").upsert({ user_id: user.id, resource_id: id.data }, { onConflict: "user_id,resource_id", ignoreDuplicates: true })
+    : await admin.from("academy_completions").delete().eq("user_id", user.id).eq("resource_id", id.data).eq("is_imported", false);
+  if (write.error) return { ok: false, error: "Couldn't save that. Please try again." };
+  revalidatePath("/academy");
+  return { ok: true };
+}

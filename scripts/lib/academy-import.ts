@@ -18,6 +18,8 @@ export type SheetResource = {
   /** Blog: its category in the sheet. Book: 'academy' or 'other'. */
   category: string | null;
   people: SheetPerson[];
+  /** Blog posts: the "Episode number" cell of its podcast episode ("88", or "v" when there is one but no number). */
+  episode?: string | null;
 };
 
 export const BLOG_SHEET = "UXDA BLOG";
@@ -74,6 +76,8 @@ export function parseBlogSheet(grid: Grid): SheetResource[] {
       url: text(r[link]),
       category: text(r[category]) || null,
       people: people.map((p) => ({ name: p.name, done: blogDone(r[p.col]) })),
+      // "-" (or nothing) means no episode.
+      episode: episode >= 0 && !["", "-"].includes(text(r[episode])) ? text(r[episode]) : null,
     }));
 }
 

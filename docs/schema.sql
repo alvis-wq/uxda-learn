@@ -603,8 +603,12 @@ create table academy_resources (
   updated_at timestamptz not null default now(),
   check (blog_id is null or kind = 'podcast'),
   check (category is null or kind <> 'book' or category in ('academy', 'other')),
-  -- Nothing goes live without a full quiz.
-  check (status <> 'published' or jsonb_array_length(questions) = 5)
+  -- Nothing goes live without a full quiz, except podcast episodes: no quiz for now, a listener marks them done.
+  constraint academy_resources_published_quiz check (
+    status <> 'published'
+    or jsonb_array_length(questions) = 5
+    or (kind = 'podcast' and jsonb_array_length(questions) = 0)
+  )
 );
 
 create unique index academy_resources_one_podcast_per_blog on academy_resources (blog_id) where blog_id is not null;

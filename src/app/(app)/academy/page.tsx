@@ -76,7 +76,7 @@ export default async function AcademyPage({ searchParams }: PageProps<"/academy"
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
       <PageHeader
         title="UXDA Academy"
-        description="Our blog posts, podcast episodes and books. Read or listen, then pass a quick 5-question check to mark it done."
+        description="Our blog posts, podcast episodes and books. Read a post or book, then pass a quick 5-question check to mark it done. Listened to an episode? Just switch it to done."
       >
         {canEditAcademy(profile) && (
           <Button asChild variant="outline" size="sm">

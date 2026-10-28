@@ -9,17 +9,19 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Switch } from "@/components/ui/switch";
 import { PASS_MARK, type PublicAcademyQuestion } from "@/lib/academy/quiz";
 import { QuestionField } from "../challenges/[slug]/question-field";
-import { getAcademyQuiz, submitAcademyQuiz } from "./actions";
+import { getAcademyQuiz, setAcademyDone, submitAcademyQuiz } from "./actions";
 
 type Outcome = { correct: number; total: number; passed: boolean; wrong: string[] };
 
 /**
- * The "Done" switch of one resource. Switching it on opens the quiz; it only stays on once the quiz is passed (4 of 5).
- * A completed resource shows a locked, checked switch: done can't be undone.
+ * The "Done" switch of one resource. With a quiz, switching it on opens the quiz; it only stays on once the quiz is
+ * passed (4 of 5), and done can't be undone. Without a quiz (podcast episodes, for now) it saves straight away and can
+ * be switched back.
  */
-export function DoneSwitch({ resourceId, title, done }: { resourceId: string; title: string; done: boolean }) {
+export function DoneSwitch({ resourceId, title, done, hasQuiz }: { resourceId: string; title: string; done: boolean; hasQuiz: boolean }) {
   const [open, setOpen] = useState(false);
   const id = `done-${resourceId}`;
+  if (!hasQuiz) return <PlainDoneSwitch id={id} resourceId={resourceId} title={title} done={done} />;
   return (
     <div className="flex items-center gap-2">
       <Switch
@@ -34,6 +36,49 @@ export function DoneSwitch({ resourceId, title, done }: { resourceId: string; ti
         {done ? "Done" : "Mark done"}
       </label>
       {open && <QuizDialog resourceId={resourceId} title={title} onClose={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function PlainDoneSwitch({ id, resourceId, title, done }: { id: string; resourceId: string; title: string; done: boolean }) {
+  const router = useRouter();
+  const [checked, setChecked] = useState(done);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  function change(next: boolean) {
+    setChecked(next);
+    setError(null);
+    start(async () => {
+      const res = await setAcademyDone(resourceId, next).catch(() => ({ ok: false as const, error: "Couldn't save that. Please try again." }));
+      if (!res.ok) {
+        setChecked(!next);
+        setError(res.error);
+      } else router.refresh();
+    });
+  }
+
+  return (
+    <div className="grid gap-1">
+      <div className="flex items-center gap-2">
+        <Switch
+          id={id}
+          checked={checked}
+          disabled={pending}
+          onCheckedChange={change}
+          aria-label={checked ? `${title}: done` : `Mark ${title} as done`}
+          data-testid="done-switch"
+        />
+        <label htmlFor={id} className="text-meta text-muted-foreground select-none" aria-hidden>
+          {checked ? "Done" : "Mark done"}
+        </label>
+        {pending && <Loader2 className="text-muted-foreground size-3.5 animate-spin" aria-label="Saving" />}
+      </div>
+      {error && (
+        <p className="text-meta text-destructive" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -643,6 +643,15 @@ async function main() {
     const unpublishable = await admin.from("academy_resources").update({ status: "published" }).eq("id", draftId);
     if (unpublishable.error) pass("a resource can't be published without 5 questions");
     else fail("a resource WAS published without a quiz");
+    const podcast = await admin
+      .from("academy_resources")
+      .insert({ kind: "podcast", title: `${ACADEMY_SENTINEL} podcast`, url: `${ACADEMY_SENTINEL_URL}-podcast`, status: "published", questions: [] })
+      .select("id");
+    const halfQuiz = podcast.data?.length
+      ? await admin.from("academy_resources").update({ questions: quizQs.slice(0, 2) }).eq("id", podcast.data[0].id)
+      : null;
+    if (!podcast.error && halfQuiz?.error) pass("a podcast episode can be published without a quiz, but not with half of one");
+    else fail(`podcast without a quiz: ${podcast.error?.message ?? "a published podcast took 2 questions"}`);
 
     const { error: selfEditorErr } = await authed.from("profiles").update({ is_academy_editor: true }).eq("id", userId);
     const { error: userEditorRpc } = await authed.rpc("set_user_academy_editor", { p_user: userId, p_value: true, p_actor: userId });
