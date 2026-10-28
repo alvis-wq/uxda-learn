@@ -397,3 +397,5 @@
 - Academy tabs and filters are links with URL state, like the leaderboard groups — server-rendered, shareable, no client state.
 - Nav: Academy is the centre slot for everyone; "Leaderboard" shortened to "Top"; six icons fit by narrowing slots to 26/24px (still ≥ 24px targets) and the theme toggle to 32px under 340px.
 - Imported spreadsheet reads become completions flagged is_imported (no quiz) and don't count as "last completed" on the Team view — they happened before the app.
+- Academy's API key comes from a workspace ("UXDA Learn") in the Console organization the Team plan's monthly API credits are linked to — the credits only reach keys in that organization; one workspace per project keeps spend and limits apart. `ANTHROPIC_WORKSPACE_ID` stays as an option for a key that isn't scoped to a workspace.
+- The import retries drafts it saved without a quiz on the next run — a failed draft (e.g. no API credits) shouldn't need the resource deleted to try again.

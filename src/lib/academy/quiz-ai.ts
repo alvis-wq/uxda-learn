@@ -91,6 +91,10 @@ export async function draftQuiz(source: QuizSource): Promise<QuizDraft> {
   if (response.stop_reason === "refusal") throw new QuizDraftError("Claude declined to draft this one. Write the questions by hand.");
   if (response.stop_reason === "max_tokens") throw new QuizDraftError("Claude's draft was cut off. Try again.");
   const parsed = quizDraftSchema.safeParse(response.parsed_output?.questions);
-  if (!parsed.success) throw new QuizDraftError("Claude's draft didn't have 5 questions with 4 options each. Try again.");
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const where = issue ? `${issue.path.join(".") || "quiz"}: ${issue.message}` : "no questions";
+    throw new QuizDraftError(`Claude's draft didn't fit the quiz rules (${where}). Try again.`);
+  }
   return parsed.data;
 }

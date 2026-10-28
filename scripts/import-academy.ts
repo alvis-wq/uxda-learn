@@ -128,6 +128,14 @@ async function main() {
   const { data: existing, error: existingError } = await db.from("academy_resources").select("id,kind,url,title,author,description,status,questions");
   if (existingError) throw new Error(`read academy_resources: ${existingError.message}`);
   const idByKey = new Map(existing.map((r) => [resourceKey(r), r.id]));
+  // A book is saved under Open Library's title, which can differ from the sheet's ("DON'T MAKE ME THINK" →
+  // "Don't Make Me Think, Revisited"): find it by a matching title, when exactly one book matches.
+  const existingBooks = existing.filter((r) => r.kind === "book");
+  for (const r of fromSheet) {
+    if (r.kind !== "book" || idByKey.has(resourceKey(r))) continue;
+    const matches = existingBooks.filter((b) => titlesMatch(r.title, b.title));
+    if (matches.length === 1) idByKey.set(resourceKey(r), matches[0].id);
+  }
 
   // People
   const names = [...new Set(fromSheet.flatMap((r) => r.people.map((p) => p.name)))];
