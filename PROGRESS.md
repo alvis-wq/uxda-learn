@@ -1000,3 +1000,7 @@ sign-out and a second browser, In progress on the card, privacy, version change,
   - Admin → a submission that's published or sent back: the score and feedback can still be changed ("Save changes"), audited in `submission_review_audit` and listed under "Changes after review".
   - Learners can edit a submission until it's reviewed (submitted or AI-reviewed): "Edit" on the attempt and challenge pages opens the form with what they sent (same attempt, same question order, no draft autosave); saving puts it back to `submitted` and drops the AI score, so the next `/evaluate` scores the new version. Approving a version the learner changed after you opened it is refused; `eval:push` skips results for submissions edited after the pull.
   - Migration `20261029090000_review_edits.sql` (`submissions.edited_at`, `edit_submission()`, `adjust_submission_review()`, `submission_review_audit`); `db:check` covers it. Waiting for Alvis: `npm run db:push`, `npm run db:types`, `npm run db:check`.
+
+## Dependency security fix (2026-10-29)
+- `next` / `eslint-config-next` 16.4.0 → 16.4.3 (GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r, GHSA-673q-mjm6-r5xr) and `zod` → 4.6.7 (GHSA-mrhx-c7xc-m3w5); CI's `audit:prod` was failing on them.
+- Checks: `npm run check` ✅ · `npm run build` ✅ · `npm run audit:prod` 0 vulnerabilities.
