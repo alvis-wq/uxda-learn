@@ -4,7 +4,7 @@ title: Check it, fix it
 category: wireframing
 type: figma
 difficulty: 1
-points: 10
+points: 3
 estimated_minutes: 15
 status: draft
 image: wf-3-check-and-fix.png
@@ -26,14 +26,14 @@ submission:
 rubric:
   - id: fixes
     criterion: Two /check findings fixed on the screen
-    points: 6
+    points: 2
     levels:
       full: Two findings from the screenshot are visibly fixed in the linked screen
       partial: One fixed, or fixes can't be matched to the findings
       none: Nothing fixed, or no /check screenshot
   - id: judgment
     criterion: Thinks about whether each finding is real
-    points: 4
+    points: 1
     levels:
       full: Says which findings matter and questions at least one, or explains why all are valid
       partial: Just lists the fixes

@@ -4,7 +4,7 @@ title: Pick the right model
 category: ai-workflow
 type: quiz
 difficulty: 1
-points: 10
+points: 3
 estimated_minutes: 4
 status: draft
 image: right-model-for-the-job.png
@@ -18,7 +18,7 @@ questions:
       - { id: c, label: "Haiku 5.5" }
       - { id: d, label: "Doesn't matter, they all give the same result" }
     answer: b
-    points: 2
+    points: 1
   - id: q2
     kind: single
     prompt: You want Claude to make a client email shorter and friendlier. Which do you pick?
@@ -28,7 +28,7 @@ questions:
       - { id: c, label: "Always the strongest model, for everything" }
       - { id: d, label: "Don't use AI for emails" }
     answer: b
-    points: 2
+    points: 0.5
   - id: q3
     kind: single
     prompt: What happens when you set a higher effort?
@@ -38,7 +38,7 @@ questions:
       - { id: c, label: "Claude switches to a newer model" }
       - { id: d, label: "Nothing really changes" }
     answer: a
-    points: 2
+    points: 0.5
   - id: q4
     kind: single
     prompt: Claude has tried twice and keeps going in circles. What do you do?
@@ -48,7 +48,7 @@ questions:
       - { id: c, label: "Switch to Opus or a higher effort, and tell it what you already tried" }
       - { id: d, label: "Tell it to try harder" }
     answer: c
-    points: 2
+    points: 0.5
   - id: q5
     kind: single
     prompt: A chat has gone on for hours about three different topics, and Claude starts mixing things up. What helps?
@@ -58,7 +58,7 @@ questions:
       - { id: c, label: "Switch to a smaller model" }
       - { id: d, label: "Write your question in capital letters" }
     answer: b
-    points: 2
+    points: 0.5
 ---
 ## Pick the right model
 The model and effort you choose change how fast you get an answer, how good it is, and how quickly

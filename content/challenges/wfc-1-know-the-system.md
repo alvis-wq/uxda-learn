@@ -7,7 +7,7 @@ path: wireframe-framework-check
 type: quiz
 feedback_mode: instant
 difficulty: 1
-points: 12
+points: 10
 estimated_minutes: 10
 help_link:
   url: "https://www.figma.com/design/LGZoFgcZNZPl72DDRv9n0A/UXDA-Playbook?node-id=2482-30725"
@@ -25,7 +25,7 @@ questions:
       - { id: deliver, label: "Deliver" }
       - { id: refine-hand-over, label: "Refine & hand over" }
     explanation: "These are the six phases of the framework."
-    points: 2
+    points: 1.5
   - id: q2
     kind: order
     prompt: "Drag these steps into the order you complete them."
@@ -39,7 +39,7 @@ questions:
       - { id: structure-draft, label: "Structure draft" }
       - { id: build, label: "Build" }
     explanation: "Steps 1 to 8 — each one builds on the previous ones."
-    points: 2
+    points: 1.5
   - id: q3
     kind: match
     prompt: "Match each file to its purpose."
@@ -63,7 +63,7 @@ questions:
       - { id: d, label: "In the Claude chat only" }
     answer: b
     explanation: "Never fill in the template itself — always work in a copy in the client's file."
-    points: 2
+    points: 1.5
   - id: q5
     kind: match
     prompt: "Match each skill to its step."
@@ -99,6 +99,6 @@ questions:
       - { id: d, label: "Review and Handover" }
     answer: b
     explanation: "Build uses /new-screen, /new-flow and /check; formatting uses /format."
-    points: 2
+    points: 1.5
 ---
 Six questions on the framework: its phases and steps, its files, and which skill or plugin to use for each step.

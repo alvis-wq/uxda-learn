@@ -4,7 +4,7 @@ title: How we work together
 category: uxda-way
 type: quiz
 difficulty: 1
-points: 10
+points: 6
 estimated_minutes: 8
 status: draft
 image: uxda-collaboration-standards.png
@@ -19,7 +19,7 @@ questions:
       - { id: consequence, label: "Consequence" }
       - { id: recommendation, label: "Recommendation" }
       - { id: next-step, label: "Next step" }
-    points: 2
+    points: 1.5
   - id: q2
     kind: single
     prompt: When you raise a problem, what should you bring with it?
@@ -29,7 +29,7 @@ questions:
       - { id: c, label: "The name of who caused it" }
       - { id: d, label: "A full written report" }
     answer: b
-    points: 2
+    points: 1.5
   - id: q3
     kind: single
     prompt: Which of these is working from the "Adult position"?
@@ -39,7 +39,7 @@ questions:
       - { id: c, label: "Taking ownership, saying things directly, and focusing on solutions" }
       - { id: d, label: "Going quiet until people notice something is wrong" }
     answer: c
-    points: 2
+    points: 1
   - id: q4
     kind: single
     prompt: You and a colleague disagree, and one discussion didn't solve it. What's next?
@@ -49,7 +49,7 @@ questions:
       - { id: c, label: "Escalate it to the decision owner instead of debating again" }
       - { id: d, label: "Drop the topic" }
     answer: c
-    points: 2
+    points: 1
   - id: q5
     kind: single
     prompt: Which of these is a "vague commitment" we should avoid?
@@ -59,7 +59,7 @@ questions:
       - { id: c, label: "\"I can't do Thursday — I can do Friday at noon.\"" }
       - { id: d, label: "\"Done — here's the link.\"" }
     answer: b
-    points: 1
+    points: 0.5
   - id: q6
     kind: single
     prompt: Finish the sentence from the document "Escalation is not failure — …"
@@ -69,7 +69,7 @@ questions:
       - { id: c, label: "\"…blame is\"" }
       - { id: d, label: "\"…giving up is\"" }
     answer: b
-    points: 1
+    points: 0.5
 ---
 ## How we work together
 How do we talk about problems, disagree, and make decisions at UXDA? All the answers are in

@@ -41,7 +41,7 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
     supabase.from("evaluations").select("*").eq("submission_id", id).order("created_at", { ascending: false }),
     supabase
       .from("submission_review_audit")
-      .select("id,old_score,new_score,old_feedback,new_feedback,changed_at,profiles(full_name,email)")
+      .select("*, profiles(full_name,email)") // `*`: works before and after the `note` column (points change) exists
       .eq("submission_id", id)
       .order("changed_at", { ascending: false }),
   ]);
@@ -229,7 +229,7 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
                     {changes.map((c) => (
                       <li key={c.id} className="text-muted-foreground text-meta">
                         {new Date(c.changed_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} ·{" "}
-                        {c.profiles?.full_name ?? c.profiles?.email ?? "a former admin"} ·{" "}
+                        {c.note ?? c.profiles?.full_name ?? c.profiles?.email ?? "a former admin"} ·{" "}
                         {Number(c.old_score) === Number(c.new_score)
                           ? `score ${c.new_score}`
                           : `score ${c.old_score ?? "—"} → ${c.new_score}`}

@@ -74,7 +74,8 @@ Create a challenge from this description: $ARGUMENTS
    - Rubric: 2–5 criteria, each with full / partial / none levels that are observable in a
      screenshot, Figma frame or text. No vague criteria like "good quality".
    - `grader_notes`: what a strong answer contains and common mistakes.
-   - Points follow the guideline and add up exactly.
+   - Points follow the guideline (3 optional, 6 required quiz, 10 per required path milestone; ask whether it's required)
+     and add up exactly. Question points may be halves; rubric points are whole.
    - Acknowledge briefs: state what changed and what people must do differently, in plain
      language. Skip the rules above about rubrics, reflections and points.
 7. Run `npm run content:validate`. Fix until it passes.

@@ -4,7 +4,7 @@ title: Add a component to the library
 category: wireframing
 type: figma
 difficulty: 2
-points: 20
+points: 10
 estimated_minutes: 35
 status: draft
 image: wf-5-add-library-component.png
@@ -26,14 +26,14 @@ submission:
 rubric:
   - id: component
     criterion: A new wireframe component made from a screenshot with /add-component
-    points: 16
+    points: 8
     levels:
       full: The component, as seen in the Figma link, matches the reference's structure, in the greyscale wireframe style, staged for review
       partial: Created, but it's far from the reference or not in wireframe style
       none: No component
   - id: reference
     criterion: A clear, useful reference in the "component requests" section
-    points: 4
+    points: 2
     levels:
       full: A cropped screenshot of one component, from a real app or design, in "component requests" in the Figma file
       partial: A whole screen, or hard to tell which part is meant

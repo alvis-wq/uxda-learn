@@ -809,3 +809,23 @@ describe("planSync for learning paths", () => {
     expect(planSync(disk, db).pathArchives).toEqual(["old-path"]);
   });
 });
+
+describe("half points", () => {
+  const { content } = loadAndValidate(path.join(FIXTURES, "valid"));
+  const quiz = content.challenges.find((c) => c.data.slug === "quick-quiz")!.data;
+  const rubricOne = content.challenges.find((c) => c.data.rubric?.length)!.data;
+  const withQuestionPoints = (points: number) => ({ ...quiz, questions: quiz.questions!.map((q, i) => (i === 0 ? { ...q, points } : q)) });
+  const withRubricPoints = (points: number) => ({ ...rubricOne, rubric: rubricOne.rubric!.map((r, i) => (i === 0 ? { ...r, points } : r)) });
+
+  it("a question can be worth a whole or half point, but not less", () => {
+    expect(challengeFrontmatterSchema.safeParse(withQuestionPoints(0.5)).success).toBe(true);
+    expect(challengeFrontmatterSchema.safeParse(withQuestionPoints(1.5)).success).toBe(true);
+    expect(challengeFrontmatterSchema.safeParse(withQuestionPoints(0.25)).success).toBe(false);
+    expect(challengeFrontmatterSchema.safeParse(withQuestionPoints(0)).success).toBe(false);
+  });
+
+  it("a rubric criterion stays whole points", () => {
+    expect(challengeFrontmatterSchema.safeParse(withRubricPoints(2)).success).toBe(true);
+    expect(challengeFrontmatterSchema.safeParse(withRubricPoints(1.5)).success).toBe(false);
+  });
+});

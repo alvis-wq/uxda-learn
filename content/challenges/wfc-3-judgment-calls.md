@@ -7,7 +7,7 @@ path: wireframe-framework-check
 type: quiz
 feedback_mode: instant
 difficulty: 1
-points: 16
+points: 10
 estimated_minutes: 10
 help_link:
   url: "https://www.figma.com/design/LGZoFgcZNZPl72DDRv9n0A/UXDA-Playbook?node-id=2482-30725"
@@ -24,7 +24,7 @@ questions:
       - { id: d, label: "Reuse insights from another client's project" }
     answer: a
     explanation: "Insights must come from real sources, never be made up."
-    points: 2
+    points: 1.5
   - id: q12
     kind: single
     prompt: "Your project covers retail and business banking, and /wf-jtbd returns jobs mixing both. What do you do?"
@@ -35,7 +35,7 @@ questions:
       - { id: d, label: "Rerun the skill, stating exactly which segment you are designing for" }
     answer: d
     explanation: "Being specific about the scope is the strategist's job."
-    points: 2
+    points: 1.5
   - id: q13
     kind: single
     prompt: "All the references you found are from one competitor. What do you do?"
@@ -46,7 +46,7 @@ questions:
       - { id: d, label: "Skip references for this screen" }
     answer: c
     explanation: "A single source narrows your thinking."
-    points: 2
+    points: 1.5
   - id: q14
     kind: single
     prompt: "The build brief has 12 [ASSUMED] items. What do you do?"
@@ -57,7 +57,7 @@ questions:
       - { id: d, label: "Ask the client to approve all 12" }
     answer: a
     explanation: "Assumptions are marked so you can quickly correct them."
-    points: 2
+    points: 1.5
   - id: q15
     kind: single
     prompt: "Claude's annotation describes a behavior that isn't actually on the screen. What do you do?"
@@ -68,7 +68,7 @@ questions:
       - { id: d, label: "Correct or delete it, since annotations must describe what the screen actually does" }
     answer: d
     explanation: "Annotations describe what the screen really does."
-    points: 2
+    points: 1
   - id: q18
     kind: single
     prompt: "During handover, one element is still waiting on client input. What do you do?"
@@ -79,7 +79,7 @@ questions:
       - { id: d, label: "Flag it explicitly as pending, so the Designer doesn't treat it as settled" }
     answer: d
     explanation: "Pending items must never look settled."
-    points: 2
+    points: 1
   - id: q19
     kind: single
     prompt: "Claude's output reads well, but you can't tell where some of it came from. What do you do?"
@@ -90,7 +90,7 @@ questions:
       - { id: d, label: "Delete the whole step" }
     answer: a
     explanation: "Every output must be traceable to a source."
-    points: 2
+    points: 1
   - id: q20
     kind: single
     prompt: "A skill keeps giving weak results for one type of screen. What do you do?"
@@ -101,6 +101,6 @@ questions:
       - { id: d, label: "Accept the weak results" }
     answer: b
     explanation: "Guide the skill now, and log it so the skill improves."
-    points: 2
+    points: 1
 ---
 Each question describes a real situation. Choose the best action.

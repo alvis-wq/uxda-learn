@@ -4,7 +4,7 @@ title: "\"I can't\" and \"Done!\""
 category: ai-workflow
 type: quiz
 difficulty: 1
-points: 10
+points: 6
 estimated_minutes: 4
 status: draft
 image: when-claude-says-no.png
@@ -18,7 +18,7 @@ questions:
       - { id: c, label: "Use a different AI tool" }
       - { id: d, label: "Send the same message again" }
     answer: b
-    points: 2
+    points: 1.5
   - id: q2
     kind: single
     prompt: Claude says "I can't do that." You've seen it do similar things before. What do you say?
@@ -28,7 +28,7 @@ questions:
       - { id: c, label: "Do the whole thing yourself" }
       - { id: d, label: "Restart your computer" }
     answer: b
-    points: 2
+    points: 1.5
   - id: q3
     kind: single
     prompt: Claude says "Done! Everything works." What's a good question to ask?
@@ -38,7 +38,7 @@ questions:
       - { id: c, label: "\"Are you happy with it?\"" }
       - { id: d, label: "\"Can you make it better?\"" }
     answer: b
-    points: 2
+    points: 1
   - id: q4
     kind: single
     prompt: You disagree with Claude. It says "You're right!" and changes everything. What does that mean?
@@ -48,7 +48,7 @@ questions:
       - { id: c, label: "The first version was useless" }
       - { id: d, label: "You should never disagree with Claude" }
     answer: b
-    points: 2
+    points: 1
   - id: q5
     kind: single
     prompt: Claude tells you a company rule, like "All client files go in the Projects folder." You're not sure it's true. What do you do?
@@ -58,7 +58,7 @@ questions:
       - { id: c, label: "Ask \"Are you sure?\" and accept whatever it says" }
       - { id: d, label: "Ignore it" }
     answer: b
-    points: 2
+    points: 1
 ---
 ## "I can't" and "Done!"
 Claude is sometimes wrong when it says it *can't* do something. And sometimes it says *done* too

@@ -4,7 +4,7 @@ title: Who's the hero?
 category: uxda-way
 type: quiz
 difficulty: 1
-points: 10
+points: 3
 estimated_minutes: 3
 status: draft
 image: uxda-superheroes.png
@@ -20,7 +20,7 @@ questions:
       - { id: c, label: "Iron Man" }
       - { id: d, label: "Batman" }
     answer: b
-    points: 2
+    points: 0.5
   - id: q2
     kind: single
     prompt: Which hero is Ernests?
@@ -30,7 +30,7 @@ questions:
       - { id: c, label: "Black Panther" }
       - { id: d, label: "Star-Lord" }
     answer: a
-    points: 2
+    points: 0.5
   - id: q3
     kind: single
     prompt: Who is Wonder Woman?
@@ -40,7 +40,7 @@ questions:
       - { id: c, label: "Oksana" }
       - { id: d, label: "Tamara" }
     answer: c
-    points: 2
+    points: 0.5
   - id: q4
     kind: single
     prompt: Who is Batman?
@@ -50,7 +50,7 @@ questions:
       - { id: c, label: "Vents" }
       - { id: d, label: "Roberts" }
     answer: b
-    points: 2
+    points: 0.5
   - id: q5
     kind: single
     prompt: Which hero is Inese?
@@ -60,7 +60,7 @@ questions:
       - { id: c, label: "Flora Goddess" }
       - { id: d, label: "Shadowcat" }
     answer: a
-    points: 1
+    points: 0.5
   - id: q6
     kind: single
     prompt: Who is Hawkeye?
@@ -70,7 +70,7 @@ questions:
       - { id: c, label: "Katrīna" }
       - { id: d, label: "Jeļena" }
     answer: c
-    points: 1
+    points: 0.5
 ---
 ## Who's the hero?
 Everyone at UXDA has their own superhero. Do you know who's who?

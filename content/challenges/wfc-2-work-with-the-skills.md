@@ -7,7 +7,7 @@ path: wireframe-framework-check
 type: quiz
 feedback_mode: instant
 difficulty: 1
-points: 8
+points: 10
 estimated_minutes: 10
 help_link:
   url: "https://www.figma.com/design/LGZoFgcZNZPl72DDRv9n0A/UXDA-Playbook?node-id=2482-30725"
@@ -24,7 +24,7 @@ questions:
       - { id: d, label: "Chats outside the project, so they stay separate from research" }
     answer: b
     explanation: "One chat per screen or flow keeps the context clean."
-    points: 2
+    points: 2.5
   - id: q8
     kind: single
     prompt: "/wf-insights finishes and reports: \"Evidence for this screen was thin; 2 of 6 insights come from one interview.\" What do you do?"
@@ -35,7 +35,7 @@ questions:
       - { id: d, label: "Run the skill again until the warning disappears" }
     answer: b
     explanation: "Claude's report is an early warning — check before you move on."
-    points: 2
+    points: 2.5
   - id: q9
     kind: single
     prompt: "If Claude's output looks well written, you can move to the next step without checking it, because the skills follow UXDA's rules."
@@ -44,7 +44,7 @@ questions:
       - { id: "false", label: "False" }
     answer: "false"
     explanation: "You are responsible for the result, not the AI. Every output gets checked."
-    points: 2
+    points: 2.5
   - id: q10
     kind: single
     prompt: "A skill keeps asking for information you already gave, which slows you down. What do you do?"
@@ -55,6 +55,6 @@ questions:
       - { id: d, label: "Write your own prompt instead" }
     answer: c
     explanation: "The Feedback log is how the framework gets better."
-    points: 2
+    points: 2.5
 ---
 Four questions on working with the skills.

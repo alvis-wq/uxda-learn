@@ -4,7 +4,7 @@ title: Make it handoff-ready
 category: wireframing
 type: figma
 difficulty: 2
-points: 20
+points: 10
 estimated_minutes: 40
 status: draft
 image: wf-6-handoff-ready.png
@@ -26,21 +26,21 @@ submission:
 rubric:
   - id: section
     criterion: The flow is organised into a Commentary Section with a review status
-    points: 8
+    points: 4
     levels:
       full: Screens grouped with /format, annotations added, and a review status set
       partial: Only some of it done
       none: Not done, or the link doesn't open
   - id: rewrite
     criterion: One AI annotation rewritten so it's clearer or more correct
-    points: 8
+    points: 4
     levels:
       full: The rewrite fixes a real problem (vague, wrong, or an assumption written as fact)
       partial: Only small wording changes
       none: No rewrite
   - id: why
     criterion: Explains why the rewrite is better
-    points: 4
+    points: 2
     levels:
       full: Clear reason a developer or client would understand
       partial: Vague reason

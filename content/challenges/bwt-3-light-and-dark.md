@@ -6,7 +6,7 @@ audiences: [designer]
 path: build-with-the-template
 type: mixed
 difficulty: 2
-points: 20
+points: 10
 estimated_minutes: 30
 waiting_minutes: 15
 status: draft
@@ -25,28 +25,28 @@ submission:
 rubric:
   - id: screen
     criterion: "One simple mobile screen"
-    points: 4
+    points: 2
     levels:
       full: "A complete mobile screen, e.g. a login or an account overview"
       partial: "Unfinished, or not a mobile screen"
       none: "No screen"
   - id: components
     criterion: "Only components from their Name-DS-template library"
-    points: 6
+    points: 3
     levels:
       full: "Every part is an instance from their Name-DS-template library"
       partial: "Mostly, but some parts are detached, drawn by hand or from another library"
       none: "Drawn by hand, or from another library"
   - id: dark
     criterion: "The copy is in Dark mode and looks right, with no manual colour changes"
-    points: 7
+    points: 4
     levels:
       full: "The copy is switched to Dark mode (Appearance), and every colour changed with it; no colours set by hand"
       partial: "Dark mode is set, but some parts didn't switch, or were recoloured by hand"
       none: "No dark copy, or the dark look was made by changing colours by hand"
   - id: note
     criterion: "A short note on what didn't switch"
-    points: 3
+    points: 1
     levels:
       full: "Says what didn't switch correctly, or that everything did"
       partial: "Vague"

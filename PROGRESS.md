@@ -1004,3 +1004,11 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 ## Dependency security fix (2026-10-29)
 - `next` / `eslint-config-next` 16.4.0 → 16.4.3 (GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r, GHSA-673q-mjm6-r5xr) and `zod` → 4.6.7 (GHSA-mrhx-c7xc-m3w5); CI's `audit:prod` was failing on them.
 - Checks: `npm run check` ✅ · `npm run build` ✅ · `npm run audit:prod` 0 vulnerabilities.
+
+## New points (2026-10-29)
+- Points follow "required", not difficulty: optional 3, required quiz 6, each required path milestone / required strategist wireframing challenge 10. 24 content files changed (alh-1…7 now 10 each, as Auto Layout homework is becoming required; wfc-1…3 10 each; wf-3 3, wf-4…6 10; the six required quizzes incl. second-opinion 6; right-model-for-the-job and uxda-superheroes 3). Paths add up on their own.
+- Quiz question points may be halves (Zod `multipleOf(0.5)`); rubric criteria stay whole, totals stay whole (DB `int`).
+- Migration `20261029100000_points_rescale.sql`: `submission_review_audit.note`; every attempt still on the old max_score scaled to the new points, rounded to half points, one audit row each (changed_by null, note "Points changed: 10 → 6"), shown under "Changes after review". Preview: 144 published attempts convert. The admin audit read uses `*` so it works before and after the column exists.
+- `data/auto-layout-import.json` converted the same way (36/40 → 9/10). content-format.md guideline + `/new-challenge` updated.
+- Order: deploy → `content:sync` (the deployed app must accept half points first) → `db:push` (the max_score match converts only old attempts) → `db:types`. Auto Layout homework's "required" is set by Alvis in the admin panel.
+- Checks: `content:validate` ✅ · `npm run check` ✅ (1065) · `npm run build` ✅.

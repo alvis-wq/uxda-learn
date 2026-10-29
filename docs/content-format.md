@@ -84,7 +84,7 @@ due_at: 2026-11-01T17:00:00Z       # initial value* — optional deadline (ISO 8
 type: mixed                        # quiz | screenshot | figma | mixed | acknowledge
 feedback_mode: final               # final (default): results after submit | instant: each answer checked as you go (quiz only)
 difficulty: 2                      # 1 easy, 2 medium, 3 hard (not used by acknowledge)
-points: 30                         # MUST equal sum of question points + rubric points
+points: 30                         # MUST equal sum of question points + rubric points (a whole number)
 estimated_minutes: 90              # optional total time
 waiting_minutes: 30                # optional — part of estimated_minutes spent waiting while Claude Code works
                                    # (needs estimated_minutes, at most it); hands-on time = the difference
@@ -340,9 +340,16 @@ Rules: no `questions`, `submission`, `rubric` or `grader_notes`; `points` may be
 `difficulty` is not needed. The brief must not be empty.
 
 ## Points guideline
-| Difficulty | Points |
+Points follow whether a challenge is required, not its difficulty (since 2026-10-29):
+
+| Challenge | Points |
 |---|---|
-| 1 easy | 10 |
-| 2 medium | 20–30 |
-| 3 hard | 40–60 |
+| optional (required for no track) | 3 |
+| required quiz (required for at least one track) | 6 |
+| each milestone of a required path, and each required multi-step Figma challenge | 10 |
 | acknowledge | 0 |
+
+`required_for` is set in the admin panel, so the file's points don't follow it on their own: when a challenge becomes
+required (or stops being), change its points in the file too. Changing points never changes earlier scores; converting
+them takes a migration (see `20261029100000_points_rescale.sql`). Question points may be halves (0.5, 1.5); rubric
+criteria are whole points.

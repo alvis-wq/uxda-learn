@@ -6,7 +6,7 @@ audiences: [strategist]
 path: auto-layout-homework
 type: figma
 difficulty: 2
-points: 20
+points: 10
 status: draft
 submission:
   figma_url:
@@ -15,35 +15,35 @@ submission:
 rubric:
   - id: structure
     criterion: "Structure: built with (nested) Auto Layout as the task asks"
-    points: 4
+    points: 2
     levels:
       full: "No hand-placed elements are left: the screen is one Auto Layout frame with nested frames for each group (header, rows, buttons)."
       partial: "Auto Layout is used, but some parts are still placed by hand or grouped instead of framed"
       none: "No Auto Layout, or the task isn't done"
   - id: sizing
     criterion: "Sizing: Fill, Hug and Fixed are set where they belong"
-    points: 4
+    points: 2
     levels:
       full: "Containers fill or hug as they should; only things that must keep a size are Fixed"
       partial: "Mostly right, with one or two wrong settings (e.g. text Fixed instead of Fill)"
       none: "Sizing left on defaults or wrong throughout"
   - id: resilience
     criterion: "Resilience: survives a text change and a 360 px resize"
-    points: 4
+    points: 2
     levels:
       full: "Longer text and a 360 px width keep the layout intact: nothing overlaps, clips or jumps"
       partial: "Holds up to one of the two, or breaks in one place"
       none: "Breaks on a text change or on resize"
   - id: values
     criterion: "Exact values: padding, gaps and sizes match the task"
-    points: 4
+    points: 2
     levels:
       full: "Padding, gaps and sizes are the exact numbers given in the task"
       partial: "Close, with a few values off"
       none: "Values guessed or not set"
   - id: names
     criterion: "Layer names: frames and layers are named"
-    points: 4
+    points: 2
     levels:
       full: "Every frame and the main layers have clear names (no \"Frame 12\")"
       partial: "Some layers named, others left as defaults"

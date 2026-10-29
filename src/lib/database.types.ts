@@ -999,6 +999,7 @@ export type Database = {
           id: number
           new_feedback: string | null
           new_score: number
+          note: string | null
           old_feedback: string | null
           old_score: number | null
           submission_id: string
@@ -1009,6 +1010,7 @@ export type Database = {
           id?: never
           new_feedback?: string | null
           new_score: number
+          note?: string | null
           old_feedback?: string | null
           old_score?: number | null
           submission_id: string
@@ -1019,6 +1021,7 @@ export type Database = {
           id?: never
           new_feedback?: string | null
           new_score?: number
+          note?: string | null
           old_feedback?: string | null
           old_score?: number | null
           submission_id?: string

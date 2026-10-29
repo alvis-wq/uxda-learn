@@ -4,7 +4,7 @@ title: From Claude Design to Figma
 category: wireframing
 type: figma
 difficulty: 2
-points: 20
+points: 10
 estimated_minutes: 35
 status: draft
 image: wf-4-claude-design-to-figma.png
@@ -26,21 +26,21 @@ submission:
 rubric:
   - id: flow
     criterion: A 3-screen savings-goal flow made in Claude Design
-    points: 8
+    points: 4
     levels:
       full: Goal overview, add money, and a confirmation screen, using the UXDA wireframe style
       partial: Fewer screens, or the flow doesn't make sense end to end
       none: No flow
   - id: in-figma
     criterion: The flow is in a Figma file and the link opens
-    points: 6
+    points: 3
     levels:
       full: All screens are in Figma, in order, and the link opens
       partial: Some screens missing, or extra access needed
       none: Not in Figma, or the link doesn't open
   - id: critique
     criterion: Names something the AI got wrong and what they changed
-    points: 6
+    points: 3
     levels:
       full: A specific mistake (missing state, wrong step, unclear text) and the fix
       partial: "\"Needed some fixes\" without details"

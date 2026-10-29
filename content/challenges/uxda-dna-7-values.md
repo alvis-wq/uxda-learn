@@ -4,7 +4,7 @@ title: Our DNA — 7 values
 category: uxda-way
 type: quiz
 difficulty: 1
-points: 10
+points: 6
 estimated_minutes: 6
 status: draft
 image: uxda-dna-7-values.png
@@ -20,7 +20,7 @@ questions:
       - { id: c, label: "Enjoy" }
       - { id: d, label: "Team up" }
     answer: b
-    points: 2
+    points: 1.5
   - id: q2
     kind: single
     prompt: Under "Overdeliver", what do we always ask ourselves before delivering?
@@ -30,7 +30,7 @@ questions:
       - { id: c, label: "\"Is this the best we can do?\"" }
       - { id: d, label: "\"Did we follow the brief?\"" }
     answer: c
-    points: 2
+    points: 1.5
   - id: q3
     kind: single
     prompt: The "Fish! Philosophy" (choose your attitude, play, make someone's day, be there) belongs to which value?
@@ -40,7 +40,7 @@ questions:
       - { id: c, label: "Improve" }
       - { id: d, label: "Empathize" }
     answer: a
-    points: 2
+    points: 1
   - id: q4
     kind: single
     prompt: Which value includes the "Win-Win policy"?
@@ -50,7 +50,7 @@ questions:
       - { id: c, label: "Overdeliver" }
       - { id: d, label: "Challenge" }
     answer: b
-    points: 2
+    points: 1
   - id: q5
     kind: single
     prompt: One value compares us to Neil Armstrong, going where nobody has gone before. Which one?
@@ -60,7 +60,7 @@ questions:
       - { id: c, label: "Challenge" }
       - { id: d, label: "Enjoy" }
     answer: c
-    points: 2
+    points: 1
 ---
 ## Our DNA — 7 values
 UXDA's culture is built on 7 values. All the answers are in the document

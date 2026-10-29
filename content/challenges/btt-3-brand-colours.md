@@ -6,7 +6,7 @@ audiences: [designer]
 path: brand-the-template
 type: mixed
 difficulty: 2
-points: 20
+points: 10
 estimated_minutes: 30
 waiting_minutes: 10
 status: draft
@@ -25,28 +25,28 @@ submission:
 rubric:
   - id: brand
     criterion: "A screenshot of a real brand's colour guide"
-    points: 4
+    points: 2
     levels:
       full: "The brand's colours are clearly visible"
       partial: "Hard to read, or only a few colours"
       none: "Missing, or not a colour guide"
   - id: replaced
     criterion: "Matching ramps are replaced with real brand colour ramps"
-    points: 8
+    points: 4
     levels:
       full: "In the copy, the Brand [PLACEHOLDER] ramps that match now hold the brand's colours as full ramps"
       partial: "Some colours changed, but ramps are incomplete or don't match the guide"
       none: "Nothing changed"
   - id: kept
     criterion: "The rest are still placeholders"
-    points: 4
+    points: 2
     levels:
       full: "Ramps with no brand match are still named Brand [PLACEHOLDER] and unchanged"
       partial: "Some unmatched ramps were changed or removed"
       none: "The placeholders are gone or renamed without a match"
   - id: report
     criterion: "Claude's report says what changed"
-    points: 4
+    points: 2
     levels:
       full: "The pasted report names each ramp that changed"
       partial: "Vague, or only part of it"

@@ -328,7 +328,8 @@ create table submission_import_audit (
 );
 
 -- Every change an admin makes to the score or feedback of a reviewed submission. Written only by
--- adjust_submission_review().
+-- adjust_submission_review(), and once by the points change (20261029100000_points_rescale.sql: changed_by null, `note`
+-- says why).
 create table submission_review_audit (
   id bigint generated always as identity primary key,
   submission_id uuid not null references submissions(id) on delete cascade,
@@ -337,6 +338,7 @@ create table submission_review_audit (
   old_feedback text,
   new_feedback text,
   changed_by uuid references profiles(id) on delete set null,
+  note text,                                        -- set when no admin made the change (e.g. a points change)
   changed_at timestamptz not null default now()
 );
 create index submission_review_audit_submission_idx on submission_review_audit (submission_id, changed_at desc);

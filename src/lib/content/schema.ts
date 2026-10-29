@@ -86,6 +86,8 @@ export const categoriesFileSchema = z.strictObject({
 
 const optionSchema = z.strictObject({ id, label: nonEmpty });
 const points = z.number().int().positive("must be a positive integer");
+/** A question's points: whole or half (a 3-point quiz of 6 questions is 0.5 each). Rubric criteria stay whole. */
+const questionPoints = z.number().positive("must be more than 0").multipleOf(0.5, "must be a whole or half point");
 /** Why the right answer is right. Private (stored in challenge_keys): shown once the learner has it right. */
 const explanation = z.string().trim().min(1, "must not be empty").max(2000, "keep the explanation short (at most 2000 characters)").optional();
 
@@ -96,7 +98,7 @@ const singleQuestionSchema = z.strictObject({
   options: z.array(optionSchema).min(2, "needs at least 2 options"),
   answer: id,
   explanation,
-  points,
+  points: questionPoints,
 });
 
 const multiQuestionSchema = z.strictObject({
@@ -106,7 +108,7 @@ const multiQuestionSchema = z.strictObject({
   options: z.array(optionSchema).min(2, "needs at least 2 options"),
   answer: z.array(id).min(1, "needs at least one correct option"),
   explanation,
-  points,
+  points: questionPoints,
 });
 
 /** Drag items into the right order. Authors list `items` in the CORRECT order; sync stores them shuffled (see order.ts). */
@@ -116,7 +118,7 @@ const orderQuestionSchema = z.strictObject({
   prompt: nonEmpty,
   items: z.array(optionSchema).min(2, "needs at least 2 items"),
   explanation,
-  points,
+  points: questionPoints,
 });
 
 /**
@@ -131,7 +133,7 @@ const matchQuestionSchema = z.strictObject({
   categories: z.array(optionSchema).min(2, "needs at least 2 categories"),
   items: z.array(z.strictObject({ id, label: nonEmpty, match: id })).min(2, "needs at least 2 items"),
   explanation,
-  points,
+  points: questionPoints,
 });
 
 /** A match question as stored: items shuffled and without their category. */
@@ -143,7 +145,7 @@ const publicMatchQuestionSchema = z.strictObject({
   items: z.array(optionSchema),
   /** Every category takes exactly one item (derived from the pairs at sync). */
   one_per_category: z.boolean(),
-  points,
+  points: questionPoints,
 });
 
 const textQuestionSchema = z.strictObject({
@@ -151,7 +153,7 @@ const textQuestionSchema = z.strictObject({
   kind: z.literal("text"),
   prompt: nonEmpty,
   min_words: z.number().int().positive().optional(),
-  points,
+  points: questionPoints,
 });
 
 export const questionSchema = z.discriminatedUnion("kind", [

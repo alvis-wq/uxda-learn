@@ -4,7 +4,7 @@ title: Claude at UXDA
 category: tool-proficiency
 type: quiz
 difficulty: 1
-points: 10
+points: 6
 estimated_minutes: 3
 status: draft
 image: claude-at-uxda.png
@@ -18,7 +18,7 @@ questions:
       - { id: c, label: "Team" }
       - { id: d, label: "Enterprise" }
     answer: c
-    points: 2
+    points: 1.5
   - id: q2
     kind: single
     prompt: You need access to Claude, or something isn't working with your account. Who do you ask?
@@ -28,7 +28,7 @@ questions:
       - { id: c, label: "Nobody — create your own account" }
       - { id: d, label: "The client" }
     answer: a
-    points: 2
+    points: 1.5
   - id: q3
     kind: single
     prompt: A client asks if UXDA uses AI tools. What's our rule right now?
@@ -38,7 +38,7 @@ questions:
       - { id: c, label: "Say we never use AI" }
       - { id: d, label: "Send them our prompts" }
     answer: b
-    points: 2
+    points: 1
   - id: q4
     kind: single
     prompt: You want Claude to help you sort a spreadsheet of real customer complaints. It has customers' names and account numbers. What do you do?
@@ -48,7 +48,7 @@ questions:
       - { id: c, label: "Don't use Claude for client work at all" }
       - { id: d, label: "Upload it to your personal Claude account instead" }
     answer: b
-    points: 2
+    points: 1
   - id: q5
     kind: single
     prompt: Which of these should never go into Claude?
@@ -58,7 +58,7 @@ questions:
       - { id: c, label: "Passwords, API keys and access codes" }
       - { id: d, label: "A wireframe screenshot" }
     answer: c
-    points: 2
+    points: 1
 ---
 ## Claude at UXDA
 A few quick questions about how we use our company Claude account.
