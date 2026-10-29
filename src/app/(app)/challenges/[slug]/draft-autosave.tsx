@@ -8,11 +8,16 @@ import { saveDraft } from "./draft-actions";
 
 /**
  * Saves the form to the server as the learner works (server action `saveDraft`), by the rules in `Autosaver`.
- * A hidden tab and an unmounting form send whatever is pending straight away.
+ * A hidden tab and an unmounting form send whatever is pending straight away. `enabled: false` (editing a submission
+ * that's already in) never saves a draft: the saver starts paused.
  */
-export function useDraftAutosave(slug: string, value: DraftInput, initial: DraftInput) {
+export function useDraftAutosave(slug: string, value: DraftInput, initial: DraftInput, enabled = true) {
   const [status, setStatus] = useState<SaveStatus>("idle");
-  const [saver] = useState(() => new Autosaver<DraftInput>((v) => saveDraft(slug, v), setStatus, initial));
+  const [saver] = useState(() => {
+    const s = new Autosaver<DraftInput>((v) => saveDraft(slug, v), setStatus, initial);
+    if (!enabled) void s.pause();
+    return s;
+  });
   const previousStep = useRef(value.step);
 
   useEffect(() => {

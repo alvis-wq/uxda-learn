@@ -61,6 +61,14 @@ export function learnerStatus(status: SubmissionStatus | null | undefined) {
   }
 }
 
+/**
+ * The learner may still change a submission while nobody has reviewed it: submitted, or AI-reviewed but not yet
+ * approved (the edit drops the AI score). Never a test attempt (published at once) or an imported one (an admin's).
+ */
+export function isEditable(s: { status: SubmissionStatus; is_test: boolean; is_imported: boolean }): boolean {
+  return (s.status === "submitted" || s.status === "ai_reviewed") && !s.is_test && !s.is_imported;
+}
+
 /** Feedback and score are only shown once a human has approved (or asked for changes). */
 export function isResultVisible(status: SubmissionStatus): boolean {
   return status === "published" || status === "needs_resubmission";

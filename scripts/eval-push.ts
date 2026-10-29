@@ -14,7 +14,8 @@ pushBatch(adminClient(), { baseDir: ".eval", batchId })
     const count = (o: string) => outcomes.filter((x) => x.outcome === o).length;
     console.log(
       `Batch ${batchId}: ${count("inserted")} inserted, ${count("updated")} updated, ${count("unchanged")} unchanged, ` +
-        `${count("skipped_reviewed")} skipped (already reviewed by an admin), ${count("skipped_superseded")} skipped (newer batch exists).`,
+        `${count("skipped_reviewed")} skipped (already reviewed by an admin), ${count("skipped_superseded")} skipped (newer batch exists), ` +
+        `${count("skipped_edited")} skipped (changed by the learner since the pull — run /evaluate again).`,
     );
     if (missing.length) console.warn(`No result for ${missing.length} submission(s) in the manifest: ${missing.join(", ")}`);
   })

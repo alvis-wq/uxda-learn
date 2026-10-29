@@ -19,7 +19,7 @@ import {
   type StepPlan,
   type StepProblems,
 } from "@/lib/submissions/steps";
-import { submitChallenge } from "./actions";
+import { editSubmission, submitChallenge } from "./actions";
 import { discardDraft } from "./draft-actions";
 import { SaveIndicator, useDraftAutosave } from "./draft-autosave";
 import { useReportStarted } from "./collapsible-brief";
@@ -48,6 +48,11 @@ type Props = {
   attemptNumber: number;
   /** null for a test attempt (no limit). */
   maxAttempts: number | null;
+  /**
+   * Changing a submission that's awaiting review instead of making a new attempt: `initialDraft` holds what was
+   * submitted, nothing is autosaved as a draft, and Save sends it to editSubmission.
+   */
+  editing?: { submissionId: string };
 };
 
 /**
@@ -66,6 +71,7 @@ export function SteppedChallengeForm({
   initialDraft,
   attemptNumber,
   maxAttempts,
+  editing,
 }: Props) {
   const router = useRouter();
   const challenge = useMemo(() => ({ slug, questions, submission_spec: spec }), [slug, questions, spec]);
@@ -110,8 +116,13 @@ export function SteppedChallengeForm({
     figmaUrl: f.figmaUrl,
     reflection: f.reflection,
   });
-  const autosave = useDraftAutosave(slug, snapshot(fields, images, step), snapshot(start.fields, start.images, start.step));
-  const [notice, setNotice] = useState(initialDraft);
+  const autosave = useDraftAutosave(
+    slug,
+    snapshot(fields, images, step),
+    snapshot(start.fields, start.images, start.step),
+    !editing,
+  );
+  const [notice, setNotice] = useState(editing ? null : initialDraft);
   const [startingOver, setStartingOver] = useState(false);
 
   // Started = saved work, a step past the first, or anything entered: the brief then shrinks to its first paragraph.
@@ -156,15 +167,33 @@ export function SteppedChallengeForm({
     setFormError(null);
     setServerErrors({});
     startTransition(async () => {
+      const input = {
+        answers: fields.answers,
+        imagePaths: images.map((i) => i.path),
+        figmaUrl: fields.figmaUrl || null,
+        reflection: fields.reflection || null,
+      };
+      if (editing) {
+        try {
+          const res = await editSubmission(editing.submissionId, input);
+          if (!res.ok) {
+            setFormError(res.error);
+            setServerErrors(
+              Object.fromEntries(Object.entries(res.fieldErrors ?? {}).map(([field, message]) => [stepForField(plan, field), message])),
+            );
+            return;
+          }
+          toast.success("Changes saved — awaiting review.");
+          router.push(`/submissions/${editing.submissionId}`);
+        } catch {
+          setFormError("Something went wrong. Please try again.");
+        }
+        return;
+      }
       try {
         // No save may land after the submit that deletes the draft.
         await autosave.pause();
-        const res = await submitChallenge(slug, {
-          answers: fields.answers,
-          imagePaths: images.map((i) => i.path),
-          figmaUrl: fields.figmaUrl || null,
-          reflection: fields.reflection || null,
-        });
+        const res = await submitChallenge(slug, input);
         if (!res.ok) {
           autosave.resume();
           setFormError(res.error);
@@ -324,7 +353,7 @@ export function SteppedChallengeForm({
             blocker={null}
             headingId={headingId}
             eyebrow={eyebrow(def)}
-            title={plan.mode === "quiz" ? "Review your answers" : "Review & submit"}
+            title={plan.mode === "quiz" ? "Review your answers" : editing ? "Review & save" : "Review & submit"}
           >
             <Review
               plan={plan}
@@ -345,7 +374,7 @@ export function SteppedChallengeForm({
             {!complete && (
               <p id="step-blocker" className="text-muted-foreground text-meta flex items-start gap-2">
                 <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-                Finish the steps marked above before you submit.
+                Finish the steps marked above before you {editing ? "save" : "submit"}.
               </p>
             )}
           </StepFrame>
@@ -368,7 +397,7 @@ export function SteppedChallengeForm({
         linear
         backButtonText="Back"
         nextButtonText="Continue"
-        completeButtonText={pending ? "Submitting…" : "Submit"}
+        completeButtonText={editing ? (pending ? "Saving…" : "Save changes") : pending ? "Submitting…" : "Submit"}
         completeIcon={pending ? <Loader2 className="animate-spin" size={16} aria-hidden /> : undefined}
         width="100%"
         backButtonProps={{ disabled: pending }}
@@ -382,9 +411,13 @@ export function SteppedChallengeForm({
       </Stepper>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <p className="text-muted-foreground text-sm">
-          {maxAttempts === null ? `Test attempt ${attemptNumber}` : `Attempt ${attemptNumber} of ${maxAttempts}`}
+          {editing
+            ? `Editing attempt ${attemptNumber}`
+            : maxAttempts === null
+              ? `Test attempt ${attemptNumber}`
+              : `Attempt ${attemptNumber} of ${maxAttempts}`}
         </p>
-        <SaveIndicator status={autosave.status} />
+        {!editing && <SaveIndicator status={autosave.status} />}
       </div>
     </div>
   );

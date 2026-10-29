@@ -26,6 +26,8 @@
  *     write resources, completions or attempts; users can't flag themselves editors; set_user_academy_editor needs an
  *     admin actor and audits; team_academy() is for leads and admins and returns completion columns only; nothing is
  *     published without 5 questions; the `academy` bucket is public and users can't upload to it.
+ *     Review edits: users can't call edit_submission or adjust_submission_review or read submission_review_audit;
+ *     edit_submission refuses a reviewed submission.
  * 12. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
  *     rename_staff_email and set_user_track need an admin actor (seed excepted), are audited in staff_audit (none for a
  *     no-op), and users can't call them or read the audit.
@@ -55,6 +57,7 @@ const EXPECTED_TABLES = [
   "paths",
   "path_settings_audit",
   "submission_import_audit",
+  "submission_review_audit",
   "staff_titles",
   "staff_audit",
   "academy_resources",
@@ -109,6 +112,7 @@ type PrivateTable =
   | "challenge_feedback"
   | "path_settings_audit"
   | "submission_import_audit"
+  | "submission_review_audit"
   | "staff_titles"
   | "staff_audit";
 
@@ -529,6 +533,25 @@ async function main() {
     else fail("imported points are missing from the leaderboard");
     await expectNoRows(authed, "submission_import_audit", "authenticated user");
     await expectNoRows(authed, "path_settings_audit", "authenticated user");
+    await expectNoRows(authed, "submission_review_audit", "authenticated user");
+    // Review edits: both go through the service role only (the server actions check the session and admin first).
+    const { error: userEditRpc } = await authed.rpc("edit_submission", {
+      p_submission: imported.data ?? "", p_user: userId, p_answers: {}, p_image_paths: [], p_figma_url: "",
+      p_reflection: "", p_auto_score: 0, p_challenge_version: 1, p_max_score: 1,
+    });
+    if (userEditRpc) pass(`user cannot call edit_submission (${userEditRpc.code ?? userEditRpc.message})`);
+    else fail("user COULD call edit_submission");
+    const editImported = await admin.rpc("edit_submission", {
+      p_submission: imported.data ?? "", p_user: userId, p_answers: {}, p_image_paths: [], p_figma_url: "",
+      p_reflection: "", p_auto_score: 0, p_challenge_version: 1, p_max_score: 1,
+    });
+    if (editImported.error) pass("edit_submission refuses a reviewed (imported) submission");
+    else fail("edit_submission CHANGED a reviewed submission");
+    const { error: userAdjustRpc } = await authed.rpc("adjust_submission_review", {
+      p_submission: imported.data ?? "", p_score: 0, p_feedback: "", p_actor: userId,
+    });
+    if (userAdjustRpc) pass(`user cannot call adjust_submission_review (${userAdjustRpc.code ?? userAdjustRpc.message})`);
+    else fail("user COULD call adjust_submission_review");
     const { error: userUndoRpc } = await authed.rpc("undo_import", { p_submission: imported.data ?? "", p_source: "admin", p_actor: userId });
     if (userUndoRpc) pass(`user cannot call undo_import (${userUndoRpc.code ?? userUndoRpc.message})`);
     else fail("user COULD call undo_import");

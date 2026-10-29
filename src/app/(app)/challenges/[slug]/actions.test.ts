@@ -7,14 +7,19 @@ vi.mock("@/lib/auth/session", () => ({ getCurrentUser, getCurrentProfile }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { acknowledgeChallenge, submitChallenge } = await import("./actions");
+const { acknowledgeChallenge, editSubmission, submitChallenge } = await import("./actions");
 
 type Row = Record<string, unknown>;
 
 /** Minimal in-memory stand-in for the supabase-js query builder used by the actions. */
-function fakeDb(tables: Record<string, Row[]>) {
+function fakeDb(tables: Record<string, Row[]>, rpcError: { code: string; message: string } | null = null) {
   const writes: { table: string; row: Row; options: unknown }[] = [];
+  const rpcs: { fn: string; args: Row }[] = [];
   const client = {
+    rpc: async (fn: string, args: Row) => {
+      rpcs.push({ fn, args });
+      return { data: rpcError ? null : "2026-10-29T10:00:00+00:00", error: rpcError };
+    },
     from(table: string) {
       const filters: ((r: Row) => boolean)[] = [];
       const rows = () => (tables[table] ?? []).filter((r) => filters.every((f) => f(r)));
@@ -37,7 +42,7 @@ function fakeDb(tables: Record<string, Row[]>) {
       return builder;
     },
   };
-  return { client, writes };
+  return { client, writes, rpcs };
 }
 
 const USER = { id: "11111111-1111-4111-8111-111111111111" };
@@ -294,5 +299,107 @@ describe("submitChallenge on a path milestone", () => {
     await expect(submitChallenge("m1", input)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
     setupPath([], { status: "archived" });
     await expect(submitChallenge("m1", input)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
+  });
+});
+
+describe("editSubmission", () => {
+  const SUB = "22222222-2222-4222-8222-222222222222";
+  const figma = (over: Row = {}): Row => ({
+    slug: "fig", title: "Figma task", category_slug: "wf", path_slug: null, type: "figma", status: "published",
+    audiences: ["designer"], difficulty: 2, points: 20, version: 2, questions: [], rubric: [],
+    submission_spec: { figma_url: { required: true, label: "Link" } }, ...over,
+  });
+  const submission = (over: Row = {}): Row => ({
+    id: SUB, user_id: USER.id, challenge_slug: "fig", status: "submitted", is_test: false, is_imported: false, ...over,
+  });
+  const input = { answers: {}, imagePaths: [], figmaUrl: "https://www.figma.com/design/abc/File?node-id=1-2", reflection: null };
+
+  function setupEdit(sub: Row, challenge: Row = figma(), rpcError: { code: string; message: string } | null = null) {
+    const db = fakeDb(
+      {
+        challenges: [challenge],
+        categories: [{ slug: "wf", title: "WF", archived: false, audiences: ["all"] }],
+        submissions: [sub],
+        challenge_keys: [],
+      },
+      rpcError,
+    );
+    createAdminClient.mockReturnValue(db.client);
+    return db;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getCurrentUser.mockResolvedValue(USER);
+    getCurrentProfile.mockResolvedValue(profile("designer"));
+  });
+
+  it.each(["submitted", "ai_reviewed"])("replaces the content of a %s submission through edit_submission", async (status) => {
+    const db = setupEdit(submission({ status }));
+    await expect(editSubmission(SUB, input)).resolves.toEqual({ ok: true });
+    expect(db.rpcs).toEqual([
+      {
+        fn: "edit_submission",
+        args: {
+          p_submission: SUB,
+          p_user: USER.id,
+          p_answers: {},
+          p_image_paths: [],
+          p_figma_url: input.figmaUrl,
+          p_reflection: "",
+          p_auto_score: 0,
+          p_challenge_version: 2,
+          p_max_score: 20,
+        },
+      },
+    ]);
+  });
+
+  it.each([
+    ["approved", submission({ status: "published" })],
+    ["sent back for resubmission", submission({ status: "needs_resubmission" })],
+    ["a test attempt", submission({ is_test: true })],
+    ["imported by an admin", submission({ is_imported: true })],
+  ])("refuses one that is %s", async (_label, sub) => {
+    const db = setupEdit(sub);
+    await expect(editSubmission(SUB, input)).resolves.toEqual({
+      ok: false,
+      error: "This submission has been reviewed, so it can't be changed any more.",
+    });
+    expect(db.rpcs).toEqual([]);
+  });
+
+  it("can't touch someone else's submission", async () => {
+    const db = setupEdit(submission({ user_id: "33333333-3333-4333-8333-333333333333" }));
+    await expect(editSubmission(SUB, input)).resolves.toEqual({ ok: false, error: "Submission not found." });
+    expect(db.rpcs).toEqual([]);
+  });
+
+  it("checks the input like a submit", async () => {
+    const db = setupEdit(submission());
+    await expect(editSubmission(SUB, { ...input, figmaUrl: null })).resolves.toMatchObject({
+      ok: false,
+      error: "Please fix the highlighted fields.",
+    });
+    expect(db.rpcs).toEqual([]);
+  });
+
+  it("refuses when the challenge is no longer open to the learner", async () => {
+    const db = setupEdit(submission(), figma({ status: "archived" }));
+    await expect(editSubmission(SUB, input)).resolves.toEqual({ ok: false, error: "This challenge isn't open for submissions." });
+    expect(db.rpcs).toEqual([]);
+  });
+
+  it("reports a review that landed in between as locked", async () => {
+    setupEdit(submission(), figma(), { code: "42501", message: "submission can no longer be edited" });
+    await expect(editSubmission(SUB, input)).resolves.toEqual({
+      ok: false,
+      error: "This submission has been reviewed, so it can't be changed any more.",
+    });
+  });
+
+  it("rejects a malformed id without touching the DB", async () => {
+    await expect(editSubmission("nope", input)).resolves.toEqual({ ok: false, error: "Submission not found." });
+    expect(createAdminClient).not.toHaveBeenCalled();
   });
 });

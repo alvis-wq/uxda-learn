@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { REVIEWABLE_STATUSES } from "@/lib/admin/review";
+import { ADJUSTABLE_STATUSES, REVIEWABLE_STATUSES } from "@/lib/admin/review";
 import { parseChallenge } from "@/lib/challenges/model";
 import { getAdminAttemptResults } from "@/lib/data/attempt-results";
 import { createClient } from "@/lib/supabase/server";
@@ -36,9 +36,14 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
     .maybeSingle();
   if (!sub) notFound();
 
-  const [{ data: row }, { data: evals }] = await Promise.all([
+  const [{ data: row }, { data: evals }, { data: changes }] = await Promise.all([
     supabase.from("challenges").select("*").eq("slug", sub.challenge_slug).maybeSingle(),
     supabase.from("evaluations").select("*").eq("submission_id", id).order("created_at", { ascending: false }),
+    supabase
+      .from("submission_review_audit")
+      .select("id,old_score,new_score,old_feedback,new_feedback,changed_at,profiles(full_name,email)")
+      .eq("submission_id", id)
+      .order("changed_at", { ascending: false }),
   ]);
   const challenge = row ? parseChallenge(row) : null;
   const evaluation = evals?.[0] ?? null;
@@ -54,6 +59,7 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
   }
 
   const reviewable = (REVIEWABLE_STATUSES as readonly string[]).includes(sub.status);
+  const adjustable = !sub.is_test && (ADJUSTABLE_STATUSES as readonly string[]).includes(sub.status);
   const initialScore = Number(sub.final_score ?? sub.auto_score);
 
   return (
@@ -69,6 +75,8 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
           <p className="text-muted-foreground mt-1 text-sm">
             {sub.profiles?.full_name ?? sub.profiles?.email} · {sub.profiles?.email} · attempt {sub.attempt} ·
             submitted {new Date(sub.submitted_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+            {sub.edited_at &&
+              ` · edited ${new Date(sub.edited_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -179,14 +187,30 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
           <Card>
             <CardHeader>
               <CardTitle>Decision</CardTitle>
+              {adjustable && (
+                <CardDescription>
+                  {STATUS_LABEL[sub.status]}. You can still change the score and feedback; the learner sees the change
+                  and it&apos;s recorded below.
+                </CardDescription>
+              )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="grid gap-6">
               {reviewable ? (
                 <ReviewForm
                   submissionId={sub.id}
                   maxScore={Number(sub.max_score)}
                   initialScore={initialScore}
                   initialFeedback={sub.feedback ?? evaluation?.feedback ?? ""}
+                  editedAt={sub.edited_at}
+                />
+              ) : adjustable ? (
+                <ReviewForm
+                  mode="adjust"
+                  submissionId={sub.id}
+                  maxScore={Number(sub.max_score)}
+                  initialScore={initialScore}
+                  initialFeedback={sub.feedback ?? ""}
+                  feedbackRequired={sub.status === "needs_resubmission"}
                 />
               ) : (
                 <div className="grid gap-2 text-sm">
@@ -195,6 +219,25 @@ export default async function AdminSubmissionPage({ params }: PageProps<"/admin/
                   </p>
                   {sub.feedback && <p className="text-muted-foreground whitespace-pre-line">{sub.feedback}</p>}
                 </div>
+              )}
+              {changes && changes.length > 0 && (
+                <section aria-labelledby="changes-heading" className="grid gap-2 border-t pt-4">
+                  <h2 id="changes-heading" className="text-sm font-medium">
+                    Changes after review
+                  </h2>
+                  <ul className="grid gap-2" data-testid="review-changes">
+                    {changes.map((c) => (
+                      <li key={c.id} className="text-muted-foreground text-meta">
+                        {new Date(c.changed_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} ·{" "}
+                        {c.profiles?.full_name ?? c.profiles?.email ?? "a former admin"} ·{" "}
+                        {Number(c.old_score) === Number(c.new_score)
+                          ? `score ${c.new_score}`
+                          : `score ${c.old_score ?? "—"} → ${c.new_score}`}
+                        {(c.old_feedback ?? "") !== (c.new_feedback ?? "") && " · feedback changed"}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
             </CardContent>
           </Card>

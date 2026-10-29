@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reviewSchema, sortQueue } from "./review";
+import { adjustReviewSchema, bulkApproveSchema, reviewSchema, sortQueue } from "./review";
 
 const ID = "11111111-1111-4111-8111-111111111111";
 
@@ -27,5 +27,22 @@ describe("sortQueue", () => {
       { id: 4, status: "ai_reviewed", submitted_at: "2026-01-02", confidence: "high" },
     ];
     expect(sortQueue(items).map((i) => i.id)).toEqual([3, 4, 2, 1]);
+  });
+});
+
+describe("bulkApproveSchema", () => {
+  it("takes a list of ids, at least one and at most 200", () => {
+    expect(bulkApproveSchema.safeParse([ID]).success).toBe(true);
+    expect(bulkApproveSchema.safeParse([]).success).toBe(false);
+    expect(bulkApproveSchema.safeParse(["x"]).success).toBe(false);
+    expect(bulkApproveSchema.safeParse(Array(201).fill(ID)).success).toBe(false);
+  });
+});
+
+describe("adjustReviewSchema", () => {
+  it("takes whole or half points and optional feedback", () => {
+    expect(adjustReviewSchema.safeParse({ submissionId: ID, finalScore: "4.5", feedback: "" }).success).toBe(true);
+    expect(adjustReviewSchema.safeParse({ submissionId: ID, finalScore: 4.2, feedback: "" }).success).toBe(false);
+    expect(adjustReviewSchema.safeParse({ submissionId: ID, finalScore: -1, feedback: "" }).success).toBe(false);
   });
 });

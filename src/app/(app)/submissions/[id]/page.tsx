@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, FlaskConical, Info } from "lucide-react";
+import { ChevronLeft, FlaskConical, Info, Pencil } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { SubmissionAnswers } from "@/components/submission-answers";
@@ -12,7 +12,7 @@ import { requireOnboardedProfile } from "@/lib/auth/session";
 import { challengeNeedsReview, parseChallenge } from "@/lib/challenges/model";
 import { getLearnerAttemptResults } from "@/lib/data/attempt-results";
 import { createClient } from "@/lib/supabase/server";
-import { isResultVisible } from "@/lib/submissions/rules";
+import { isEditable, isResultVisible } from "@/lib/submissions/rules";
 import { showsTestTotal } from "@/lib/submissions/testing";
 
 export const metadata: Metadata = { title: "Submission · UXDA Learn" };
@@ -69,7 +69,22 @@ export default async function SubmissionPage({ params }: PageProps<"/submissions
         {sub.is_imported ? "Imported" : "Submitted"}{" "}
         {new Date(sub.submitted_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
         {sub.is_imported && " · work you did before UXDA Learn, added by an admin"}
+        {sub.edited_at &&
+          ` · edited ${new Date(sub.edited_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}`}
       </p>
+
+      {isEditable(sub) && challenge && challengeNeedsReview(challenge) && challenge.feedback_mode !== "instant" && (
+        <Alert data-testid="editable-notice">
+          <Info aria-hidden />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>Awaiting review. You can still change your submission until it&apos;s reviewed.</span>
+            <Link href={`/submissions/${sub.id}/edit`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Pencil aria-hidden />
+              Edit submission
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {sub.is_test && (
         <Alert data-testid="test-attempt-notice">

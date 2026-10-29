@@ -177,6 +177,8 @@ create table submissions (
   -- Instant mode: tries per question id behind the score ({"q1": 1, "q2": 3}); null in final mode.
   question_tries jsonb
     check (question_tries is null or (jsonb_typeof(question_tries) = 'object' and octet_length(question_tries::text) <= 50000)),
+  -- When the learner last changed it before review (edit_submission); null: never.
+  edited_at timestamptz,
   constraint submissions_imported_not_test check (not (is_imported and is_test)),
   constraint submissions_imported_at check (is_imported = (imported_at is not null)),
   constraint submissions_attempt_range check (attempt >= 1 and (is_test or attempt <= 3)),
@@ -325,6 +327,20 @@ create table submission_import_audit (
   changed_at timestamptz not null default now()
 );
 
+-- Every change an admin makes to the score or feedback of a reviewed submission. Written only by
+-- adjust_submission_review().
+create table submission_review_audit (
+  id bigint generated always as identity primary key,
+  submission_id uuid not null references submissions(id) on delete cascade,
+  old_score numeric,
+  new_score numeric not null,
+  old_feedback text,
+  new_feedback text,
+  changed_by uuid references profiles(id) on delete set null,
+  changed_at timestamptz not null default now()
+);
+create index submission_review_audit_submission_idx on submission_review_audit (submission_id, changed_at desc);
+
 -- Helpers ------------------------------------------------------------------
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -441,6 +457,13 @@ $$;
 --   of one question in the learner's instant run (atomic; a solved question is never counted again; a run of the other
 --   kind, test or real, is discarded first). Service role only.
 --   Body: supabase/migrations/20261023090000_instant_quiz.sql.
+-- edit_submission(p_submission, p_user, p_answers, p_image_paths, p_figma_url, p_reflection, p_auto_score,
+--   p_challenge_version, p_max_score) returns timestamptz: the learner's change to their own submission while it is
+--   submitted or ai_reviewed (not test, not imported): new content, back to submitted, score and feedback cleared,
+--   edited_at stamped, unapproved evaluations deleted. Service role only.
+-- adjust_submission_review(p_submission, p_score, p_feedback, p_actor) returns boolean: an admin changes the score
+--   and/or feedback of a published or needs_resubmission submission; audited (none for a no-op). Service role only.
+--   Bodies: supabase/migrations/20261029090000_review_edits.sql.
 
 -- RLS ----------------------------------------------------------------------
 alter table admin_allowlist enable row level security;   -- no policies
@@ -458,6 +481,7 @@ alter table profile_flag_audit enable row level security;
 alter table challenge_feedback enable row level security;
 alter table staff_titles enable row level security;
 alter table staff_audit enable row level security;
+alter table submission_review_audit enable row level security;
 
 create policy profiles_select on profiles for select to authenticated
   using (id = auth.uid() or public.is_admin());
@@ -538,7 +562,9 @@ create policy paths_select on paths for select to authenticated
 
 create policy path_settings_audit_select on path_settings_audit for select to authenticated using (public.is_admin());
 create policy submission_import_audit_select on submission_import_audit for select to authenticated using (public.is_admin());
--- No write policies or grants: written only by set_path_status() / import_submission() / undo_import().
+create policy submission_review_audit_select on submission_review_audit for select to authenticated using (public.is_admin());
+-- No write policies or grants: written only by set_path_status() / import_submission() / undo_import() /
+-- adjust_submission_review().
 
 -- Own rows only, read and write; no is_admin() clause, so admins can't see or edit drafts either.
 create policy submission_drafts_select on submission_drafts for select to authenticated using (user_id = auth.uid());

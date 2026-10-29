@@ -15,13 +15,20 @@ export class EvalValidationError extends Error {
   }
 }
 
-export type PushOutcome = "inserted" | "updated" | "unchanged" | "skipped_reviewed" | "skipped_superseded";
+export type PushOutcome =
+  | "inserted"
+  | "updated"
+  | "unchanged"
+  | "skipped_reviewed"
+  | "skipped_superseded"
+  | "skipped_edited";
 
 /**
  * Validate .eval/<batch_id>/results.json against its manifest, then write evaluations and
  * move submissions to ai_reviewed (final_score = auto_score + total).
  * Idempotent: evaluations are keyed by (submission_id, batch_id); submissions an admin has
- * already reviewed are never touched.
+ * already reviewed are never touched, nor ones the learner edited after the batch was pulled (the AI scored content
+ * that's gone; the next pull picks up the new version).
  */
 export async function pushBatch(db: Db, opts: { baseDir: string; batchId: string }) {
   const id = batchIdSchema.safeParse(opts.batchId);
@@ -47,16 +54,21 @@ export async function pushBatch(db: Db, opts: { baseDir: string; batchId: string
   const { errors, planned } = validateResults(manifest.data, results.data);
   if (errors.length) throw new EvalValidationError(errors);
 
+  const pulledAt = manifest.data.created_at;
   const outcomes: { submission_id: string; outcome: PushOutcome }[] = [];
   for (const p of planned) {
     const { data: sub, error: subErr } = await db
       .from("submissions")
-      .select("status")
+      .select("status,edited_at")
       .eq("id", p.submission_id)
       .maybeSingle();
     if (subErr || !sub) throw new Error(`submission ${p.submission_id}: ${subErr?.message ?? "not found"}`);
     if (sub.status === "published" || sub.status === "needs_resubmission") {
       outcomes.push({ submission_id: p.submission_id, outcome: "skipped_reviewed" });
+      continue;
+    }
+    if (editedAfter(sub.edited_at, pulledAt)) {
+      outcomes.push({ submission_id: p.submission_id, outcome: "skipped_edited" });
       continue;
     }
 
@@ -105,11 +117,13 @@ export async function pushBatch(db: Db, opts: { baseDir: string; batchId: string
       continue;
     }
 
+    // Still unedited since the pull: an edit landing between the check above and here makes this miss.
     const { error: upErr } = await db
       .from("submissions")
       .update({ status: "ai_reviewed", final_score: p.final_score, feedback: p.feedback })
       .eq("id", p.submission_id)
-      .in("status", ["submitted", "ai_reviewed"]);
+      .in("status", ["submitted", "ai_reviewed"])
+      .or(`edited_at.is.null,edited_at.lte.${pulledAt}`);
     if (upErr) throw new Error(`submission ${p.submission_id}: ${upErr.message}`);
     outcomes.push({ submission_id: p.submission_id, outcome });
   }
@@ -118,4 +132,9 @@ export async function pushBatch(db: Db, opts: { baseDir: string; batchId: string
     .map((s) => s.submission_id)
     .filter((sid) => !planned.some((p) => p.submission_id === sid));
   return { batchId: id.data, outcomes, missing };
+}
+
+/** The learner changed the submission after the batch was pulled (both ISO timestamps; null: never edited). */
+export function editedAfter(editedAt: string | null, pulledAt: string): boolean {
+  return editedAt !== null && Date.parse(editedAt) > Date.parse(pulledAt);
 }

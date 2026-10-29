@@ -3,14 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAdminOrNull } from "@/lib/auth/admin";
-import { REVIEWABLE_STATUSES, reviewSchema } from "@/lib/admin/review";
+import {
+  ADJUSTABLE_STATUSES,
+  REVIEWABLE_STATUSES,
+  adjustReviewSchema,
+  bulkApproveSchema,
+  reviewSchema,
+} from "@/lib/admin/review";
 import { jobTitleSchema, staffEmailSchema } from "@/lib/staff-titles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SELECTABLE_TRACK_VALUES } from "@/lib/tracks";
 
 export type ActionResult = { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
-const NOT_ADMIN: ActionResult = { ok: false, error: "Only admins can do this." };
+const NOT_ADMIN = { ok: false, error: "Only admins can do this." } as const;
+const EDITED_SINCE: ActionResult = {
+  ok: false,
+  error: "The learner changed this submission after you opened it. Reload the page to see the new version.",
+};
 
 /** Approve (→ published) or request resubmission for a submission awaiting review. */
 export async function reviewSubmission(raw: unknown): Promise<ActionResult> {
@@ -23,21 +33,27 @@ export async function reviewSubmission(raw: unknown): Promise<ActionResult> {
     for (const i of parsed.error.issues) fieldErrors[i.path.join(".") || "form"] ??= i.message;
     return { ok: false, error: "Please fix the highlighted fields.", fieldErrors };
   }
-  const { submissionId, decision, finalScore, feedback } = parsed.data;
+  const { submissionId, decision, finalScore, feedback, editedAt } = parsed.data;
 
   const db = createAdminClient();
-  const { data: sub } = await db.from("submissions").select("id,status,max_score").eq("id", submissionId).maybeSingle();
+  const { data: sub } = await db
+    .from("submissions")
+    .select("id,status,max_score,edited_at")
+    .eq("id", submissionId)
+    .maybeSingle();
   if (!sub) return { ok: false, error: "Submission not found." };
   if (!REVIEWABLE_STATUSES.includes(sub.status as (typeof REVIEWABLE_STATUSES)[number])) {
     return { ok: false, error: "This submission has already been reviewed." };
   }
+  if (sub.edited_at !== editedAt) return EDITED_SINCE;
   if (finalScore > Number(sub.max_score)) {
     return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: { finalScore: `Max is ${sub.max_score}.` } };
   }
 
   const now = new Date().toISOString();
-  // The status condition makes this a compare-and-set: two admins can't both act on it.
-  const { data: updated, error } = await db
+  // The status and edited_at conditions make this a compare-and-set: two admins can't both act on it, and a learner's
+  // edit in between makes it miss.
+  const update = db
     .from("submissions")
     .update(
       decision === "approve"
@@ -45,10 +61,10 @@ export async function reviewSubmission(raw: unknown): Promise<ActionResult> {
         : { status: "needs_resubmission", final_score: finalScore, feedback, published_at: null },
     )
     .eq("id", submissionId)
-    .in("status", [...REVIEWABLE_STATUSES])
-    .select("id");
+    .in("status", [...REVIEWABLE_STATUSES]);
+  const { data: updated, error } = await (editedAt ? update.eq("edited_at", editedAt) : update.is("edited_at", null)).select("id");
   if (error) return { ok: false, error: "Couldn't save the review. Please try again." };
-  if (!updated?.length) return { ok: false, error: "This submission has already been reviewed." };
+  if (!updated?.length) return { ok: false, error: "This submission was reviewed or changed meanwhile. Reload the page." };
 
   // Record who signed off on the AI evaluation(s).
   await db
@@ -56,6 +72,86 @@ export async function reviewSubmission(raw: unknown): Promise<ActionResult> {
     .update({ approved_by: admin.id, approved_at: now })
     .eq("submission_id", submissionId)
     .is("approved_at", null);
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export type BulkApproveResult = { ok: true; approved: number; skipped: number } | { ok: false; error: string };
+
+/**
+ * Approve AI-reviewed submissions in one go, each with the score (auto + AI rubric total) and feedback the AI review
+ * set. Only rows still `ai_reviewed` are approved: one already reviewed, or edited by the learner since (an edit puts
+ * it back to `submitted`), is skipped and counted.
+ */
+export async function approveSubmissions(ids: unknown): Promise<BulkApproveResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return NOT_ADMIN;
+  const parsed = bulkApproveSchema.safeParse(ids);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  const unique = [...new Set(parsed.data)];
+
+  const db = createAdminClient();
+  const now = new Date().toISOString();
+  const { data: approved, error } = await db
+    .from("submissions")
+    .update({ status: "published", published_at: now })
+    .in("id", unique)
+    .eq("status", "ai_reviewed")
+    .eq("is_test", false)
+    .not("final_score", "is", null)
+    .select("id");
+  if (error) return { ok: false, error: "Couldn't approve them. Please try again." };
+
+  const done = approved.map((s) => s.id);
+  if (done.length) {
+    await db
+      .from("evaluations")
+      .update({ approved_by: admin.id, approved_at: now })
+      .in("submission_id", done)
+      .is("approved_at", null);
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true, approved: done.length, skipped: unique.length - done.length };
+}
+
+/**
+ * Change the score and/or feedback of a reviewed submission (published or needs resubmission). Goes through
+ * adjust_submission_review(), which checks the status and max score, writes the change and its audit row in one
+ * transaction, and refuses a non-admin actor.
+ */
+export async function adjustReview(raw: unknown): Promise<ActionResult> {
+  const admin = await getAdminOrNull();
+  if (!admin) return NOT_ADMIN;
+  const parsed = adjustReviewSchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const i of parsed.error.issues) fieldErrors[i.path.join(".") || "form"] ??= i.message;
+    return { ok: false, error: "Please fix the highlighted fields.", fieldErrors };
+  }
+  const { submissionId, finalScore, feedback } = parsed.data;
+
+  const db = createAdminClient();
+  const { data: sub } = await db.from("submissions").select("status,max_score").eq("id", submissionId).maybeSingle();
+  if (!sub) return { ok: false, error: "Submission not found." };
+  if (!ADJUSTABLE_STATUSES.includes(sub.status as (typeof ADJUSTABLE_STATUSES)[number])) {
+    return { ok: false, error: "Only a reviewed submission can be changed here." };
+  }
+  if (finalScore > Number(sub.max_score)) {
+    return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: { finalScore: `Max is ${sub.max_score}.` } };
+  }
+  if (sub.status === "needs_resubmission" && !feedback) {
+    return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: { feedback: "Tell them what to change." } };
+  }
+
+  const { error } = await db.rpc("adjust_submission_review", {
+    p_submission: submissionId,
+    p_score: finalScore,
+    p_feedback: feedback,
+    p_actor: admin.id,
+  });
+  if (error) return { ok: false, error: "Couldn't save the change. Please try again." };
 
   revalidatePath("/", "layout");
   return { ok: true };

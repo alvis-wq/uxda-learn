@@ -22,7 +22,9 @@ const NOTICE =
  * manifest.json + downloaded screenshots. Uses the service role (reads challenge_keys).
  */
 export async function pullBatch(db: Db, opts: { baseDir: string; now?: Date }) {
-  const batchId = newBatchId(opts.now);
+  // Taken before the read: an edit after this moment is newer than what the batch holds (eval:push skips it).
+  const pulledAt = opts.now ?? new Date();
+  const batchId = newBatchId(pulledAt);
   const dir = path.join(opts.baseDir, batchId);
 
   const { data: subs, error } = await db
@@ -98,7 +100,7 @@ export async function pullBatch(db: Db, opts: { baseDir: string; now?: Date }) {
 
   const manifest: Manifest = {
     batch_id: batchId,
-    created_at: (opts.now ?? new Date()).toISOString(),
+    created_at: pulledAt.toISOString(),
     notice: NOTICE,
     submissions: entries,
   };

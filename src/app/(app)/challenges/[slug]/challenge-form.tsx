@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { PublicQuestion, SubmissionSpec } from "@/lib/content/schema";
-import { submitChallenge } from "./actions";
+import { editSubmission, submitChallenge } from "./actions";
 import { QuestionField } from "./question-field";
 import { ScreenshotUploader, useScreenshotUploads, type UploadedImage } from "./screenshot-uploader";
 import { FigmaField, ReflectionField } from "./submission-fields";
@@ -22,6 +22,7 @@ export function ChallengeForm({
   tip,
   attemptNumber,
   maxAttempts,
+  editing,
 }: {
   slug: string;
   userId: string;
@@ -32,12 +33,20 @@ export function ChallengeForm({
   attemptNumber: number;
   /** null for a test attempt (no limit). */
   maxAttempts: number | null;
+  /** Changing a submission that's awaiting review: starts from what was submitted, and Save sends it to editSubmission. */
+  editing?: {
+    submissionId: string;
+    answers: Answers;
+    images: UploadedImage[];
+    figmaUrl: string;
+    reflection: string;
+  };
 }) {
   const router = useRouter();
-  const [answers, setAnswers] = useState<Answers>({});
-  const [images, setImages] = useState<UploadedImage[]>([]);
-  const [figmaUrl, setFigmaUrl] = useState("");
-  const [reflection, setReflection] = useState("");
+  const [answers, setAnswers] = useState<Answers>(editing?.answers ?? {});
+  const [images, setImages] = useState<UploadedImage[]>(editing?.images ?? []);
+  const [figmaUrl, setFigmaUrl] = useState(editing?.figmaUrl ?? "");
+  const [reflection, setReflection] = useState(editing?.reflection ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -51,12 +60,24 @@ export function ChallengeForm({
     setErrors({});
     startTransition(async () => {
       try {
-        const res = await submitChallenge(slug, {
+        const input = {
           answers,
           imagePaths: images.map((i) => i.path),
           figmaUrl: figmaUrl || null,
           reflection: reflection || null,
-        });
+        };
+        if (editing) {
+          const res = await editSubmission(editing.submissionId, input);
+          if (!res.ok) {
+            setFormError(res.error);
+            setErrors(res.fieldErrors ?? {});
+            return;
+          }
+          toast.success("Changes saved — awaiting review.");
+          router.push(`/submissions/${editing.submissionId}`);
+          return;
+        }
+        const res = await submitChallenge(slug, input);
         if (!res.ok) {
           setFormError(res.error);
           setErrors(res.fieldErrors ?? {});
@@ -131,10 +152,14 @@ export function ChallengeForm({
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" size="lg" disabled={pending}>
           {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Send aria-hidden />}
-          {pending ? "Submitting…" : "Submit"}
+          {editing ? (pending ? "Saving…" : "Save changes") : pending ? "Submitting…" : "Submit"}
         </Button>
         <span className="text-muted-foreground text-sm">
-          {maxAttempts === null ? `Test attempt ${attemptNumber}` : `Attempt ${attemptNumber} of ${maxAttempts}`}
+          {editing
+            ? `Editing attempt ${attemptNumber}`
+            : maxAttempts === null
+              ? `Test attempt ${attemptNumber}`
+              : `Attempt ${attemptNumber} of ${maxAttempts}`}
         </span>
       </div>
     </form>

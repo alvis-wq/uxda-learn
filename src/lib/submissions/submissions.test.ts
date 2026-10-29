@@ -3,7 +3,7 @@ import type { Audience, Challenge } from "@/lib/challenges/model";
 import { challengeNeedsReview, isChallengeVisible } from "@/lib/challenges/model";
 import { gradeAnswers } from "./grading";
 import { countWords, isFigmaUrl, isOwnImagePath, submissionInputSchema } from "./input";
-import { attemptState, isResultVisible, learnerStatus } from "./rules";
+import { attemptState, isEditable, isResultVisible, learnerStatus } from "./rules";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
@@ -153,5 +153,19 @@ describe("attemptState", () => {
     expect(isResultVisible("ai_reviewed")).toBe(false);
     expect(isResultVisible("published")).toBe(true);
     expect(isResultVisible("needs_resubmission")).toBe(true);
+  });
+});
+
+describe("isEditable", () => {
+  const sub = (status: string, over = {}) => ({ status, is_test: false, is_imported: false, ...over }) as Parameters<typeof isEditable>[0];
+  it("lets the learner change a submission until a human has reviewed it", () => {
+    expect(isEditable(sub("submitted"))).toBe(true);
+    expect(isEditable(sub("ai_reviewed"))).toBe(true);
+    expect(isEditable(sub("published"))).toBe(false);
+    expect(isEditable(sub("needs_resubmission"))).toBe(false);
+  });
+  it("never a test attempt or an imported one", () => {
+    expect(isEditable(sub("submitted", { is_test: true }))).toBe(false);
+    expect(isEditable(sub("submitted", { is_imported: true }))).toBe(false);
   });
 });

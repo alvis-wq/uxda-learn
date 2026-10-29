@@ -992,6 +992,54 @@ export type Database = {
           },
         ]
       }
+      submission_review_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: number
+          new_feedback: string | null
+          new_score: number
+          old_feedback: string | null
+          old_score: number | null
+          submission_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          new_feedback?: string | null
+          new_score: number
+          old_feedback?: string | null
+          old_score?: number | null
+          submission_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          new_feedback?: string | null
+          new_score?: number
+          old_feedback?: string | null
+          old_score?: number | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_review_audit_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_review_audit_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submissions: {
         Row: {
           answers: Json
@@ -999,6 +1047,7 @@ export type Database = {
           auto_score: number
           challenge_slug: string
           challenge_version: number
+          edited_at: string | null
           feedback: string | null
           figma_url: string | null
           final_score: number | null
@@ -1022,6 +1071,7 @@ export type Database = {
           auto_score?: number
           challenge_slug: string
           challenge_version: number
+          edited_at?: string | null
           feedback?: string | null
           figma_url?: string | null
           final_score?: number | null
@@ -1045,6 +1095,7 @@ export type Database = {
           auto_score?: number
           challenge_slug?: string
           challenge_version?: number
+          edited_at?: string | null
           feedback?: string | null
           figma_url?: string | null
           final_score?: number | null
@@ -1091,6 +1142,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_submission_review: {
+        Args: {
+          p_actor: string
+          p_feedback: string
+          p_score: number
+          p_submission: string
+        }
+        Returns: boolean
+      }
+      edit_submission: {
+        Args: {
+          p_answers: Json
+          p_auto_score: number
+          p_challenge_version: number
+          p_figma_url: string
+          p_image_paths: string[]
+          p_max_score: number
+          p_reflection: string
+          p_submission: string
+          p_user: string
+        }
+        Returns: string
+      }
       get_leaderboard: {
         Args: { p_tracks: Database["public"]["Enums"]["track"][] }
         Returns: {

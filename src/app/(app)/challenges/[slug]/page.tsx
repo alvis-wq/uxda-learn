@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowRight, CheckCircle2, ChevronLeft, Eye, FlaskConical, Info, Route } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronLeft, Eye, FlaskConical, Info, Pencil, Route } from "lucide-react";
 import { ChallengeMeta } from "@/components/challenge-meta";
 import { DraftBadge } from "@/components/draft-badge";
 import { Markdown } from "@/components/markdown";
@@ -11,6 +11,7 @@ import { RequiredBadges } from "@/components/required-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { briefView } from "@/lib/challenges/brief";
@@ -20,7 +21,7 @@ import { questionsForAttempt } from "@/lib/data/attempt-order";
 import { prepareFormDraft } from "@/lib/data/drafts";
 import { getChallengePage } from "@/lib/data/learner";
 import { parseInstantRun } from "@/lib/submissions/instant";
-import { isResultVisible, maxAttemptsFor } from "@/lib/submissions/rules";
+import { isEditable, isResultVisible, maxAttemptsFor } from "@/lib/submissions/rules";
 import { planSteps } from "@/lib/submissions/steps";
 import { showsTestTotal } from "@/lib/submissions/testing";
 import { formatDateTime } from "@/lib/utils";
@@ -45,6 +46,8 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   const isAck = challenge.type === "acknowledge";
   // A test attempt on a challenge with screenshots, Figma or written parts only has its questions marked: no total.
   const testTotal = showsTestTotal(challengeNeedsReview(challenge));
+  // An attempt awaiting review can still be changed (not on an instant quiz, which is never reviewed).
+  const canEdit = !preview && !isAck && challengeNeedsReview(challenge) && challenge.feedback_mode !== "instant";
 
   // Each attempt shows the questions (and options, items) in its own order; grading goes by id.
   const attemptNumber = state.attemptsUsed + 1;
@@ -200,6 +203,16 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                           </span>
                         </CardTitle>
                         <div className="flex items-center gap-3">
+                          {canEdit && isEditable(a) && (
+                            <Link
+                              href={`/submissions/${a.id}/edit`}
+                              className={buttonVariants({ variant: "ghost", size: "sm" })}
+                              data-testid="edit-attempt"
+                            >
+                              <Pencil aria-hidden />
+                              Edit
+                            </Link>
+                          )}
                           {isResultVisible(a.status) && a.final_score !== null && (!a.is_test || testTotal) && (
                             <span className="text-meta font-medium" data-testid="attempt-score">
                               {a.final_score} / {a.max_score}

@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { AlertTriangle, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { REVIEWABLE_STATUSES, sortQueue } from "@/lib/admin/review";
 import { createClient } from "@/lib/supabase/server";
 import { TRACK_LABEL } from "@/lib/tracks";
+import { QueueTable } from "./queue-table";
 
 export const metadata: Metadata = { title: "Review queue · Admin · UXDA Learn" };
 
@@ -16,7 +14,7 @@ export default async function ReviewQueuePage() {
   const { data, error } = await supabase
     .from("submissions")
     .select(
-      "id,status,attempt,submitted_at,auto_score,final_score,max_score,profiles!submissions_user_id_fkey(full_name,email,track),challenges(title),evaluations(confidence,flags,created_at)",
+      "id,status,attempt,submitted_at,edited_at,auto_score,final_score,max_score,profiles!submissions_user_id_fkey(full_name,email,track),challenges(title),evaluations(confidence,flags,created_at)",
     )
     .in("status", [...REVIEWABLE_STATUSES])
     .eq("is_test", false); // a test attempt is never reviewed
@@ -35,73 +33,27 @@ export default async function ReviewQueuePage() {
         Review queue
       </h1>
       <p className="text-muted-foreground mb-6 text-sm">
-        AI-reviewed submissions first; low confidence and flagged items need the closest look.
+        AI-reviewed submissions first; low confidence and flagged items need the closest look. Tick AI-reviewed ones to
+        approve them together with the AI score and feedback.
       </p>
       {items.length === 0 ? (
         <EmptyState icon={CheckCheck} title="Nothing to review" description="New submissions appear here." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Learner</TableHead>
-              <TableHead>Challenge</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>AI review</TableHead>
-              <TableHead className="hidden text-right sm:table-cell">Score</TableHead>
-              <TableHead className="hidden text-right sm:table-cell">Submitted</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((s) => (
-              <TableRow key={s.id} data-testid="queue-row">
-                <TableCell>
-                  <Link href={`/admin/submissions/${s.id}`} className="font-medium hover:underline">
-                    {s.profiles?.full_name ?? s.profiles?.email}
-                  </Link>
-                  <div className="text-muted-foreground text-xs">
-                    {s.profiles?.track ? TRACK_LABEL[s.profiles.track] : "No track"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {s.challenges?.title}
-                  <span className="text-muted-foreground ml-1 text-xs">#{s.attempt}</span>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={s.status === "ai_reviewed" ? "default" : "outline"}>
-                    {s.status === "ai_reviewed" ? "AI reviewed" : "Submitted"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {s.confidence === "low" && (
-                      <Badge variant="destructive">
-                        <AlertTriangle aria-hidden />
-                        Low confidence
-                      </Badge>
-                    )}
-                    {s.confidence && s.confidence !== "low" && (
-                      <Badge variant="secondary" className="capitalize">
-                        {s.confidence}
-                      </Badge>
-                    )}
-                    {s.flags.map((f) => (
-                      <Badge key={f} variant="outline">
-                        {f}
-                      </Badge>
-                    ))}
-                    {!s.confidence && <span className="text-muted-foreground text-xs">Not yet</span>}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">
-                  {s.final_score ?? s.auto_score} / {s.max_score}
-                </TableCell>
-                <TableCell className="text-muted-foreground hidden text-right text-xs sm:table-cell">
-                  {new Date(s.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <QueueTable
+          rows={items.map((s) => ({
+            id: s.id,
+            learner: s.profiles?.full_name ?? s.profiles?.email ?? "Unknown",
+            track: s.profiles?.track ? TRACK_LABEL[s.profiles.track] : "No track",
+            challenge: s.challenges?.title ?? "",
+            attempt: s.attempt,
+            status: s.status,
+            confidence: s.confidence,
+            flags: s.flags,
+            score: `${s.final_score ?? s.auto_score} / ${s.max_score}`,
+            submitted: new Date(s.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+            edited: s.edited_at !== null,
+          }))}
+        />
       )}
     </section>
   );
