@@ -1012,3 +1012,12 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - `data/auto-layout-import.json` converted the same way (36/40 → 9/10). content-format.md guideline + `/new-challenge` updated.
 - Order: deploy → `content:sync` (the deployed app must accept half points first) → `db:push` (the max_score match converts only old attempts) → `db:types`. Auto Layout homework's "required" is set by Alvis in the admin panel.
 - Checks: `content:validate` ✅ · `npm run check` ✅ (1065) · `npm run build` ✅.
+
+## Academy tabs, cross-links and Reading now (2026-11-06)
+- `/academy`: three tabs (Blog · Podcasts · Books). Podcasts newest release first, with the date on the card. A post with an episode shows "Listen to podcast", the episode "Read the blog" (both open the other's page).
+- Books: "Reading now" toggle on each card (badge + accent border), a Reading now strip on top under "All", filters All / Reading / Not read / Done. Passing a book's quiz clears Reading now.
+- Search box per tab (title, and author for books).
+- Team → Academy: "Reading now" column per person, and "Reading now: …" per book.
+- Editors: "Release date" field for podcasts and blog posts. `npm run academy:podcasts -- --dates --as <admin email> [--apply]` fills the dates of the episodes already in from the Buzzsprout feed.
+- Migration `20261106120000_academy_tabs_reading.sql` (`academy_resources.released_on`, `academy_reading`, `team_academy_reading()`); `db:check` covers it. Waiting for Alvis: `npm run db:push`, `npm run db:types`, `npm run db:check`, then the `--dates` run.
+- Checks: `npm run lint` ✅ · `npm test` ✅ (1074) · `npm run build` ✅. E2E (`e2e/academy.spec.ts` updated) and a browser check wait for the migration.

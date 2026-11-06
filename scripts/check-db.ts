@@ -25,7 +25,9 @@
  * 11. Academy: users see published resources only (editors and admins see drafts too), never the quiz keys, and can't
  *     write resources, completions or attempts; users can't flag themselves editors; set_user_academy_editor needs an
  *     admin actor and audits; team_academy() is for leads and admins and returns completion columns only; nothing is
- *     published without 5 questions; the `academy` bucket is public and users can't upload to it.
+ *     published without 5 questions; the `academy` bucket is public and users can't upload to it. "Reading now"
+ *     (academy_reading): users read only their own, can't write it, only books qualify, and team_academy_reading()
+ *     is for leads and admins.
  *     Review edits: users can't call edit_submission or adjust_submission_review or read submission_review_audit;
  *     edit_submission refuses a reviewed submission.
  * 12. Staff titles: signed-in users read them, anon doesn't, nobody writes them directly; set_staff_title,
@@ -64,6 +66,7 @@ const EXPECTED_TABLES = [
   "academy_quiz_keys",
   "academy_completions",
   "academy_quiz_attempts",
+  "academy_reading",
 ];
 const SENTINEL_CATEGORY = "zz-check-db";
 const SENTINEL_CHALLENGE = "zz-check-db-challenge";
@@ -735,6 +738,28 @@ async function main() {
       fail(`team_academy: ${team.error?.message ?? JSON.stringify({ myTeamRows, teamKeys })}`);
     }
 
+    const { data: books } = await admin.from("academy_resources").select("id").eq("kind", "book").like("title", `${ACADEMY_SENTINEL}%`);
+    const bookId = books?.[0]?.id;
+    const notABook = await admin.from("academy_reading").insert({ user_id: userId, resource_id: pubId });
+    if (notABook.error) pass(`only a book can be "reading now" (${notABook.error.message})`);
+    else fail("a blog post COULD be marked as reading now");
+    const selfReading = await authed.from("academy_reading").insert({ user_id: userId, resource_id: bookId! }).select("user_id");
+    if (selfReading.error || !selfReading.data?.length) pass("a user can't write academy_reading directly (server actions only)");
+    else fail("a user COULD write academy_reading directly");
+    await admin.from("academy_reading").insert({ user_id: userId, resource_id: bookId! });
+    const { data: myReading } = await authed.from("academy_reading").select("resource_id");
+    if (myReading?.length === 1) pass("a user reads their own reading-now books");
+    else fail(`a user's reading-now: ${JSON.stringify(myReading)}`);
+    const readingRefused = await authed.rpc("team_academy_reading");
+    if (readingRefused.error?.code === "42501") pass("team_academy_reading refuses someone who is neither lead nor admin (42501)");
+    else fail("a non-lead COULD call team_academy_reading");
+    await admin.from("profiles").update({ is_lead: true }).eq("id", userId);
+    const teamReading = await authed.rpc("team_academy_reading").eq("user_id", userId);
+    await admin.from("profiles").update({ is_lead: false }).eq("id", userId);
+    // The sentinel book is a draft: a lead sees no reading rows for unpublished books.
+    if (!teamReading.error && (teamReading.data ?? []).length === 0) pass("team_academy_reading returns published books only");
+    else fail(`team_academy_reading: ${teamReading.error?.message ?? JSON.stringify(teamReading.data)}`);
+
     console.log("Signup trigger");
     const { data: outsider, error: outsiderErr } = await admin.auth.admin.createUser({
       email: `check-db-${randomBytes(4).toString("hex")}@example.com`, password, email_confirm: true,
@@ -749,6 +774,7 @@ async function main() {
     const acadIds = (acadLeft ?? []).map((r) => r.id);
     if (acadIds.length) {
       await admin.from("academy_completions").delete().in("resource_id", acadIds);
+      await admin.from("academy_reading").delete().in("resource_id", acadIds);
       await admin.from("academy_resources").delete().in("id", acadIds); // keys and tries cascade
     }
     await admin.from("staff_titles").delete().in("email", [SENTINEL_TITLE_EMAIL, SENTINEL_TITLE_RENAMED]);

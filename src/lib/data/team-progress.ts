@@ -47,24 +47,26 @@ export async function loadTeamInput(): Promise<TeamInput> {
 }
 
 /**
- * The Team page's Academy view: people from team_members(), published resources through RLS, and completions only
- * through team_academy() (which refuses anyone who isn't a lead or an admin).
+ * The Team page's Academy view: people from team_members(), published resources through RLS, and completions and
+ * "reading now" only through team_academy() / team_academy_reading() (which refuse anyone who isn't a lead or an admin).
  */
 export async function loadTeamAcademyInput(): Promise<TeamAcademyInput> {
   await requireLead();
   const supabase = await createClient();
-  const [members, resources, completions] = await Promise.all([
+  const [members, resources, completions, reading] = await Promise.all([
     supabase.rpc("team_members"),
     supabase.from("academy_resources").select("id,kind,title,sort_key").eq("status", "published"),
     // One row per person per completed resource: well past 1,000 already.
     allRows((from, to) => supabase.rpc("team_academy").order("user_id").order("resource_id").range(from, to)),
+    allRows((from, to) => supabase.rpc("team_academy_reading").order("user_id").order("resource_id").range(from, to)),
   ]);
-  for (const res of [members, resources, completions]) {
+  for (const res of [members, resources, completions, reading]) {
     if (res.error) throw new Error(`Couldn't load Academy progress: ${res.error.message}`);
   }
   return {
     members: (members.data ?? []).map((m) => ({ id: m.id, full_name: m.full_name ?? null })),
     resources: resources.data ?? [],
     completions: completions.data ?? [],
+    reading: reading.data ?? [],
   };
 }

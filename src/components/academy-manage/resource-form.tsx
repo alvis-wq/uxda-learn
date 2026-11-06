@@ -21,6 +21,7 @@ type Existing = {
   author: string | null;
   category: string | null;
   blogId: string | null;
+  releasedOn: string | null;
   imageUrl: string | null;
 };
 
@@ -42,6 +43,7 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
   const [author, setAuthor] = useState(existing?.author ?? "");
   const [category, setCategory] = useState<BookCategory>((existing?.category as BookCategory) ?? "academy");
   const [blogId, setBlogId] = useState(existing?.blogId ?? NO_BLOG);
+  const [releasedOn, setReleasedOn] = useState(existing?.releasedOn ?? "");
   const [picture, setPicture] = useState<Picture>({ type: "keep" });
   const [error, setError] = useState<string | null>(null);
   const [previewing, startPreview] = useTransition();
@@ -91,6 +93,7 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
       author,
       category: kind === "book" ? category : null,
       blogId: kind === "podcast" && blogId !== NO_BLOG ? blogId : null,
+      releasedOn: kind === "book" ? null : releasedOn,
       image: picture.type === "path" ? { type: "path", path: picture.path } : picture.type === "remote" ? { type: "remote", url: picture.url } : picture,
     };
     startSave(async () => {
@@ -150,7 +153,7 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
               ))}
             </SelectContent>
           </Select>
-          <p className="text-muted-foreground text-meta">The episode shows next to its post. Posts that already have an episode aren&apos;t listed.</p>
+          <p className="text-muted-foreground text-meta">The episode and its post link to each other (&ldquo;Listen to podcast&rdquo;, &ldquo;Read the blog&rdquo;). Posts that already have an episode aren&apos;t listed.</p>
         </div>
       )}
 
@@ -180,6 +183,14 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
               </SelectContent>
             </Select>
           </div>
+        </div>
+      )}
+
+      {kind !== "book" && (
+        <div className="grid gap-2 sm:max-w-56">
+          <Label htmlFor="res-released">Release date</Label>
+          <Input id="res-released" type="date" value={releasedOn} onChange={(e) => setReleasedOn(e.target.value)} />
+          {kind === "podcast" && <p className="text-muted-foreground text-meta">Episodes are listed newest release first.</p>}
         </div>
       )}
 

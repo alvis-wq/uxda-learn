@@ -1,42 +1,70 @@
 import { describe, expect, it } from "vitest";
-import { academyImageUrl, filterRows, groupBooks, pairBlogsAndPodcasts, parseShowFilter, progressByKind, type AcademyItem } from "./resources";
+import {
+  academyImageUrl,
+  counterparts,
+  filterBooks,
+  groupBooks,
+  listOf,
+  parseBookFilter,
+  parseShowFilter,
+  progressByKind,
+  searchItems,
+  type AcademyItem,
+} from "./resources";
 
 function item(id: string, kind: AcademyItem["kind"], sort_key: number, extra: Partial<AcademyItem> = {}): AcademyItem {
-  return { id, kind, title: id, url: null, description: null, image_path: null, author: null, category: null, blog_id: null, sort_key, done: false, has_quiz: true, ...extra };
+  return { id, kind, title: id, url: null, description: null, image_path: null, author: null, category: null, blog_id: null, sort_key, released_on: null, done: false, has_quiz: true, reading: false, ...extra };
 }
 
-describe("pairBlogsAndPodcasts", () => {
-  it("puts each podcast in its blog post's row, newest post first, unlinked episodes last", () => {
-    const rows = pairBlogsAndPodcasts([
-      item("old-post", "blog", 1),
-      item("new-post", "blog", 2),
-      item("pod-old", "podcast", 5, { blog_id: "old-post" }),
-      item("pod-alone", "podcast", 3),
-      item("pod-hidden-post", "podcast", 4, { blog_id: "draft-post" }),
-      item("a-book", "book", 9),
-    ]);
-    expect(rows.map((r) => [r.blog?.id ?? null, r.podcast?.id ?? null])).toEqual([
-      ["new-post", null],
-      ["old-post", "pod-old"],
-      [null, "pod-hidden-post"],
-      [null, "pod-alone"],
-    ]);
+describe("listOf", () => {
+  it("lists blog posts newest first", () => {
+    const items = [item("old", "blog", 1), item("new", "blog", 2), item("pod", "podcast", 3), item("book", "book", 9)];
+    expect(listOf(items, "blog").map((i) => i.id)).toEqual(["new", "old"]);
+  });
+  it("lists podcasts by release date, newest first; undated ones after, by episode number", () => {
+    const items = [
+      item("ep-10", "podcast", 10),
+      item("jan", "podcast", 1, { released_on: "2026-01-05" }),
+      item("ep-12", "podcast", 12),
+      item("mar", "podcast", 2, { released_on: "2026-03-01" }),
+    ];
+    expect(listOf(items, "podcast").map((i) => i.id)).toEqual(["mar", "jan", "ep-12", "ep-10"]);
   });
 });
 
-describe("filterRows", () => {
-  const rows = pairBlogsAndPodcasts([
-    item("p1", "blog", 2, { done: true }),
-    item("e1", "podcast", 2, { blog_id: "p1" }),
-    item("p2", "blog", 1),
-  ]);
-  it("keeps a row when either side matches and hides the side that doesn't", () => {
-    expect(filterRows(rows, "all")).toBe(rows);
-    expect(filterRows(rows, "done").map((r) => [r.blog?.id ?? null, r.podcast?.id ?? null])).toEqual([["p1", null]]);
-    expect(filterRows(rows, "todo").map((r) => [r.blog?.id ?? null, r.podcast?.id ?? null])).toEqual([
-      [null, "e1"],
-      ["p2", null],
-    ]);
+describe("counterparts", () => {
+  it("links a post and its episode both ways, only when both are listed", () => {
+    const post = item("post", "blog", 1);
+    const pod = item("pod", "podcast", 1, { blog_id: "post" });
+    const orphan = item("orphan", "podcast", 2, { blog_id: "draft-post" });
+    const map = counterparts([post, pod, orphan, item("lonely", "blog", 2)]);
+    expect(map.get("post")).toBe(pod);
+    expect(map.get("pod")).toBe(post);
+    expect(map.has("orphan")).toBe(false);
+    expect(map.has("lonely")).toBe(false);
+  });
+});
+
+describe("filterBooks", () => {
+  const books = [
+    item("done", "book", 1, { done: true, reading: true }),
+    item("reading", "book", 2, { reading: true }),
+    item("unread", "book", 3),
+  ];
+  it("splits books into reading, not read and done; a finished book is only done", () => {
+    expect(filterBooks(books, "all").map((b) => b.id)).toEqual(["done", "reading", "unread"]);
+    expect(filterBooks(books, "reading").map((b) => b.id)).toEqual(["reading"]);
+    expect(filterBooks(books, "unread").map((b) => b.id)).toEqual(["unread"]);
+    expect(filterBooks(books, "done").map((b) => b.id)).toEqual(["done"]);
+  });
+});
+
+describe("searchItems", () => {
+  const items = [item("Café Design", "blog", 1), item("Atomic Habits", "book", 2, { author: "James Clear" }), item("Other", "blog", 3)];
+  it("matches title or author, ignoring case and accents; empty finds everything", () => {
+    expect(searchItems(items, "cafe").map((i) => i.id)).toEqual(["Café Design"]);
+    expect(searchItems(items, "  CLEAR ").map((i) => i.id)).toEqual(["Atomic Habits"]);
+    expect(searchItems(items, "")).toBe(items);
   });
 });
 
@@ -66,8 +94,10 @@ describe("groupBooks", () => {
   });
 });
 
-describe("parseShowFilter / academyImageUrl", () => {
+describe("parseShowFilter / parseBookFilter / academyImageUrl", () => {
   it("falls back to all for anything unknown", () => {
+    expect(parseBookFilter("reading")).toBe("reading");
+    expect(parseBookFilter("todo")).toBe("all");
     expect(parseShowFilter("todo")).toBe("todo");
     expect(parseShowFilter("nope")).toBe("all");
     expect(parseShowFilter(undefined)).toBe("all");

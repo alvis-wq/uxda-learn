@@ -95,6 +95,18 @@ describe("createResource", () => {
     expect(db.writes[0]).toMatchObject({ table: "academy_resources", op: "insert", row: { kind: "blog", title: "New post", description: null, created_by: EDITOR.id, blog_id: null, image_path: null } });
   });
 
+  it("saves a podcast's release date, never a book's, and refuses a bad date", async () => {
+    await actions.createResource({ kind: "podcast", title: "Ep", url: "https://pod.example/9", releasedOn: "2026-03-01", image: { type: "none" } });
+    expect(db.writes.at(-1)).toMatchObject({ row: { kind: "podcast", released_on: "2026-03-01" } });
+    await actions.createResource({ kind: "book", title: "B", releasedOn: "2026-03-01", image: { type: "none" } });
+    expect(db.writes.at(-1)).toMatchObject({ row: { kind: "book", released_on: null } });
+    await actions.createResource({ kind: "blog", title: "P", url: "https://theuxda.com/blog/p", releasedOn: "", image: { type: "none" } });
+    expect(db.writes.at(-1)).toMatchObject({ row: { kind: "blog", released_on: null } });
+    await expect(
+      actions.createResource({ kind: "podcast", title: "Ep", url: "https://pod.example/10", releasedOn: "1 March", image: { type: "none" } }),
+    ).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/release date/) });
+  });
+
   it("needs a link for posts and podcasts, but not for books", async () => {
     await expect(actions.createResource({ kind: "blog", title: "x", url: "", image: { type: "none" } })).resolves.toMatchObject({ ok: false });
     await expect(actions.createResource({ kind: "book", title: "A book", url: "", image: { type: "none" } })).resolves.toMatchObject({ ok: true });

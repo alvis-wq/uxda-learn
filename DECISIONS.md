@@ -410,3 +410,7 @@
 - Points by required status (3 / 6 / 10), set in content files, not computed from `required_for` — toggling required in the admin panel must never move anyone's score.
 - Old scores converted proportionally (half points) by a one-off audited migration, not recomputed from answers — equal weights before, the fairest match to what was earned.
 - Quiz question points may be halves — 3 points can't be spread over 5–6 questions in whole points; rubric stays whole so AI partial scores stay on half points.
+- Academy tabs: Blog, Podcasts and Books apart (no more shared post/episode rows); the pair is kept as small links that open the other one's own page, not a jump between tabs.
+- Podcasts are ordered by a stored release date (`released_on`, from the feed's <pubDate> or typed by an editor), not by `sort_key`: imported episodes had their number there and new ones the creation time, which only matched release order by accident.
+- "Reading now" is its own table (`academy_reading`), not a completion status: it's a personal marker anyone can switch back, has nothing to grade, and must never count as done. Leads see it through `team_academy_reading()`, like completions.
+- Academy search is a plain GET form (`?q=`), filtered on the server: the list is already loaded in full, and the search stays in the URL with the tab and filter.

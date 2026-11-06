@@ -10,7 +10,7 @@ vi.mock("@/lib/auth/session", () => ({ getCurrentUser, getCurrentProfile }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient }));
 vi.mock("next/cache", () => ({ revalidatePath }));
 
-const { getAcademyQuiz, setAcademyDone, submitAcademyQuiz } = await import("./actions");
+const { getAcademyQuiz, setAcademyDone, setAcademyReading, submitAcademyQuiz } = await import("./actions");
 
 type Row = Record<string, unknown>;
 const RES = "5b0c4b1e-9a51-4f5e-8f6a-2b9d6f0f8c11";
@@ -109,6 +109,22 @@ describe("submitAcademyQuiz", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/academy");
   });
 
+  it("clears the user's own Reading now on the book they just finished", async () => {
+    db = fakeDb({
+      academy_resources: [{ id: RES, status: "published", questions }],
+      academy_quiz_keys: [{ resource_id: RES, answer_key: answerKey }],
+      academy_reading: [
+        { user_id: USER.id, resource_id: RES },
+        { user_id: "someone-else", resource_id: RES },
+      ],
+    });
+    createAdminClient.mockReturnValue(db.client);
+    await submitAcademyQuiz(RES, right);
+    expect(db.writes.filter((w) => w.table === "academy_reading")).toEqual([
+      { table: "academy_reading", op: "delete", row: { user_id: USER.id, resource_id: RES } },
+    ]);
+  });
+
   it("doesn't complete it below 4, and never returns the answers", async () => {
     const res = await submitAcademyQuiz(RES, { ...right, q1: wrongFor("q1"), q2: wrongFor("q2") });
     expect(res).toEqual({ ok: true, correct: 3, total: 5, passed: false, wrong: ["q1", "q2"] });
@@ -181,6 +197,51 @@ describe("setAcademyDone", () => {
     await expect(setAcademyDone(POD, true)).resolves.toMatchObject({ ok: false });
     getCurrentUser.mockResolvedValue(null);
     await expect(setAcademyDone(POD, true)).resolves.toMatchObject({ ok: false });
+    expect(db.writes).toEqual([]);
+  });
+});
+
+describe("setAcademyReading", () => {
+  const BOOK = "8d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f5a";
+  beforeEach(() => {
+    db = fakeDb({
+      academy_resources: [
+        { id: RES, kind: "blog", status: "published", questions },
+        { id: BOOK, kind: "book", status: "published", questions },
+      ],
+      academy_completions: [],
+      academy_reading: [{ user_id: "someone-else", resource_id: BOOK }],
+    });
+    createAdminClient.mockReturnValue(db.client);
+  });
+
+  it("marks a book as reading now, and clears only the user's own marker", async () => {
+    await expect(setAcademyReading(BOOK, true)).resolves.toEqual({ ok: true });
+    expect(db.writes).toEqual([{ table: "academy_reading", op: "upsert", row: { user_id: USER.id, resource_id: BOOK } }]);
+    db.writes.length = 0;
+    await expect(setAcademyReading(BOOK, false)).resolves.toEqual({ ok: true });
+    expect(db.writes).toEqual([]); // the user had none; someone else's stays
+    expect(revalidatePath).toHaveBeenCalledWith("/academy");
+  });
+
+  it("refuses a finished book, a blog post, an unpublished book, a bad id and a signed-out user", async () => {
+    db = fakeDb({
+      academy_resources: [
+        { id: RES, kind: "blog", status: "published", questions },
+        { id: BOOK, kind: "book", status: "published", questions },
+      ],
+      academy_completions: [{ user_id: USER.id, resource_id: BOOK }],
+    });
+    createAdminClient.mockReturnValue(db.client);
+    await expect(setAcademyReading(BOOK, true)).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/finished/) });
+    await expect(setAcademyReading(RES, true)).resolves.toMatchObject({ ok: false });
+    await expect(setAcademyReading("nope", true)).resolves.toMatchObject({ ok: false });
+    await expect(setAcademyReading(BOOK, "yes" as unknown as boolean)).resolves.toMatchObject({ ok: false });
+    db = fakeDb({ academy_resources: [{ id: BOOK, kind: "book", status: "draft", questions }], academy_completions: [] });
+    createAdminClient.mockReturnValue(db.client);
+    await expect(setAcademyReading(BOOK, true)).resolves.toMatchObject({ ok: false });
+    getCurrentUser.mockResolvedValue(null);
+    await expect(setAcademyReading(BOOK, true)).resolves.toMatchObject({ ok: false });
     expect(db.writes).toEqual([]);
   });
 });

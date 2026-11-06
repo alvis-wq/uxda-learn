@@ -616,7 +616,7 @@ create table academy_resources (
   category text,
   -- Blog number / podcast episode number / book number from the old spreadsheet, when known.
   number int,
-  -- A podcast episode about a blog post: shown in the same row as that post. One episode per post.
+  -- A podcast episode about a blog post: the two cards link to each other. One episode per post.
   blog_id uuid references academy_resources(id) on delete restrict,
   questions jsonb not null default '[]',   -- WITHOUT answers
   quiz_reviewed boolean not null default false,
@@ -625,6 +625,8 @@ create table academy_resources (
   -- their order and sit below anything added later.
   sort_key bigint not null default extract(epoch from now())::bigint,
   published_at timestamptz,
+  -- When the episode (or post) came out (20261106120000): podcasts are listed newest release first.
+  released_on date,
   created_by uuid references profiles(id) on delete set null,
   updated_by uuid references profiles(id) on delete set null,
   created_at timestamptz not null default now(),
@@ -642,6 +644,7 @@ create table academy_resources (
 create unique index academy_resources_one_podcast_per_blog on academy_resources (blog_id) where blog_id is not null;
 create unique index academy_resources_url on academy_resources (url) where url is not null;
 create index academy_resources_list on academy_resources (kind, status, sort_key desc);
+create index academy_resources_released on academy_resources (kind, released_on desc nulls last) where status = 'published';
 
 -- A podcast can only point at a blog post.
 create or replace function public.academy_check_blog_link() returns trigger
@@ -724,6 +727,30 @@ $$;
 
 revoke execute on function public.team_academy() from public, anon;
 grant execute on function public.team_academy() to authenticated, service_role;
+
+-- Reading now (20261106120000_academy_tabs_reading.sql) ----------------------------------------------------------
+-- Books a person is reading now: their own marker, written by a server action (service role), cleared when they
+-- complete the book. Only books (trigger academy_check_reading_book).
+create table academy_reading (
+  user_id uuid not null references profiles(id) on delete cascade,
+  resource_id uuid not null references academy_resources(id) on delete cascade,
+  started_at timestamptz not null default now(),
+  primary key (user_id, resource_id)
+);
+
+create index academy_reading_resource on academy_reading (resource_id);
+
+alter table academy_reading enable row level security;
+
+create policy academy_reading_select on academy_reading for select to authenticated
+  using (user_id = auth.uid() or public.is_admin());
+
+revoke all on academy_reading from anon, authenticated;
+grant select on academy_reading to authenticated;
+grant all on academy_reading to service_role;
+
+-- team_academy_reading(): (user_id, resource_id, started_at) for published books; leads and admins only, like
+-- team_academy().
 
 -- Storage: thumbnails and covers --------------------------------------------------------------
 -- Public (blog thumbnails and book covers are public pictures anyway). Uploads only through server actions with the

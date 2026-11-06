@@ -60,7 +60,10 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
 - UXDA Academy (`/academy`): blog posts, podcast episodes and books in the database (`academy_resources`), not
   /content. Done = pass the resource's 5-question quiz (4 of 5), graded on the server; answers in `academy_quiz_keys`
   (service role only). Podcast episodes have no quiz for now: the user switches them to done (and back), counted apart
-  from the post they're about. Separate from points and the leaderboard. Academy editors (`profiles.is_academy_editor`,
+  from the post they're about. Three tabs (Blog, Podcasts newest release first by `released_on`, Books); a post and its
+  episode link to each other ("Listen to podcast" / "Read the blog"). Books can be marked "Reading now"
+  (`academy_reading`, own rows, cleared on completion; leads/admins see it via `team_academy_reading()`). Separate
+  from points and the leaderboard. Academy editors (`profiles.is_academy_editor`,
   switched in Admin → Users, audited) and admins manage it (Admin → Academy; editors at `/academy/manage`); Claude
   drafts quizzes (`ANTHROPIC_API_KEY`, server-only), an editor checks them. Leads/admins see progress via
   `team_academy()`. Every outside fetch goes through `safeFetch` (SSRF guard).

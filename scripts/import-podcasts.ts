@@ -4,16 +4,19 @@
  *   npm run academy:podcasts -- <file.xlsx> --as <admin email>            # dry run: the pairing it would use
  *   npm run academy:podcasts -- <file.xlsx> --as <admin email> --apply    # writes it
  *   … --feed <rss url>                                                     # another feed (default: Buzzsprout's)
+ *   npm run academy:podcasts -- --dates --as <admin email> [--apply]      # fill release dates of episodes already in
  *
  * Episodes come from the podcast's RSS feed (title, Buzzsprout page, cover, opening of the description). Pairing: the
  * blog link in the episode ("Read the full article…"), else the post's "Episode number" in the spreadsheet's UXDA BLOG
  * sheet, else a clearly similar title; doubtful ones stay on their own and are listed. Episodes are published without
- * a quiz (listeners switch them to done). Running it again skips episodes that are already in.
+ * a quiz (listeners switch them to done). Running it again skips episodes that are already in. Each episode gets its
+ * release date (<pubDate>): the Academy lists podcasts newest release first. --dates only fills or corrects the release
+ * dates of the episodes already in (matched by their Buzzsprout page), and needs no spreadsheet.
  */
 import "./lib/env";
 import { BLOG_SHEET, parseBlogSheet } from "./lib/academy-import";
 import { arg, picture, picturePath, pool, readWorkbook } from "./lib/academy-scripts";
-import { matchEpisodes, normUrl, parseFeed, type BlogRef } from "./lib/podcast-feed";
+import { matchEpisodes, normUrl, parseFeed, type BlogRef, type FeedEpisode } from "./lib/podcast-feed";
 import { adminClient } from "./lib/supabase";
 import { safeFetch } from "../src/lib/academy/metadata";
 
@@ -23,11 +26,13 @@ const CONCURRENCY = 4;
 
 async function main() {
   const apply = process.argv.includes("--apply");
+  const datesOnly = process.argv.includes("--dates");
   const actorEmail = arg("--as")?.toLowerCase();
   const feedUrl = arg("--feed") ?? FEED;
   const file = process.argv.slice(2).find((a, i, all) => !a.startsWith("--") && !["--as", "--feed"].includes(all[i - 1]));
-  if (!file || !actorEmail) {
+  if ((!file && !datesOnly) || !actorEmail) {
     console.error("Usage: npm run academy:podcasts -- <file.xlsx> --as <admin email> [--apply] [--feed <rss url>]");
+    console.error("       npm run academy:podcasts -- --dates --as <admin email> [--apply] [--feed <rss url>]");
     process.exit(1);
   }
   const db = adminClient();
@@ -39,7 +44,8 @@ async function main() {
 
   const feed = await safeFetch(feedUrl, "application/rss+xml,application/xml,text/xml", MAX_FEED_BYTES);
   const episodes = parseFeed(new TextDecoder().decode(feed.body));
-  const sheetEpisode = new Map(parseBlogSheet((await readWorkbook(file))(BLOG_SHEET)).map((r) => [normUrl(r.url!), r.episode ?? null]));
+  if (datesOnly) return fillDates(db, episodes, apply);
+  const sheetEpisode = new Map(parseBlogSheet((await readWorkbook(file!))(BLOG_SHEET)).map((r) => [normUrl(r.url!), r.episode ?? null]));
 
   const { data: rows, error } = await db.from("academy_resources").select("id,kind,url,title,blog_id,status");
   if (error) throw new Error(`read academy_resources: ${error.message}`);
@@ -85,6 +91,7 @@ async function main() {
       image_path: imagePath,
       blog_id: blogId,
       number: episode.number,
+      released_on: episode.releasedOn,
       // Newest episode first among the ones without a post.
       sort_key: episode.number ?? 0,
       status: "published",
@@ -100,6 +107,32 @@ async function main() {
     console.log(`${failed.length} failed:`);
     for (const f of failed) console.log(`  ${f}`);
   }
+}
+
+/** --dates: set released_on on the episodes already in the Academy from the feed's <pubDate>, where it differs. */
+async function fillDates(db: ReturnType<typeof adminClient>, episodes: FeedEpisode[], apply: boolean) {
+  const released = new Map(episodes.filter((e) => e.releasedOn).map((e) => [normUrl(e.pageUrl), e.releasedOn!]));
+  const { data: rows, error } = await db.from("academy_resources").select("id,title,url,released_on").eq("kind", "podcast");
+  if (error) throw new Error(`read academy_resources: ${error.message}`);
+  const changes = rows.flatMap((r) => {
+    const date = r.url ? released.get(normUrl(r.url)) : undefined;
+    return date && date !== r.released_on ? [{ id: r.id, title: r.title, from: r.released_on, to: date }] : [];
+  });
+  const missing = rows.filter((r) => !r.url || !released.has(normUrl(r.url)));
+  console.log(`Podcast episodes in the Academy: ${rows.length}; ${changes.length} to date; ${missing.length} not in the feed.`);
+  for (const c of changes) console.log(`  ${c.to}${c.from ? ` (was ${c.from})` : ""}  ${c.title}`);
+  for (const m of missing) console.log(`  not in the feed: ${m.title}`);
+  if (!apply) {
+    console.log("\nDry run: nothing written. Add --apply to write the dates.");
+    return;
+  }
+  const failed: string[] = [];
+  await pool(changes, CONCURRENCY, async (c) => {
+    const { error: updateError } = await db.from("academy_resources").update({ released_on: c.to }).eq("id", c.id);
+    if (updateError) failed.push(`${c.title}: ${updateError.message}`);
+  });
+  console.log(`\nDated ${changes.length - failed.length} episodes.`);
+  for (const f of failed) console.log(`  failed: ${f}`);
 }
 
 main().catch((e) => {

@@ -37,7 +37,8 @@ export type QuizSubmitResult = ({ ok: true } & QuizResult) | { ok: false; error:
 /**
  * Grade one try of a resource's quiz. Decided here with the service role: the key never leaves the server, and the
  * browser gets back only how many were right and which questions were wrong. Every try is recorded; 4 of 5 right
- * completes the resource (once: a completed resource stays completed, and trying again changes nothing).
+ * completes the resource (once: a completed resource stays completed, and trying again changes nothing) and, for a book,
+ * clears "Reading now".
  */
 export async function submitAcademyQuiz(resourceId: string, rawAnswers: unknown): Promise<QuizSubmitResult> {
   const user = await getCurrentUser();
@@ -68,6 +69,8 @@ export async function submitAcademyQuiz(resourceId: string, rawAnswers: unknown)
       .from("academy_completions")
       .upsert({ user_id: user.id, resource_id: id.data }, { onConflict: "user_id,resource_id", ignoreDuplicates: true });
     if (done.error) return { ok: false, error: "You passed, but it couldn't be saved. Please try again." };
+    // A finished book isn't "reading now" any more. Not worth failing a pass over: the page hides it once done.
+    await admin.from("academy_reading").delete().eq("user_id", user.id).eq("resource_id", id.data);
     revalidatePath("/academy");
   }
   return { ok: true, ...result };
@@ -97,6 +100,33 @@ export async function setAcademyDone(resourceId: string, done: boolean): Promise
   const write = done
     ? await admin.from("academy_completions").upsert({ user_id: user.id, resource_id: id.data }, { onConflict: "user_id,resource_id", ignoreDuplicates: true })
     : await admin.from("academy_completions").delete().eq("user_id", user.id).eq("resource_id", id.data).eq("is_imported", false);
+  if (write.error) return { ok: false, error: "Couldn't save that. Please try again." };
+  revalidatePath("/academy");
+  return { ok: true };
+}
+
+/**
+ * Mark a published book as "Reading now", or clear it. Only the user's own marker; a book they've already completed
+ * can't be marked (it counts as done).
+ */
+export async function setAcademyReading(resourceId: string, reading: boolean): Promise<DoneResult> {
+  const user = await getCurrentUser();
+  const profile = await getCurrentProfile();
+  if (!user || !profile) return SIGNED_OUT;
+  const id = idSchema.safeParse(resourceId);
+  if (!id.success || typeof reading !== "boolean") return NOT_FOUND;
+
+  const admin = createAdminClient();
+  const [resource, completion] = await Promise.all([
+    admin.from("academy_resources").select("kind").eq("id", id.data).eq("status", "published").maybeSingle(),
+    admin.from("academy_completions").select("resource_id").eq("user_id", user.id).eq("resource_id", id.data).maybeSingle(),
+  ]);
+  if (resource.error || completion.error) return { ok: false, error: "Couldn't save that. Please try again." };
+  if (!resource.data || resource.data.kind !== "book") return NOT_FOUND;
+  if (reading && completion.data) return { ok: false, error: "You've already finished this book." };
+  const write = reading
+    ? await admin.from("academy_reading").upsert({ user_id: user.id, resource_id: id.data }, { onConflict: "user_id,resource_id", ignoreDuplicates: true })
+    : await admin.from("academy_reading").delete().eq("user_id", user.id).eq("resource_id", id.data);
   if (write.error) return { ok: false, error: "Couldn't save that. Please try again." };
   revalidatePath("/academy");
   return { ok: true };

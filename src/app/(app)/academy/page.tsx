@@ -1,40 +1,55 @@
 import type { Metadata } from "next";
+import Form from "next/form";
 import Link from "next/link";
-import { BookOpen, Headphones, Newspaper, Settings2 } from "lucide-react";
+import { BookMarked, BookOpen, Headphones, Newspaper, Search, Settings2, X } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   BOOK_CATEGORY_LABEL,
+  BOOK_FILTER_LABEL,
+  BOOK_FILTERS,
+  counterparts,
+  filterBooks,
   filterItems,
-  filterRows,
   groupBooks,
-  pairBlogsAndPodcasts,
+  listOf,
+  parseBookFilter,
   parseShowFilter,
   progressByKind,
+  searchItems,
   SHOW_FILTERS,
   SHOW_LABEL,
+  type AcademyItem,
+  type BookFilter,
   type ShowFilter,
 } from "@/lib/academy/resources";
 import { canEditAcademy } from "@/lib/auth/roles";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 import { loadAcademyItems } from "@/lib/data/academy";
 import { cn } from "@/lib/utils";
-import { BookCard, PodcastPlaceholder, ResourceRowItem } from "./academy-items";
+import { BookCard, ResourceRowItem } from "./academy-items";
 
 export const metadata: Metadata = { title: "Academy · UXDA Learn" };
 
 const TABS = [
-  { id: "blog", label: "Blog & Pod" },
-  { id: "books", label: "Books" },
+  { id: "blog", label: "Blog", icon: Newspaper },
+  { id: "podcasts", label: "Podcasts", icon: Headphones },
+  { id: "books", label: "Books", icon: BookOpen },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-function href(tab: Tab, show: ShowFilter) {
-  const q = new URLSearchParams();
-  if (tab !== "blog") q.set("tab", tab);
-  if (show !== "all") q.set("show", show);
-  const s = q.toString();
+function parseTab(value: unknown): Tab {
+  return TABS.some((t) => t.id === value) ? (value as Tab) : "blog";
+}
+
+function href(tab: Tab, show: string, q: string) {
+  const p = new URLSearchParams();
+  if (tab !== "blog") p.set("tab", tab);
+  if (show !== "all") p.set("show", show);
+  if (q) p.set("q", q);
+  const s = p.toString();
   return s ? `/academy?${s}` : "/academy";
 }
 
@@ -59,24 +74,106 @@ function PillNav({ label, items }: { label: string; items: { key: string; label:
   );
 }
 
+/** Search within the current tab: a plain GET form, so the search lives in the URL like the tabs and filters. */
+function SearchBox({ tab, show, q }: { tab: Tab; show: string; q: string }) {
+  const what = tab === "books" ? "books" : tab === "podcasts" ? "episodes" : "posts";
+  return (
+    <Form action="/academy" role="search" className="relative w-full sm:w-64">
+      {tab !== "blog" && <input type="hidden" name="tab" value={tab} />}
+      {show !== "all" && <input type="hidden" name="show" value={show} />}
+      <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" aria-hidden />
+      <Input
+        type="search"
+        name="q"
+        defaultValue={q}
+        key={`${tab}-${q}`}
+        placeholder={`Search ${what}`}
+        aria-label={`Search ${what}`}
+        maxLength={100}
+        className="rounded-full pr-9 pl-9"
+      />
+      {q && (
+        <Link
+          href={href(tab, show, "")}
+          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+          aria-label="Clear the search"
+        >
+          <X className="size-4" aria-hidden />
+        </Link>
+      )}
+    </Form>
+  );
+}
+
+function BookGrid({ books, testId = "book-grid" }: { books: AcademyItem[]; testId?: string }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid={testId}>
+      {books.map((b) => (
+        <BookCard key={b.id} item={b} />
+      ))}
+    </div>
+  );
+}
+
+const SHOW_EMPTY: Record<"blog" | "podcasts", Record<Exclude<ShowFilter, "all">, [string, string]>> = {
+  blog: {
+    done: ["No posts done yet", "Pass a post's quick check and it shows up here."],
+    todo: ["All posts done", "You've read every post. Nice."],
+  },
+  podcasts: {
+    done: ["No episodes done yet", "Listened to one? Switch it to done and it shows up here."],
+    todo: ["All episodes done", "You've listened to every episode. Nice."],
+  },
+};
+
+const BOOK_EMPTY: Record<Exclude<BookFilter, "all">, [string, string]> = {
+  reading: ["Not reading anything right now", "Pick a book and press Reading now: it shows up here."],
+  unread: ["No books left to start", "You're reading or have finished every book on the list."],
+  done: ["No books done yet", "Pass a book's quick check and it shows up here."],
+};
+
 export default async function AcademyPage({ searchParams }: PageProps<"/academy">) {
   const profile = await requireOnboardedProfile();
   const params = await searchParams;
-  const tab: Tab = params.tab === "books" ? "books" : "blog";
-  const show = parseShowFilter(params.show);
+  const tab = parseTab(params.tab);
+  const showFilter = parseShowFilter(params.show);
+  const bookFilter = parseBookFilter(params.show);
+  const show: string = tab === "books" ? bookFilter : showFilter;
+  const q = (typeof params.q === "string" ? params.q : "").trim().slice(0, 100);
   const items = await loadAcademyItems(profile.id);
   const progress = progressByKind(items);
   const manageHref = profile.is_admin ? "/admin/academy" : "/academy/manage";
+  const pairs = counterparts(items);
 
-  const rows = filterRows(pairBlogsAndPodcasts(items), show);
-  const bookGroups = groupBooks(filterItems(items, show));
-  const tabHasItems = tab === "blog" ? progress.blog.total + progress.podcast.total > 0 : progress.book.total > 0;
+  const kind = tab === "books" ? "book" : tab === "podcasts" ? "podcast" : "blog";
+  const tabHasItems = progress[kind].total > 0;
+  const list = tab === "books" ? [] : searchItems(filterItems(listOf(items, kind === "podcast" ? "podcast" : "blog"), showFilter), q);
+  const books = searchItems(
+    items.filter((i) => i.kind === "book"),
+    q,
+  );
+  // On "All", books being read sit in their own strip at the top instead of in their group.
+  const readingNow = tab === "books" && bookFilter === "all" ? filterBooks(books, "reading") : [];
+  const bookGroups = groupBooks(filterBooks(books, bookFilter).filter((b) => !readingNow.includes(b)));
+  const shown = tab === "books" ? readingNow.length + bookGroups.length : list.length;
+  const tabIcon = TABS.find((t) => t.id === tab)!.icon;
+
+  const filterItemsNav =
+    tab === "books"
+      ? BOOK_FILTERS.map((f) => ({ key: f, label: BOOK_FILTER_LABEL[f], href: href(tab, f, q), current: f === bookFilter }))
+      : SHOW_FILTERS.map((f) => ({ key: f, label: SHOW_LABEL[f], href: href(tab, f, q), current: f === showFilter }));
+
+  const [emptyTitle, emptyText] = q
+    ? [`Nothing matches “${q}”`, "Try another word, or clear the search."]
+    : tab === "books"
+      ? BOOK_EMPTY[bookFilter as Exclude<BookFilter, "all">]
+      : SHOW_EMPTY[tab][showFilter as Exclude<ShowFilter, "all">];
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
       <PageHeader
         title="UXDA Academy"
-        description="Our blog posts, podcast episodes and books. Read a post or book, then pass a quick 5-question check to mark it done. Listened to an episode? Just switch it to done."
+        description="Our blog posts, podcast episodes and books. Read a post or book, then pass a quick 5-question check to mark it done. Listened to an episode? Just switch it to done. Started a book? Mark it Reading now."
       >
         {canEditAcademy(profile) && (
           <Button asChild variant="outline" size="sm">
@@ -95,68 +192,72 @@ export default async function AcademyPage({ searchParams }: PageProps<"/academy"
             ["podcast", "Podcasts", Headphones],
             ["book", "Books", BookOpen],
           ] as const
-        ).map(([kind, label, Icon]) => (
-          <div key={kind} className="bg-card rounded-xl border p-3">
+        ).map(([k, label, Icon]) => (
+          <div key={k} className="bg-card rounded-xl border p-3">
             <dt className="text-meta text-muted-foreground flex items-center gap-1.5">
               <Icon className="size-3.5" aria-hidden />
               {label}
             </dt>
             <dd className="mt-1 text-lg font-semibold tabular-nums">
-              {progress[kind].done}
-              <span className="text-muted-foreground text-sm font-normal"> / {progress[kind].total}</span>
+              {progress[k].done}
+              <span className="text-muted-foreground text-sm font-normal"> / {progress[k].total}</span>
             </dd>
           </div>
         ))}
       </dl>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <PillNav
           label="Academy sections"
-          items={TABS.map((t) => ({ key: t.id, label: t.label, href: href(t.id, show), current: t.id === tab }))}
+          items={TABS.map((t) => ({ key: t.id, label: t.label, href: href(t.id, "all", ""), current: t.id === tab }))}
         />
-        <PillNav
-          label="Show"
-          items={SHOW_FILTERS.map((f) => ({ key: f, label: SHOW_LABEL[f], href: href(tab, f), current: f === show }))}
-        />
+        <SearchBox tab={tab} show={show} q={q} />
+      </div>
+      <div className="mb-6">
+        <PillNav label="Show" items={filterItemsNav} />
       </div>
 
       {!tabHasItems ? (
         <EmptyState
-          icon={tab === "blog" ? Newspaper : BookOpen}
-          title={tab === "blog" ? "No blog posts or podcasts yet" : "No books yet"}
+          icon={tabIcon}
+          title={tab === "books" ? "No books yet" : tab === "podcasts" ? "No podcast episodes yet" : "No blog posts yet"}
           description="New ones appear here as soon as they're added."
         />
-      ) : tab === "blog" ? (
-        rows.length === 0 ? (
-          <EmptyState title={show === "done" ? "Nothing done yet" : "All done here"} description={show === "done" ? "Mark a post or episode done and it shows up here." : "You've finished every post and episode. Nice."} />
-        ) : (
-          <section aria-label="Blog posts and podcast episodes" className="grid gap-3" data-testid="blog-pod-list">
-            <div className="text-meta text-muted-foreground hidden grid-cols-2 gap-3 font-bold md:grid" aria-hidden>
-              <span>Blog posts</span>
-              <span>Podcast episodes</span>
-            </div>
-            {rows.map((r) => (
-              <div key={r.blog?.id ?? r.podcast!.id} className="grid gap-3 md:grid-cols-2" data-testid="blog-pod-row">
-                {r.blog ? <ResourceRowItem item={r.blog} /> : <div className="hidden md:block" />}
-                {r.podcast ? <ResourceRowItem item={r.podcast} /> : show === "all" && r.blog ? <PodcastPlaceholder /> : <div className="hidden md:block" />}
-              </div>
-            ))}
-          </section>
-        )
-      ) : bookGroups.length === 0 ? (
-        <EmptyState title={show === "done" ? "No books done yet" : "All books done"} description={show === "done" ? "Mark a book done and it shows up here." : "You've read every book on the list. Impressive."} />
+      ) : shown === 0 ? (
+        <EmptyState icon={q ? Search : tabIcon} title={emptyTitle} description={emptyText}>
+          {q && (
+            <Button asChild variant="outline" size="sm" className="mt-2">
+              <Link href={href(tab, show, "")}>Clear the search</Link>
+            </Button>
+          )}
+        </EmptyState>
+      ) : tab !== "books" ? (
+        <section
+          aria-label={tab === "podcasts" ? "Podcast episodes" : "Blog posts"}
+          className="grid gap-3 md:grid-cols-2"
+          data-testid={tab === "podcasts" ? "podcast-list" : "blog-list"}
+        >
+          {list.map((i) => (
+            <ResourceRowItem key={i.id} item={i} counterpart={pairs.get(i.id)} />
+          ))}
+        </section>
       ) : (
         <div className="grid gap-10">
+          {readingNow.length > 0 && (
+            <section aria-labelledby="books-reading" className="bg-accent/40 grid gap-4 rounded-2xl border p-4" data-testid="reading-now">
+              <h2 id="books-reading" className="text-meta flex items-center gap-1.5 font-bold">
+                <BookMarked className="size-4" aria-hidden />
+                Reading now
+              </h2>
+              <BookGrid books={readingNow} testId="reading-grid" />
+            </section>
+          )}
           {bookGroups.map((g) => (
             <section key={g.category} aria-labelledby={`books-${g.category}`} className="grid gap-4">
               <h2 id={`books-${g.category}`} className="text-meta font-bold">
                 {BOOK_CATEGORY_LABEL[g.category]}
               </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="book-grid">
-                {g.books.map((b) => (
-                  <BookCard key={b.id} item={b} />
-                ))}
-              </div>
+              <BookGrid books={g.books} />
             </section>
           ))}
         </div>

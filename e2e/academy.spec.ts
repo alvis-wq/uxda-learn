@@ -26,6 +26,7 @@ async function cleanAcademy() {
   const ids = (data ?? []).map((r) => r.id);
   if (ids.length) {
     await db.from("academy_completions").delete().in("resource_id", ids);
+    await db.from("academy_reading").delete().in("resource_id", ids);
     await db.from("academy_resources").update({ blog_id: null }).in("id", ids);
     await db.from("academy_resources").delete().in("id", ids);
   }
@@ -42,7 +43,15 @@ async function seed() {
   const { data: pod } = await db
     .from("academy_resources")
     // Podcast episodes have no quiz (for now): a listener switches them to done.
-    .insert({ kind: "podcast", title: `${PREFIX} episode`, url: "https://example.com/e2e-academy-episode", blog_id: blog!.id, status: "published", questions: [] })
+    .insert({
+      kind: "podcast",
+      title: `${PREFIX} episode`,
+      url: "https://example.com/e2e-academy-episode",
+      blog_id: blog!.id,
+      released_on: "2026-03-01",
+      status: "published",
+      questions: [],
+    })
     .select("id")
     .single();
   const { data: book } = await db
@@ -61,16 +70,60 @@ test.beforeAll(async () => {
 test.afterAll(cleanAcademy);
 
 test.describe("Academy", () => {
-  test("a post and its podcast episode share a row; books are on their own tab", async ({ page }) => {
+  test("blog, podcasts and books have their own tabs; a post and its episode link to each other", async ({ page }) => {
     await loginAs(page, "strategist");
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Academy" }).click();
     await expect(page).toHaveURL(/\/academy$/);
-    const row = page.getByTestId("blog-pod-row").filter({ hasText: `${PREFIX} post` });
-    await expect(row.getByTestId("academy-item")).toHaveCount(2);
-    await expect(row.locator('[data-kind="podcast"]')).toContainText(`${PREFIX} episode`);
+    const sections = page.getByRole("navigation", { name: "Academy sections" });
+    const post = page.getByTestId("blog-list").getByTestId("academy-item").filter({ hasText: `${PREFIX} post` });
+    await expect(post.getByRole("link", { name: /Listen to podcast/ })).toHaveAttribute("href", "https://example.com/e2e-academy-episode");
+    await expect(page.getByTestId("blog-list").locator('[data-kind="podcast"]')).toHaveCount(0);
 
-    await page.getByRole("navigation", { name: "Academy sections" }).getByRole("link", { name: "Books" }).click();
+    await sections.getByRole("link", { name: "Podcasts" }).click();
+    await expect(page).toHaveURL(/tab=podcasts/);
+    const episode = page.getByTestId("podcast-list").getByTestId("academy-item").filter({ hasText: `${PREFIX} episode` });
+    await expect(episode.getByText("1 Mar 2026")).toBeVisible();
+    await expect(episode.getByRole("link", { name: /Read the blog/ })).toHaveAttribute("href", "https://example.com/e2e-academy-post");
+
+    await sections.getByRole("link", { name: "Books" }).click();
     await expect(page).toHaveURL(/tab=books/);
+    await expect(page.getByTestId("book-grid").getByText(`${PREFIX} book`)).toBeVisible();
+  });
+
+  test("a book can be marked Reading now: it gets a badge, sits on top and has its own filter", async ({ page }) => {
+    await loginAs(page, "designer");
+    await page.goto("/academy?tab=books");
+    const book = () => page.locator('[data-testid="academy-item"][data-kind="book"]').filter({ hasText: `${PREFIX} book` });
+    await book().getByTestId("reading-toggle").click();
+    await expect(page.getByTestId("reading-now").getByText(`${PREFIX} book`)).toBeVisible();
+    await expect(book().getByTestId("reading-badge")).toBeVisible();
+    await expect(book().getByTestId("reading-toggle")).toHaveAttribute("aria-pressed", "true");
+
+    const filters = page.getByRole("navigation", { name: "Show" });
+    await filters.getByRole("link", { name: "Reading" }).click();
+    await expect(page).toHaveURL(/show=reading/);
+    await expect(book()).toHaveAttribute("data-reading", "true");
+    await filters.getByRole("link", { name: "Not read" }).click();
+    await expect(book()).toHaveCount(0);
+
+    await page.goto("/academy?tab=books");
+    await book().getByTestId("reading-toggle").click();
+    await expect(page.getByTestId("reading-now")).toHaveCount(0);
+    await expect(book()).toHaveAttribute("data-reading", "false");
+  });
+
+  test("search narrows the current tab", async ({ page }) => {
+    await loginAs(page, "strategist");
+    await page.goto("/academy?tab=books");
+    const search = page.getByRole("searchbox", { name: "Search books" });
+    await search.fill("a. author");
+    await search.press("Enter");
+    await expect(page).toHaveURL(/tab=books.*q=a\.\+author|q=a\.%20author/);
+    await expect(page.getByTestId("book-grid").getByText(`${PREFIX} book`)).toBeVisible();
+    await search.fill("zz no such book");
+    await search.press("Enter");
+    await expect(page.getByText("Nothing matches “zz no such book”")).toBeVisible();
+    await page.getByRole("link", { name: "Clear the search" }).first().click();
     await expect(page.getByTestId("book-grid").getByText(`${PREFIX} book`)).toBeVisible();
   });
 
@@ -108,7 +161,7 @@ test.describe("Academy", () => {
 
   test("a podcast episode switches to done without a quiz, and back", async ({ page }) => {
     await loginAs(page, "strategist");
-    await page.goto("/academy");
+    await page.goto("/academy?tab=podcasts");
     const episode = page.locator('[data-testid="academy-item"][data-kind="podcast"]').filter({ hasText: `${PREFIX} episode` });
     await episode.getByRole("switch").click();
     await expect(page.getByTestId("academy-quiz")).toHaveCount(0);

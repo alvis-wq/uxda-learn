@@ -12,13 +12,16 @@ export const metadata: Metadata = { title: "Academy progress · Team · UXDA Lea
 
 const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-/** Academy progress, for leads and admins: who has completed how many blog posts, podcasts and books, and who did which. */
+/**
+ * Academy progress, for leads and admins: who has completed how many blog posts, podcasts and books, which books they're
+ * reading now, and who did (or is reading) which.
+ */
 export default async function TeamAcademyPage() {
   const { people, byResource, totals } = buildTeamAcademy(await loadTeamAcademyInput());
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <PageHeader title="Team progress" description="Academy: blog posts, podcast episodes and books completed (quiz passed, or carried over from the old spreadsheet)." />
+      <PageHeader title="Team progress" description="Academy: blog posts, podcast episodes and books completed (quiz passed, or carried over from the old spreadsheet), and books people are reading now." />
       <TeamSections current="academy" />
 
       {people.length === 0 ? (
@@ -39,6 +42,7 @@ export default async function TeamAcademyPage() {
                     <TableHead className="text-right">Blog posts</TableHead>
                     <TableHead className="text-right">Podcasts</TableHead>
                     <TableHead className="text-right">Books</TableHead>
+                    <TableHead>Reading now</TableHead>
                     <TableHead className="hidden text-right sm:table-cell">Last completed</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -52,6 +56,9 @@ export default async function TeamAcademyPage() {
                           <span className="text-muted-foreground"> / {totals[k]}</span>
                         </TableCell>
                       ))}
+                      <TableCell className="max-w-64 text-sm" data-testid="team-reading">
+                        {p.reading.length ? p.reading.join(", ") : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell className="text-muted-foreground hidden text-right text-sm sm:table-cell">{p.last ? dateFmt.format(new Date(p.last)) : "—"}</TableCell>
                     </TableRow>
                   ))}
@@ -78,6 +85,7 @@ export default async function TeamAcademyPage() {
                       </span>
                     </summary>
                     <p className="text-muted-foreground mt-2 text-sm">{r.doneBy.length ? r.doneBy.join(", ") : "No one yet."}</p>
+                    {r.readingBy.length > 0 && <p className="text-muted-foreground mt-1 text-sm">Reading now: {r.readingBy.join(", ")}</p>}
                   </details>
                 </li>
               ))}

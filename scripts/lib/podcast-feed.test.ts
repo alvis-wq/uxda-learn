@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { episodeBlurb, matchEpisodes, normUrl, parseFeed, titleSimilarity } = await import("./podcast-feed");
+const { episodeBlurb, feedDate, matchEpisodes, normUrl, parseFeed, titleSimilarity } = await import("./podcast-feed");
 
 // Two items shaped like the Buzzsprout feed (trimmed).
 const FEED = `<rss><channel><title>UXDA | Financial UX Design Podcast</title>
@@ -12,6 +12,7 @@ const FEED = `<rss><channel><title>UXDA | Financial UX Design Podcast</title>
   <enclosure url="https://www.buzzsprout.com/942295/episodes/19933806-91-scaling-banking-ux.mp3" length="1" type="audio/mpeg" />
   <itunes:image href="https://storage.buzzsprout.com/abc?.jpg" />
   <itunes:episode>91</itunes:episode>
+  <pubDate>Tue, 04 Nov 2025 06:00:00 -0500</pubDate>
 </item>
 <item>
   <title>#7 UX Trends</title>
@@ -31,10 +32,17 @@ describe("parseFeed", () => {
         imageUrl: "https://storage.buzzsprout.com/abc?.jpg",
         blogUrl: "https://theuxda.com/blog/financial-ux-governance",
         blurb: "A successful banking redesign is not the finish line. This episode explores why banks struggle to scale.",
+        releasedOn: "2025-11-04",
       },
-      // No <itunes:episode>: the number comes from the title; the site's home page isn't a blog link.
-      expect.objectContaining({ number: 7, blogUrl: null, imageUrl: null, blurb: "Trends." }),
+      // No <itunes:episode>: the number comes from the title; the site's home page isn't a blog link. No date.
+      expect.objectContaining({ number: 7, blogUrl: null, imageUrl: null, blurb: "Trends.", releasedOn: null }),
     ]);
+  });
+
+  it("reads an RSS date as the UTC day, or null", () => {
+    expect(feedDate("Mon, 03 Nov 2025 23:30:00 -0500")).toBe("2025-11-04");
+    expect(feedDate("not a date")).toBeNull();
+    expect(feedDate(undefined)).toBeNull();
   });
 
   it("cuts a long opening at a sentence end", () => {
@@ -46,7 +54,7 @@ describe("parseFeed", () => {
 });
 
 describe("matchEpisodes", () => {
-  const ep = (number: number, title: string, blogUrl: string | null = null) => ({ number, title, pageUrl: `https://bz/${number}`, imageUrl: null, blogUrl, blurb: null });
+  const ep = (number: number, title: string, blogUrl: string | null = null) => ({ number, title, pageUrl: `https://bz/${number}`, imageUrl: null, blogUrl, blurb: null, releasedOn: null });
   const blogs = [
     { id: "gov", url: "https://www.theuxda.com/blog/financial-ux-governance/", title: "Financial UX Governance", sheetEpisode: "91" },
     { id: "trends", url: "https://theuxda.com/blog/ux-trends", title: "Top UX Trends in Digital Banking", sheetEpisode: "7" },
@@ -90,7 +98,7 @@ describe("matchEpisodes", () => {
 });
 
 describe("matchEpisodes: re-recordings", () => {
-  const ep = (number: number, blogUrl: string) => ({ number, title: `#${number} Episode`, pageUrl: `https://bz/${number}`, imageUrl: null, blogUrl, blurb: null });
+  const ep = (number: number, blogUrl: string) => ({ number, title: `#${number} Episode`, pageUrl: `https://bz/${number}`, imageUrl: null, blogUrl, blurb: null, releasedOn: null });
   const blog = { id: "pyr", url: "https://theuxda.com/blog/value-pyramid", title: "Value Pyramid", sheetEpisode: "24" };
 
   it("gives the post to the episode the sheet names by number, else to the older one", () => {

@@ -13,6 +13,8 @@ export type FeedEpisode = {
   /** A theuxda.com blog link from the episode's <link> or its description ("Read the full article…"). */
   blogUrl: string | null;
   blurb: string | null;
+  /** The <pubDate>, as YYYY-MM-DD (UTC). */
+  releasedOn: string | null;
 };
 
 const tag = (item: string, name: string) => item.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`))?.[1]?.trim();
@@ -42,6 +44,12 @@ export function episodeBlurb(html: string): string | null {
   return text || null;
 }
 
+/** An RSS date ("Tue, 04 Nov 2025 06:00:00 -0500") as YYYY-MM-DD in UTC, or null when it can't be read. */
+export function feedDate(value: string | undefined): string | null {
+  const t = value ? Date.parse(value) : NaN;
+  return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
+}
+
 export function parseFeed(xml: string): FeedEpisode[] {
   return xml
     .split("<item>")
@@ -61,6 +69,7 @@ export function parseFeed(xml: string): FeedEpisode[] {
         imageUrl: item.match(/<itunes:image\b[^>]*\bhref="([^"]+)"/)?.[1] ?? null,
         blogUrl: [link, ...hrefs].find((u) => BLOG_LINK.test(u)) ?? null,
         blurb: episodeBlurb(description),
+        releasedOn: feedDate(tag(item, "pubDate")),
       };
     })
     .filter((e) => e.title && e.pageUrl);

@@ -22,6 +22,13 @@ describe("buildTeamAcademy", () => {
       { user_id: "u2", resource_id: "gone", completed_at: "2026-02-01T00:00:00Z", is_imported: false },
       { user_id: "stranger", resource_id: "b1", completed_at: "2026-02-01T00:00:00Z", is_imported: false },
     ],
+    reading: [
+      { user_id: "u2", resource_id: "k1", started_at: "2026-11-01T00:00:00Z" },
+      { user_id: "u3", resource_id: "k1", started_at: "2026-11-02T00:00:00Z" },
+      { user_id: "u1", resource_id: "k1", started_at: "2026-09-01T00:00:00Z" }, // finished since: not reading
+      { user_id: "u2", resource_id: "gone", started_at: "2026-11-01T00:00:00Z" },
+      { user_id: "stranger", resource_id: "k1", started_at: "2026-11-01T00:00:00Z" },
+    ],
   };
 
   it("counts per person and kind, ignoring unpublished resources and unknown people", () => {
@@ -38,5 +45,15 @@ describe("buildTeamAcademy", () => {
     const { byResource } = buildTeamAcademy(input);
     expect(byResource.find((r) => r.id === "b1")?.doneBy).toEqual(["Arita", "Inese"]);
     expect(byResource.find((r) => r.id === "p1")?.doneBy).toEqual([]);
+  });
+
+  it("shows who is reading which published book, leaving out books they've finished", () => {
+    const { people, byResource } = buildTeamAcademy(input);
+    expect(people.map((p) => [p.name, p.reading])).toEqual([
+      ["Inese", []],
+      ["Arita", ["Book"]],
+      ["Unnamed", ["Book"]],
+    ]);
+    expect(byResource.find((r) => r.id === "k1")?.readingBy).toEqual(["Arita", "Unnamed"]);
   });
 });

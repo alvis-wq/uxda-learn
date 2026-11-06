@@ -224,6 +224,7 @@ export async function AcademyManageEdit({ base, id }: { base: string; id: string
             author: r.author,
             category: r.category,
             blogId: r.blog_id,
+            releasedOn: r.released_on,
             imageUrl: academyImageUrl(r.image_path),
           }}
         />

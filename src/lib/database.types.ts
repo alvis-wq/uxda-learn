@@ -115,6 +115,39 @@ export type Database = {
           },
         ]
       }
+      academy_reading: {
+        Row: {
+          resource_id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          resource_id: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          resource_id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_reading_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "academy_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "academy_reading_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       academy_resources: {
         Row: {
           author: string | null
@@ -130,6 +163,7 @@ export type Database = {
           published_at: string | null
           questions: Json
           quiz_reviewed: boolean
+          released_on: string | null
           sort_key: number
           status: string
           title: string
@@ -151,6 +185,7 @@ export type Database = {
           published_at?: string | null
           questions?: Json
           quiz_reviewed?: boolean
+          released_on?: string | null
           sort_key?: number
           status?: string
           title: string
@@ -172,6 +207,7 @@ export type Database = {
           published_at?: string | null
           questions?: Json
           quiz_reviewed?: boolean
+          released_on?: string | null
           sort_key?: number
           status?: string
           title?: string
@@ -1289,6 +1325,14 @@ export type Database = {
           completed_at: string
           is_imported: boolean
           resource_id: string
+          user_id: string
+        }[]
+      }
+      team_academy_reading: {
+        Args: never
+        Returns: {
+          resource_id: string
+          started_at: string
           user_id: string
         }[]
       }

@@ -125,6 +125,8 @@ const resourceInputSchema = z
     author: optionalText(200),
     category: z.enum(BOOK_CATEGORIES).nullable().optional(),
     blogId: idSchema.nullable().optional(),
+    // When the episode or post came out (podcasts are listed newest release first). Books have none.
+    releasedOn: z.iso.date("Enter a valid release date.").nullable().optional().or(z.literal("").transform(() => null)),
     image: imageInputSchema,
   })
   .refine((r) => r.kind === "book" || !!r.url, { message: "Blog posts and podcast episodes need a link.", path: ["url"] });
@@ -180,6 +182,7 @@ export async function createResource(raw: ResourceInput): Promise<ManageResult<{
       author: r.kind === "book" ? (r.author ?? null) : null,
       category: r.kind === "book" ? (r.category ?? "academy") : null,
       blog_id: r.kind === "podcast" ? (r.blogId ?? null) : null,
+      released_on: r.kind === "book" ? null : (r.releasedOn ?? null),
       image_path: image === "keep" ? null : image.path,
       created_by: editor.id,
       updated_by: editor.id,
@@ -224,6 +227,7 @@ export async function updateResource(id: string, raw: ResourceInput): Promise<Ma
       author: r.kind === "book" ? (r.author ?? null) : null,
       category: r.kind === "book" ? (r.category ?? "academy") : null,
       blog_id: r.kind === "podcast" ? (r.blogId ?? null) : null,
+      released_on: r.kind === "book" ? null : (r.releasedOn ?? null),
       ...(image === "keep" ? {} : { image_path: image.path }),
       updated_by: editor.id,
       updated_at: new Date().toISOString(),
