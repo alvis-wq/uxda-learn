@@ -165,11 +165,13 @@ export type Database = {
           quiz_reviewed: boolean
           released_on: string | null
           sort_key: number
+          spotify_url: string | null
           status: string
           title: string
           updated_at: string
           updated_by: string | null
           url: string | null
+          youtube_url: string | null
         }
         Insert: {
           author?: string | null
@@ -187,11 +189,13 @@ export type Database = {
           quiz_reviewed?: boolean
           released_on?: string | null
           sort_key?: number
+          spotify_url?: string | null
           status?: string
           title: string
           updated_at?: string
           updated_by?: string | null
           url?: string | null
+          youtube_url?: string | null
         }
         Update: {
           author?: string | null
@@ -209,11 +213,13 @@ export type Database = {
           quiz_reviewed?: boolean
           released_on?: string | null
           sort_key?: number
+          spotify_url?: string | null
           status?: string
           title?: string
           updated_at?: string
           updated_by?: string | null
           url?: string | null
+          youtube_url?: string | null
         }
         Relationships: [
           {

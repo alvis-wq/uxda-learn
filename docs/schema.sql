@@ -627,11 +627,15 @@ create table academy_resources (
   published_at timestamptz,
   -- When the episode (or post) came out (20261106120000): podcasts are listed newest release first.
   released_on date,
+  -- Podcast episodes: the same episode on Spotify and YouTube (20261106140000), next to the Buzzsprout page in `url`.
+  spotify_url text check (spotify_url ~ '^https://open\.spotify\.com/episode/[A-Za-z0-9]+$'),
+  youtube_url text check (youtube_url ~ '^https://www\.youtube\.com/watch\?v=[A-Za-z0-9_-]+$'),
   created_by uuid references profiles(id) on delete set null,
   updated_by uuid references profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (blog_id is null or kind = 'podcast'),
+  constraint academy_resources_listen_links check ((spotify_url is null and youtube_url is null) or kind = 'podcast'),
   check (category is null or kind <> 'book' or category in ('academy', 'other')),
   -- Nothing goes live without a full quiz, except podcast episodes: no quiz for now, a listener marks them done.
   constraint academy_resources_published_quiz check (

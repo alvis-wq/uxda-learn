@@ -6,7 +6,7 @@ import { z } from "zod";
 import { FetchError, IMAGE_TYPES, MAX_IMAGE_BYTES, downloadImage, lookupBook, publicLink, readPage, sniffImageType, type ImageType } from "@/lib/academy/metadata";
 import { quizDraftSchema, splitQuiz, type QuizDraft } from "@/lib/academy/quiz";
 import { QuizDraftError, draftQuiz } from "@/lib/academy/quiz-ai";
-import { BOOK_CATEGORIES, resourceKindSchema, type ResourceKind } from "@/lib/academy/resources";
+import { BOOK_CATEGORIES, resourceKindSchema, spotifyEpisodeUrl, youtubeVideoUrl, type ResourceKind } from "@/lib/academy/resources";
 import { getAcademyEditorOrNull } from "@/lib/auth/academy-editor";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -33,6 +33,21 @@ const httpUrl = z
       return false;
     }
   }, "must be a link starting with https://");
+
+/** An optional link to one site, stored in its plain form ("" → null; anything else must be that site's link). */
+const listenLink = (normalise: (v: string) => string | null, message: string) =>
+  z
+    .string()
+    .trim()
+    .max(500)
+    .nullable()
+    .optional()
+    .transform((v, ctx) => {
+      if (!v) return null;
+      const url = normalise(v);
+      if (!url) ctx.addIssue({ code: "custom", message });
+      return url;
+    });
 
 function revalidateAcademy() {
   revalidatePath("/academy", "layout");
@@ -141,6 +156,9 @@ const resourceInputSchema = z
     blogId: idSchema.nullable().optional(),
     // When the episode or post came out (podcasts are listed newest release first). Books have none.
     releasedOn: z.iso.date("Enter a valid release date.").nullable().optional().or(z.literal("").transform(() => null)),
+    // Podcast episodes: the same episode on Spotify and YouTube.
+    spotifyUrl: listenLink(spotifyEpisodeUrl, "The Spotify link should be an episode (open.spotify.com/episode/…)."),
+    youtubeUrl: listenLink(youtubeVideoUrl, "The YouTube link should be a video (youtube.com/watch?v=… or youtu.be/…)."),
     image: imageInputSchema,
   })
   .refine((r) => r.kind === "book" || !!r.url, { message: "Blog posts and podcast episodes need a link.", path: ["url"] });
@@ -197,6 +215,8 @@ export async function createResource(raw: ResourceInput): Promise<ManageResult<{
       category: r.kind === "book" ? (r.category ?? "academy") : null,
       blog_id: r.kind === "podcast" ? (r.blogId ?? null) : null,
       released_on: r.kind === "book" ? null : (r.releasedOn ?? null),
+      spotify_url: r.kind === "podcast" ? r.spotifyUrl : null,
+      youtube_url: r.kind === "podcast" ? r.youtubeUrl : null,
       image_path: image === "keep" ? null : image.path,
       created_by: editor.id,
       updated_by: editor.id,
@@ -242,6 +262,8 @@ export async function updateResource(id: string, raw: ResourceInput): Promise<Ma
       category: r.kind === "book" ? (r.category ?? "academy") : null,
       blog_id: r.kind === "podcast" ? (r.blogId ?? null) : null,
       released_on: r.kind === "book" ? null : (r.releasedOn ?? null),
+      spotify_url: r.kind === "podcast" ? r.spotifyUrl : null,
+      youtube_url: r.kind === "podcast" ? r.youtubeUrl : null,
       ...(image === "keep" ? {} : { image_path: image.path }),
       updated_by: editor.id,
       updated_at: new Date().toISOString(),

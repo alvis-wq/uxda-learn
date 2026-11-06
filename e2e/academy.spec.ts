@@ -49,6 +49,7 @@ async function seed() {
       url: "https://example.com/e2e-academy-episode",
       blog_id: blog!.id,
       released_on: "2026-03-01",
+      youtube_url: "https://www.youtube.com/watch?v=e2eAcademy1",
       status: "published",
       questions: [],
     })
@@ -70,13 +71,13 @@ test.beforeAll(async () => {
 test.afterAll(cleanAcademy);
 
 test.describe("Academy", () => {
-  test("blog, podcasts and books have their own tabs; a post and its episode link to each other", async ({ page }) => {
+  test("blog, podcasts and books have their own tabs; a post and its episode link to each other; episodes list where to listen", async ({ page }) => {
     await loginAs(page, "strategist");
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Academy" }).click();
     await expect(page).toHaveURL(/\/academy$/);
     const sections = page.getByRole("navigation", { name: "Academy sections" });
     const post = page.getByTestId("blog-list").getByTestId("academy-item").filter({ hasText: `${PREFIX} post` });
-    await expect(post.getByRole("link", { name: /Listen to podcast/ })).toHaveAttribute("href", "https://example.com/e2e-academy-episode");
+    await expect(post.getByRole("link", { name: /Listen to podcast/ })).toHaveAttribute("href", "https://www.youtube.com/watch?v=e2eAcademy1");
     await expect(page.getByTestId("blog-list").locator('[data-kind="podcast"]')).toHaveCount(0);
 
     await sections.getByRole("link", { name: "Podcasts" }).click();
@@ -84,6 +85,12 @@ test.describe("Academy", () => {
     const episode = page.getByTestId("podcast-list").getByTestId("academy-item").filter({ hasText: `${PREFIX} episode` });
     await expect(episode.getByText("1 Mar 2026")).toBeVisible();
     await expect(episode.getByRole("link", { name: /Read the blog/ })).toHaveAttribute("href", "https://example.com/e2e-academy-post");
+    // YouTube first (no Spotify link here), then Buzzsprout; the show links sit above the list.
+    const listen = episode.getByTestId("listen-links");
+    await expect(listen.getByRole("link", { name: /YouTube/ })).toHaveAttribute("href", "https://www.youtube.com/watch?v=e2eAcademy1");
+    await expect(listen.getByRole("link", { name: /Buzzsprout/ })).toHaveAttribute("href", "https://example.com/e2e-academy-episode");
+    await expect(listen.getByRole("link", { name: /Spotify/ })).toHaveCount(0);
+    await expect(page.getByTestId("podcast-shows").getByRole("link", { name: /Spotify/ })).toHaveAttribute("href", /open\.spotify\.com\/show\//);
 
     await sections.getByRole("link", { name: "Books" }).click();
     await expect(page).toHaveURL(/tab=books/);

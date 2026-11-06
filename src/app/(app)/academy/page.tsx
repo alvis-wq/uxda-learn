@@ -17,6 +17,7 @@ import {
   listOf,
   parseBookFilter,
   parseShowFilter,
+  PODCAST_SHOWS,
   progressByKind,
   searchItems,
   SHOW_FILTERS,
@@ -217,8 +218,21 @@ export default async function AcademyPage({ searchParams }: PageProps<"/academy"
         />
         <SearchBox tab={tab} show={show} q={q} />
       </div>
-      <div className="mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <PillNav label="Show" items={filterItemsNav} />
+        {tab === "podcasts" && (
+          <p className="text-meta text-muted-foreground flex flex-wrap items-center gap-2" data-testid="podcast-shows">
+            Follow the podcast on
+            {PODCAST_SHOWS.map((show) => (
+              <Button key={show.service} asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs">
+                <a href={show.url} target="_blank" rel="noopener noreferrer">
+                  {show.label}
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </a>
+              </Button>
+            ))}
+          </p>
+        )}
       </div>
 
       {!tabHasItems ? (

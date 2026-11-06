@@ -112,6 +112,33 @@ describe("createResource", () => {
     expect(db.writes.at(-1)).toMatchObject({ row: { kind: "podcast", url: "https://www.buzzsprout.com/942295/episodes/20082796-93-ai" } });
   });
 
+  it("saves an episode's Spotify and YouTube links in their plain form, only for podcasts", async () => {
+    await actions.createResource({
+      kind: "podcast",
+      title: "Ep",
+      url: "https://pod.example/11",
+      spotifyUrl: "https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk?si=x",
+      youtubeUrl: "https://youtu.be/dwopD7vNhCs",
+      image: { type: "none" },
+    });
+    expect(db.writes.at(-1)).toMatchObject({
+      row: { spotify_url: "https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk", youtube_url: "https://www.youtube.com/watch?v=dwopD7vNhCs" },
+    });
+    await actions.createResource({ kind: "podcast", title: "Ep", url: "https://pod.example/12", spotifyUrl: "", image: { type: "none" } });
+    expect(db.writes.at(-1)).toMatchObject({ row: { spotify_url: null, youtube_url: null } });
+    await actions.createResource({ kind: "blog", title: "P", url: "https://theuxda.com/blog/q", youtubeUrl: "https://youtu.be/dwopD7vNhCs", image: { type: "none" } });
+    expect(db.writes.at(-1)).toMatchObject({ row: { kind: "blog", youtube_url: null } });
+  });
+
+  it("refuses a Spotify or YouTube link that isn't an episode or video", async () => {
+    await expect(
+      actions.createResource({ kind: "podcast", title: "Ep", url: "https://pod.example/13", spotifyUrl: "https://open.spotify.com/show/1zfcoHUozO0lIYltRUDEpg", image: { type: "none" } }),
+    ).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/Spotify link/) });
+    await expect(
+      actions.createResource({ kind: "podcast", title: "Ep", url: "https://pod.example/14", youtubeUrl: "https://www.youtube.com/@uxda/videos", image: { type: "none" } }),
+    ).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/YouTube link/) });
+  });
+
   it("needs a link for posts and podcasts, but not for books", async () => {
     await expect(actions.createResource({ kind: "blog", title: "x", url: "", image: { type: "none" } })).resolves.toMatchObject({ ok: false });
     await expect(actions.createResource({ kind: "book", title: "A book", url: "", image: { type: "none" } })).resolves.toMatchObject({ ok: true });

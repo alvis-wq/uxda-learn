@@ -4,16 +4,19 @@ import {
   counterparts,
   filterBooks,
   groupBooks,
+  listenLinks,
   listOf,
   parseBookFilter,
   parseShowFilter,
   progressByKind,
   searchItems,
+  spotifyEpisodeUrl,
+  youtubeVideoUrl,
   type AcademyItem,
 } from "./resources";
 
 function item(id: string, kind: AcademyItem["kind"], sort_key: number, extra: Partial<AcademyItem> = {}): AcademyItem {
-  return { id, kind, title: id, url: null, description: null, image_path: null, author: null, category: null, blog_id: null, sort_key, released_on: null, done: false, has_quiz: true, reading: false, ...extra };
+  return { id, kind, title: id, url: null, description: null, image_path: null, author: null, category: null, blog_id: null, sort_key, released_on: null, spotify_url: null, youtube_url: null, done: false, has_quiz: true, reading: false, ...extra };
 }
 
 describe("listOf", () => {
@@ -106,5 +109,43 @@ describe("parseShowFilter / parseBookFilter / academyImageUrl", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
     expect(academyImageUrl("blog/a b.png")).toBe("https://x.supabase.co/storage/v1/object/public/academy/blog/a%20b.png");
     expect(academyImageUrl(null)).toBeNull();
+  });
+});
+
+describe("listenLinks", () => {
+  it("lists Spotify, YouTube, then Buzzsprout, leaving out the missing ones", () => {
+    const ep = { url: "https://www.buzzsprout.com/1/episodes/2", spotify_url: "https://open.spotify.com/episode/abc", youtube_url: null };
+    expect(listenLinks(ep).map((l) => l.service)).toEqual(["spotify", "buzzsprout"]);
+    expect(listenLinks({ url: null, spotify_url: null, youtube_url: "https://www.youtube.com/watch?v=xyz123" })).toEqual([
+      { service: "youtube", url: "https://www.youtube.com/watch?v=xyz123" },
+    ]);
+  });
+});
+
+describe("spotifyEpisodeUrl", () => {
+  it("keeps the episode id and drops the tracking query", () => {
+    expect(spotifyEpisodeUrl(" https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk?si=abc ")).toBe("https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk");
+    expect(spotifyEpisodeUrl("https://open.spotify.com/intl-de/episode/4rOoJ6Egrf8K2IrywzwOMk")).toBe("https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk");
+  });
+  it("refuses shows, other sites and plain http", () => {
+    expect(spotifyEpisodeUrl("https://open.spotify.com/show/1zfcoHUozO0lIYltRUDEpg")).toBeNull();
+    expect(spotifyEpisodeUrl("https://evil.example/episode/abc")).toBeNull();
+    expect(spotifyEpisodeUrl("http://open.spotify.com/episode/abc")).toBeNull();
+  });
+});
+
+describe("youtubeVideoUrl", () => {
+  it("reads watch, youtu.be, live and shorts links", () => {
+    const want = "https://www.youtube.com/watch?v=dwopD7vNhCs";
+    expect(youtubeVideoUrl("https://www.youtube.com/watch?v=dwopD7vNhCs&t=42s")).toBe(want);
+    expect(youtubeVideoUrl("https://youtu.be/dwopD7vNhCs?si=x")).toBe(want);
+    expect(youtubeVideoUrl("https://m.youtube.com/watch?v=dwopD7vNhCs")).toBe(want);
+    expect(youtubeVideoUrl("https://www.youtube.com/live/dwopD7vNhCs")).toBe(want);
+  });
+  it("refuses channels, other sites and nonsense", () => {
+    expect(youtubeVideoUrl("https://www.youtube.com/@uxda/videos")).toBeNull();
+    expect(youtubeVideoUrl("https://youtube.evil.example/watch?v=dwopD7vNhCs")).toBeNull();
+    expect(youtubeVideoUrl("javascript:alert(1)")).toBeNull();
+    expect(youtubeVideoUrl("not a link")).toBeNull();
   });
 });

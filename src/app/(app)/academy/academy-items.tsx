@@ -2,7 +2,7 @@ import Image from "next/image";
 import { BookMarked, BookOpen, ExternalLink, Headphones, Newspaper } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { academyImageUrl, type AcademyItem } from "@/lib/academy/resources";
+import { LISTEN_LABEL, academyImageUrl, listenLinks, type AcademyItem } from "@/lib/academy/resources";
 import { cn } from "@/lib/utils";
 import { DoneSwitch } from "./quiz-dialog";
 import { ReadingToggle } from "./reading-toggle";
@@ -11,12 +11,18 @@ const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short
 
 const KIND_ICON = { blog: Newspaper, podcast: Headphones, book: BookOpen } as const;
 
+/** Where a resource opens: its page, or for a podcast episode the first place to listen (Spotify, YouTube, Buzzsprout). */
+function openUrl(item: AcademyItem): string | null {
+  return item.kind === "podcast" ? (listenLinks(item)[0]?.url ?? null) : item.url;
+}
+
 /** The resource's title as a link to it (new tab), or plain text when it has no link. */
 function TitleLink({ item, className }: { item: AcademyItem; className?: string }) {
-  if (!item.url) return <h3 className={className}>{item.title}</h3>;
+  const href = openUrl(item);
+  if (!href) return <h3 className={className}>{item.title}</h3>;
   return (
     <h3 className={className}>
-      <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline focus-visible:underline">
+      <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline focus-visible:underline">
         {item.title}
         <ExternalLink className="text-muted-foreground ml-1 inline size-3.5 align-baseline" aria-hidden />
         <span className="sr-only"> (opens in a new tab)</span>
@@ -45,20 +51,47 @@ function Thumb({ item, className, sizes }: { item: AcademyItem; className: strin
 
 /**
  * A small link to the other half of a post/episode pair: "Listen to podcast" on a post, "Read the blog" on an episode.
- * Opens the episode's or post's own page.
+ * Opens the post's page, or the episode's first place to listen.
  */
 function CounterpartLink({ item }: { item: AcademyItem }) {
-  if (!item.url) return null;
+  const href = openUrl(item);
+  if (!href) return null;
   const isPodcast = item.kind === "podcast";
   const Icon = isPodcast ? Headphones : Newspaper;
   return (
     <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs">
-      <a href={item.url} target="_blank" rel="noopener noreferrer" data-testid="counterpart-link">
+      <a href={href} target="_blank" rel="noopener noreferrer" data-testid="counterpart-link">
         <Icon className="size-3.5" aria-hidden />
         {isPodcast ? "Listen to podcast" : "Read the blog"}
         <span className="sr-only"> (opens in a new tab)</span>
       </a>
     </Button>
+  );
+}
+
+/** "Listen on Spotify · YouTube · Buzzsprout": the places this episode can be heard, each in a new tab. */
+function ListenLinks({ item }: { item: AcademyItem }) {
+  const links = listenLinks(item);
+  if (links.length < 2) return null;
+  return (
+    <p className="text-meta text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1" data-testid="listen-links">
+      <span>Listen on</span>
+      {links.map((l, i) => (
+        <span key={l.service} className="flex items-center gap-1.5">
+          {i > 0 && <span aria-hidden>·</span>}
+          <a
+            href={l.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground/90 font-medium underline-offset-2 hover:underline focus-visible:underline"
+            data-service={l.service}
+          >
+            {LISTEN_LABEL[l.service]}
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </span>
+      ))}
+    </p>
   );
 }
 
@@ -83,6 +116,7 @@ export function ResourceRowItem({ item, counterpart }: { item: AcademyItem; coun
         )}
         <TitleLink item={item} className="line-clamp-2 leading-snug font-medium" />
         {item.description && <p className="text-muted-foreground line-clamp-2 text-sm">{item.description}</p>}
+        {item.kind === "podcast" && <ListenLinks item={item} />}
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
           <DoneSwitch resourceId={item.id} title={item.title} done={item.done} hasQuiz={item.has_quiz} />
           {counterpart && <CounterpartLink item={counterpart} />}

@@ -225,6 +225,8 @@ export async function AcademyManageEdit({ base, id }: { base: string; id: string
             category: r.category,
             blogId: r.blog_id,
             releasedOn: r.released_on,
+            spotifyUrl: r.spotify_url,
+            youtubeUrl: r.youtube_url,
             imageUrl: academyImageUrl(r.image_path),
           }}
         />

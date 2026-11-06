@@ -415,3 +415,6 @@
 - "Reading now" is its own table (`academy_reading`), not a completion status: it's a personal marker anyone can switch back, has nothing to grade, and must never count as done. Leads see it through `team_academy_reading()`, like completions.
 - Academy search is a plain GET form (`?q=`), filtered on the server: the list is already loaded in full, and the search stays in the URL with the tab and filter.
 - Academy: a Buzzsprout admin link (buzzsprout.com/admin/…) is read and saved as the episode's public page — the admin page needs a login, and learners must land on the public player.
+- Podcast Spotify/YouTube links are two columns on `academy_resources`, matched by episode number — numbers are the same on every platform; a title match is only the fallback for videos posted without one.
+- The import never replaces a Spotify/YouTube link an editor set — an editor's correction outranks a guess; differences are listed instead.
+- Episode title and "Listen to podcast" open Spotify first, then YouTube, then Buzzsprout — most people listen there, not on Buzzsprout.

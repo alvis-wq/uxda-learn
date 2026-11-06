@@ -22,6 +22,8 @@ type Existing = {
   category: string | null;
   blogId: string | null;
   releasedOn: string | null;
+  spotifyUrl: string | null;
+  youtubeUrl: string | null;
   imageUrl: string | null;
 };
 
@@ -44,6 +46,8 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
   const [category, setCategory] = useState<BookCategory>((existing?.category as BookCategory) ?? "academy");
   const [blogId, setBlogId] = useState(existing?.blogId ?? NO_BLOG);
   const [releasedOn, setReleasedOn] = useState(existing?.releasedOn ?? "");
+  const [spotifyUrl, setSpotifyUrl] = useState(existing?.spotifyUrl ?? "");
+  const [youtubeUrl, setYoutubeUrl] = useState(existing?.youtubeUrl ?? "");
   const [picture, setPicture] = useState<Picture>({ type: "keep" });
   const [error, setError] = useState<string | null>(null);
   const [previewing, startPreview] = useTransition();
@@ -96,6 +100,8 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
       category: kind === "book" ? category : null,
       blogId: kind === "podcast" && blogId !== NO_BLOG ? blogId : null,
       releasedOn: kind === "book" ? null : releasedOn,
+      spotifyUrl: kind === "podcast" ? spotifyUrl.trim() : null,
+      youtubeUrl: kind === "podcast" ? youtubeUrl.trim() : null,
       image: picture.type === "path" ? { type: "path", path: picture.path } : picture.type === "remote" ? { type: "remote", url: picture.url } : picture,
     };
     startSave(async () => {
@@ -193,6 +199,37 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
           <Label htmlFor="res-released">Release date</Label>
           <Input id="res-released" type="date" value={releasedOn} onChange={(e) => setReleasedOn(e.target.value)} />
           {kind === "podcast" && <p className="text-muted-foreground text-meta">Episodes are listed newest release first.</p>}
+        </div>
+      )}
+
+      {kind === "podcast" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="res-spotify">Spotify episode link</Label>
+            <Input
+              id="res-spotify"
+              type="url"
+              inputMode="url"
+              placeholder="https://open.spotify.com/episode/…"
+              value={spotifyUrl}
+              onChange={(e) => setSpotifyUrl(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="res-youtube">YouTube video link</Label>
+            <Input
+              id="res-youtube"
+              type="url"
+              inputMode="url"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+            />
+          </div>
+          <p className="text-muted-foreground text-meta sm:col-span-2">
+            Optional. The episode card shows Spotify and YouTube before Buzzsprout. The podcast import fills these in by episode
+            number.
+          </p>
         </div>
       )}
 

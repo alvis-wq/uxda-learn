@@ -1021,3 +1021,11 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Editors: "Release date" field for podcasts and blog posts. `npm run academy:podcasts -- --dates --as <admin email> [--apply]` fills the dates of the episodes already in from the Buzzsprout feed.
 - Migration `20261106120000_academy_tabs_reading.sql` (`academy_resources.released_on`, `academy_reading`, `team_academy_reading()`): applied, types regenerated (no diff), `db:check` ✅. `--dates --apply` dated all 93 episodes (none missing from the feed); 85 are linked to a post.
 - Checks: `npm run lint` ✅ · `npm test` ✅ (1074) · `npm run build` ✅. E2E (`e2e/academy.spec.ts` updated) not run: no test Supabase project yet (learn-1). Browser check skipped at Alvis's call.
+
+## Podcast fixes and Spotify / YouTube links (2026-11-06)
+- Fix: `/academy` crashed on the default "All" filter (no empty-state entry for it). Fixed and deployed (aa1520e).
+- Fix: "Fill in from link" with a Buzzsprout admin link read the sign-in page. Admin links are now read and saved as the public episode page; Buzzsprout's plain `<title>` and `<time>` give a clean title and the release date (dc925d9).
+- Podcast episodes link to Spotify and YouTube next to Buzzsprout: "Listen on Spotify · YouTube · Buzzsprout" on the card; the title and the blog's "Listen to podcast" open Spotify first, else YouTube, else Buzzsprout. The Podcasts tab has "Follow the podcast on Spotify / YouTube" (the show and channel).
+- Editors: optional "Spotify episode link" and "YouTube video link" fields (stored in a plain form; only those sites' episode/video links accepted).
+- `npm run academy:podcasts -- --links --as <admin email> [--apply]` matches by episode number (stored, or "#93" in the title), else by exact title; it never replaces a link an editor set. YouTube via yt-dlp (all videos) or the channel RSS (latest 15); Spotify via its Web API with `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET`. New episodes from the import get their links too. Dry match: 89 of 94 episodes have a YouTube video (#9, #10, #14, #15 and "UXDA Anthem" aren't on the channel).
+- Migration `20261106140000_academy_podcast_links.sql` (`spotify_url`, `youtube_url`): written, not yet applied. Deploy only after `db:push` (the page reads the new columns).

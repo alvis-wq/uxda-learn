@@ -22,8 +22,65 @@ export const BOOK_CATEGORY_LABEL: Record<BookCategory, string> = {
  */
 export type AcademyItem = Pick<
   AcademyResourceRow,
-  "id" | "kind" | "title" | "url" | "description" | "image_path" | "author" | "category" | "blog_id" | "sort_key" | "released_on"
+  | "id"
+  | "kind"
+  | "title"
+  | "url"
+  | "description"
+  | "image_path"
+  | "author"
+  | "category"
+  | "blog_id"
+  | "sort_key"
+  | "released_on"
+  | "spotify_url"
+  | "youtube_url"
 > & { done: boolean; has_quiz: boolean; reading: boolean };
+
+// Where the podcast can be heard -------------------------------------------------------------------------------
+
+/** The UXDA podcast as a whole on Spotify and YouTube (the Podcasts tab links to both). */
+export const PODCAST_SHOWS = [
+  { service: "spotify", label: "Spotify", url: "https://open.spotify.com/show/1zfcoHUozO0lIYltRUDEpg" },
+  { service: "youtube", label: "YouTube", url: "https://www.youtube.com/@uxda/videos" },
+] as const;
+
+export type ListenService = "spotify" | "youtube" | "buzzsprout";
+export const LISTEN_LABEL: Record<ListenService, string> = { spotify: "Spotify", youtube: "YouTube", buzzsprout: "Buzzsprout" };
+
+/** An episode's places to listen, in the order people most likely want them: Spotify, YouTube, then Buzzsprout. */
+export function listenLinks(item: Pick<AcademyItem, "url" | "spotify_url" | "youtube_url">): { service: ListenService; url: string }[] {
+  const links: { service: ListenService; url: string | null }[] = [
+    { service: "spotify", url: item.spotify_url },
+    { service: "youtube", url: item.youtube_url },
+    { service: "buzzsprout", url: item.url },
+  ];
+  return links.filter((l): l is { service: ListenService; url: string } => !!l.url);
+}
+
+/** A Spotify episode link in its plain form (open.spotify.com/episode/<id>, no ?si=…), or null if it isn't one. */
+export function spotifyEpisodeUrl(input: string): string | null {
+  const m = input.trim().match(/^https:\/\/open\.spotify\.com\/(?:intl-[a-z-]+\/)?episode\/([A-Za-z0-9]+)(?:[?#].*)?$/i);
+  return m ? `https://open.spotify.com/episode/${m[1]}` : null;
+}
+
+/** A YouTube video link (watch?v=, youtu.be/, /live/ or /shorts/) as www.youtube.com/watch?v=<id>, or null. */
+export function youtubeVideoUrl(input: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(input.trim());
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:") return null;
+  const host = u.hostname.toLowerCase();
+  let id: string | null = null;
+  if (host === "youtu.be") id = u.pathname.slice(1);
+  else if (["www.youtube.com", "youtube.com", "m.youtube.com"].includes(host)) {
+    id = u.pathname === "/watch" ? u.searchParams.get("v") : (u.pathname.match(/^\/(?:live|shorts)\/([^/]+)/)?.[1] ?? null);
+  }
+  return id && /^[A-Za-z0-9_-]{6,20}$/.test(id) ? `https://www.youtube.com/watch?v=${id}` : null;
+}
 
 /** Public URL of a thumbnail or cover in the `academy` bucket. */
 export function academyImageUrl(path: string | null | undefined): string | null {

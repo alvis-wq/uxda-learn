@@ -12,7 +12,7 @@ export async function loadAcademyItems(userId: string): Promise<AcademyItem[]> {
   const [resources, completions, reading] = await Promise.all([
     supabase
       .from("academy_resources")
-      .select("id,kind,title,url,description,image_path,author,category,blog_id,sort_key,released_on,questions")
+      .select("id,kind,title,url,description,image_path,author,category,blog_id,sort_key,released_on,spotify_url,youtube_url,questions")
       .eq("status", "published"),
     supabase.from("academy_completions").select("resource_id").eq("user_id", userId),
     supabase.from("academy_reading").select("resource_id").eq("user_id", userId),
