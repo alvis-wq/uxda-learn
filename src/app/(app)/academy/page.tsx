@@ -54,6 +54,50 @@ function href(tab: Tab, show: string, q: string) {
   return s ? `/academy?${s}` : "/academy";
 }
 
+const TAB_KIND = { blog: "blog", podcasts: "podcast", books: "book" } as const;
+
+/**
+ * The three sections as big cards (Blog · Podcasts · Books), each with how much of it this person has done. They are
+ * the tabs: links, so the choice lives in the URL; the open one has the accent border.
+ */
+function SectionCards({ tab, progress }: { tab: Tab; progress: ReturnType<typeof progressByKind> }) {
+  return (
+    <nav aria-label="Academy sections" className="mb-6 grid grid-cols-3 gap-2 sm:max-w-2xl sm:gap-3" data-testid="academy-progress">
+      {TABS.map((t) => {
+        const { done, total } = progress[TAB_KIND[t.id]];
+        const current = t.id === tab;
+        return (
+          <Link
+            key={t.id}
+            href={href(t.id, "all", "")}
+            aria-current={current ? "page" : undefined}
+            className={cn(
+              "group bg-card focus-visible:ring-ring flex flex-col gap-1 rounded-xl border p-3 transition-colors focus-visible:ring-2 focus-visible:outline-none sm:p-4",
+              current ? "border-primary ring-primary/30 ring-1" : "hover:border-foreground/30 hover:bg-muted/40",
+            )}
+          >
+            <span className={cn("flex items-center gap-1.5 text-sm font-medium", current ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+              <t.icon className="size-4 shrink-0" aria-hidden />
+              {t.label}
+            </span>
+            <span className="text-lg font-semibold tabular-nums">
+              {done}
+              <span className="text-muted-foreground text-sm font-normal">
+                {" "}
+                / {total}
+                <span className="sr-only"> done</span>
+              </span>
+            </span>
+            <span className="bg-muted mt-1 h-1 overflow-hidden rounded-full" aria-hidden>
+              <span className="bg-primary block h-full rounded-full" style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }} />
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 /** Pills like the leaderboard's groups: links, so the choice lives in the URL (reload, back, share). */
 function PillNav({ label, items }: { label: string; items: { key: string; label: string; href: string; current: boolean }[] }) {
   return (
@@ -190,50 +234,26 @@ export default async function AcademyPage({ searchParams }: PageProps<"/academy"
         )}
       </PageHeader>
 
-      <dl className="mb-6 grid grid-cols-3 gap-3 sm:max-w-xl" data-testid="academy-progress">
-        {(
-          [
-            ["blog", "Blog posts", Newspaper],
-            ["podcast", "Podcasts", Headphones],
-            ["book", "Books", BookOpen],
-          ] as const
-        ).map(([k, label, Icon]) => (
-          <div key={k} className="bg-card rounded-xl border p-3">
-            <dt className="text-meta text-muted-foreground flex items-center gap-1.5">
-              <Icon className="size-3.5" aria-hidden />
-              {label}
-            </dt>
-            <dd className="mt-1 text-lg font-semibold tabular-nums">
-              {progress[k].done}
-              <span className="text-muted-foreground text-sm font-normal"> / {progress[k].total}</span>
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <SectionCards tab={tab} progress={progress} />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <PillNav
-          label="Academy sections"
-          items={TABS.map((t) => ({ key: t.id, label: t.label, href: href(t.id, "all", ""), current: t.id === tab }))}
-        />
+        <PillNav label="Show" items={filterItemsNav} />
         <SearchBox tab={tab} show={show} q={q} />
       </div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <PillNav label="Show" items={filterItemsNav} />
-        {tab === "podcasts" && (
-          <p className="text-meta text-muted-foreground flex flex-wrap items-center gap-2" data-testid="podcast-shows">
-            Follow the podcast on
-            {PODCAST_SHOWS.map((show) => (
-              <Button key={show.service} asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs">
-                <a href={show.url} target="_blank" rel="noopener noreferrer">
-                  {show.label}
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </a>
-              </Button>
-            ))}
-          </p>
-        )}
-      </div>
+      {tab === "podcasts" && (
+        <p className="text-meta text-muted-foreground mb-6 flex flex-wrap items-center gap-2" data-testid="podcast-shows">
+          Follow the podcast on
+          {PODCAST_SHOWS.map((show) => (
+            <Button key={show.service} asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs">
+              <a href={show.url} target="_blank" rel="noopener noreferrer">
+                {show.label}
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </Button>
+          ))}
+        </p>
+      )}
+      {tab !== "podcasts" && <div className="mb-2" />}
 
       {!tabHasItems ? (
         <EmptyState icon={tabIcon} title={nothingYet[0]} description={nothingYet[1]} />

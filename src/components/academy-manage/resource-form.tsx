@@ -227,7 +227,7 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
             />
           </div>
           <p className="text-muted-foreground text-meta sm:col-span-2">
-            Optional. Without a Spotify link, the card's Spotify link opens the podcast's show page. The podcast import fills in
+            Optional. Without a Spotify link, the card’s Spotify link opens the podcast’s show page. The podcast import fills in
             YouTube by episode number.
           </p>
         </div>

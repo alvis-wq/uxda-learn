@@ -419,3 +419,4 @@
 - The import never replaces a Spotify/YouTube link an editor set — an editor's correction outranks a guess; differences are listed instead.
 - Episode title and "Listen to podcast" open Spotify first, then YouTube, then Buzzsprout — most people listen there, not on Buzzsprout.
 - Episode cards link Spotify to the show when the episode has no Spotify link of its own — the Spotify Web API needs Premium, and Alvis chose the show link over hand-pasting 94 episode links; the title and "Listen to podcast" still open the episode itself (YouTube, else Buzzsprout).
+- Academy: the progress boxes are the section tabs (Blog · Podcasts · Books cards with done / total and a bar) — people took them for buttons; one control instead of boxes plus a pill row.
