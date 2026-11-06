@@ -157,9 +157,9 @@ async function fillDates(db: ReturnType<typeof adminClient>, episodes: FeedEpiso
 /** Every video on the channel via yt-dlp when it's installed; else the channel's RSS feed (its latest 15). */
 async function youtubeEntries(): Promise<{ entries: ListenEntry[]; source: string }> {
   const run = spawnSync("yt-dlp", ["--flat-playlist", "--print", "%(id)s\t%(title)s", YOUTUBE_CHANNEL], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
-  if (!run.error && run.status === 0) return { entries: parseYtDlpList(run.stdout), source: "every video (yt-dlp)" };
+  if (!run.error && run.status === 0) return { entries: parseYtDlpList(run.stdout), source: "every video, via yt-dlp" };
   const feed = await safeFetch(YOUTUBE_FEED, "application/atom+xml,application/xml,text/xml", MAX_FEED_BYTES);
-  return { entries: parseYoutubeFeed(new TextDecoder().decode(feed.body)), source: "latest 15 videos (RSS; install yt-dlp for all)" };
+  return { entries: parseYoutubeFeed(new TextDecoder().decode(feed.body)), source: "latest 15 videos, via RSS (install yt-dlp for all)" };
 }
 
 /**
@@ -191,20 +191,20 @@ async function spotifyEntries(): Promise<ListenEntry[] | null> {
 }
 
 /** Spotify and YouTube links by episode number (or title), with what was read and anything doubtful printed. */
-async function loadListenLinks(): Promise<{ spotify: ListenIndex; youtube: ListenIndex }> {
+async function loadListenLinks(): Promise<{ spotify: ListenIndex; youtube: ListenIndex; spotifyRead: boolean }> {
   const yt = await youtubeEntries();
   const sp = await spotifyEntries();
   const youtube = byNumber(yt.entries, "YouTube");
   const spotify = byNumber(sp ?? [], "Spotify");
-  console.log(`YouTube: ${youtube.links.size} numbered episodes from the ${yt.source}.`);
+  console.log(`YouTube: ${youtube.links.size} numbered episodes (${yt.source}).`);
   console.log(sp ? `Spotify: ${spotify.links.size} numbered episodes.` : "Spotify: skipped (no SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in .env.local).");
   for (const n of [...youtube.notes, ...spotify.notes]) console.log(`  ${n}`);
-  return { spotify, youtube };
+  return { spotify, youtube, spotifyRead: sp !== null };
 }
 
 /** --links: add the Spotify and YouTube links of the episodes already in the Academy, where they have none. */
 async function fillLinks(db: ReturnType<typeof adminClient>, apply: boolean) {
-  const { spotify, youtube } = await loadListenLinks();
+  const { spotify, youtube, spotifyRead } = await loadListenLinks();
   const { data: rows, error } = await db.from("academy_resources").select("id,title,number,spotify_url,youtube_url").eq("kind", "podcast");
   if (error) throw new Error(`read academy_resources: ${error.message}`);
   const { changes, notes } = planLinks(rows, spotify, youtube);
@@ -215,7 +215,7 @@ async function fillLinks(db: ReturnType<typeof adminClient>, apply: boolean) {
   const noYoutube = lacking("youtube_url");
   const noSpotify = lacking("spotify_url");
   if (noYoutube.length) console.log(`\nNo YouTube video found (${noYoutube.length}): ${noYoutube.join("; ")}`);
-  if (noSpotify.length) console.log(`\nNo Spotify episode found (${noSpotify.length}): ${noSpotify.join("; ")}`);
+  if (spotifyRead && noSpotify.length) console.log(`\nNo Spotify episode found (${noSpotify.length}): ${noSpotify.join("; ")}`);
   if (notes.length) {
     console.log(`\nWorth a look (${notes.length}):`);
     for (const n of notes) console.log(`  ${n}`);
