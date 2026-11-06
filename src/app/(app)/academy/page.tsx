@@ -115,18 +115,21 @@ function BookGrid({ books, testId = "book-grid" }: { books: AcademyItem[]; testI
   );
 }
 
-const SHOW_EMPTY: Record<"blog" | "podcasts", Record<Exclude<ShowFilter, "all">, [string, string]>> = {
+const SHOW_EMPTY: Record<"blog" | "podcasts", Record<ShowFilter, [string, string]>> = {
   blog: {
+    all: ["No blog posts yet", "New ones appear here as soon as they're added."],
     done: ["No posts done yet", "Pass a post's quick check and it shows up here."],
     todo: ["All posts done", "You've read every post. Nice."],
   },
   podcasts: {
+    all: ["No podcast episodes yet", "New ones appear here as soon as they're added."],
     done: ["No episodes done yet", "Listened to one? Switch it to done and it shows up here."],
     todo: ["All episodes done", "You've listened to every episode. Nice."],
   },
 };
 
-const BOOK_EMPTY: Record<Exclude<BookFilter, "all">, [string, string]> = {
+const BOOK_EMPTY: Record<BookFilter, [string, string]> = {
+  all: ["No books yet", "New ones appear here as soon as they're added."],
   reading: ["Not reading anything right now", "Pick a book and press Reading now: it shows up here."],
   unread: ["No books left to start", "You're reading or have finished every book on the list."],
   done: ["No books done yet", "Pass a book's quick check and it shows up here."],
@@ -163,11 +166,12 @@ export default async function AcademyPage({ searchParams }: PageProps<"/academy"
       ? BOOK_FILTERS.map((f) => ({ key: f, label: BOOK_FILTER_LABEL[f], href: href(tab, f, q), current: f === bookFilter }))
       : SHOW_FILTERS.map((f) => ({ key: f, label: SHOW_LABEL[f], href: href(tab, f, q), current: f === showFilter }));
 
+  const nothingYet = tab === "books" ? BOOK_EMPTY.all : SHOW_EMPTY[tab].all;
   const [emptyTitle, emptyText] = q
     ? [`Nothing matches “${q}”`, "Try another word, or clear the search."]
     : tab === "books"
-      ? BOOK_EMPTY[bookFilter as Exclude<BookFilter, "all">]
-      : SHOW_EMPTY[tab][showFilter as Exclude<ShowFilter, "all">];
+      ? BOOK_EMPTY[bookFilter]
+      : SHOW_EMPTY[tab][showFilter];
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
@@ -218,11 +222,7 @@ export default async function AcademyPage({ searchParams }: PageProps<"/academy"
       </div>
 
       {!tabHasItems ? (
-        <EmptyState
-          icon={tabIcon}
-          title={tab === "books" ? "No books yet" : tab === "podcasts" ? "No podcast episodes yet" : "No blog posts yet"}
-          description="New ones appear here as soon as they're added."
-        />
+        <EmptyState icon={tabIcon} title={nothingYet[0]} description={nothingYet[1]} />
       ) : shown === 0 ? (
         <EmptyState icon={q ? Search : tabIcon} title={emptyTitle} description={emptyText}>
           {q && (
