@@ -1019,5 +1019,5 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Search box per tab (title, and author for books).
 - Team → Academy: "Reading now" column per person, and "Reading now: …" per book.
 - Editors: "Release date" field for podcasts and blog posts. `npm run academy:podcasts -- --dates --as <admin email> [--apply]` fills the dates of the episodes already in from the Buzzsprout feed.
-- Migration `20261106120000_academy_tabs_reading.sql` (`academy_resources.released_on`, `academy_reading`, `team_academy_reading()`); `db:check` covers it. Waiting for Alvis: `npm run db:push`, `npm run db:types`, `npm run db:check`, then the `--dates` run.
-- Checks: `npm run lint` ✅ · `npm test` ✅ (1074) · `npm run build` ✅. E2E (`e2e/academy.spec.ts` updated) and a browser check wait for the migration.
+- Migration `20261106120000_academy_tabs_reading.sql` (`academy_resources.released_on`, `academy_reading`, `team_academy_reading()`): applied, types regenerated (no diff), `db:check` ✅. `--dates --apply` dated all 93 episodes (none missing from the feed); 85 are linked to a post.
+- Checks: `npm run lint` ✅ · `npm test` ✅ (1074) · `npm run build` ✅. E2E (`e2e/academy.spec.ts` updated) not run: no test Supabase project yet (learn-1). Browser check skipped at Alvis's call.
