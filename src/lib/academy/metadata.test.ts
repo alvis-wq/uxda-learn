@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { bestBookDoc, cleanBlurb, cleanTitle, decodeEntities, extractText, isPrivateAddress, isbnFromUrl, parseLinkPreview, safeFetch, sniffImageType } = await import("./metadata");
+const { bestBookDoc, cleanBlurb, cleanTitle, decodeEntities, extractText, isPrivateAddress, isbnFromUrl, parseDate, parseLinkPreview, publicLink, safeFetch, sniffImageType } =
+  await import("./metadata");
 
 // The head of a theuxda.com blog post, trimmed (the tags the preview reads).
 const BLOG_HEAD = `<!doctype html><html><head>
@@ -18,16 +19,59 @@ describe("parseLinkPreview", () => {
       title: "Bank-as-a-Product: Mobile Banking App Redesign is Not Enough",
       description: "Discover why a best-in-class mobile app isn’t enough to deliver great banking UX & more.",
       imageUrl: "https://theuxda.com/storage/app/media/blog/hero.png",
+      releasedOn: null,
     });
   });
 
   it("falls back to <title> and the plain description, and ignores a non-http picture", () => {
     const html = `<title> Plain &amp; simple </title><meta content="Just a page" name="description"><meta property="og:image" content="javascript:alert(1)">`;
-    expect(parseLinkPreview(html, "https://example.com/")).toEqual({ title: "Plain & simple", description: "Just a page", imageUrl: null });
+    expect(parseLinkPreview(html, "https://example.com/")).toEqual({ title: "Plain & simple", description: "Just a page", imageUrl: null, releasedOn: null });
   });
 
   it("returns nulls for a page without any", () => {
-    expect(parseLinkPreview("<html></html>", "https://example.com/")).toEqual({ title: null, description: null, imageUrl: null });
+    expect(parseLinkPreview("<html></html>", "https://example.com/")).toEqual({ title: null, description: null, imageUrl: null, releasedOn: null });
+  });
+
+  it("reads a Buzzsprout episode page: the plain <title> over a suffixed og:title, and the date in <time>", () => {
+    const html = `<title>#93 AI in Banking: Will It Expose Weak Digital Strategies?</title>
+<meta property="og:title" content="#93 AI in Banking: Will It Expose Weak Digital Strategies? - UXDA | Financial UX Design Podcast">
+<meta property="og:description" content="AI is making financial UX faster to produce.">
+<body><time datetime="November 06, 2026" class="whitespace-nowrap">November 06, 2026</time>`;
+    expect(parseLinkPreview(html, "https://www.buzzsprout.com/942295/episodes/20082796")).toEqual({
+      title: "#93 AI in Banking: Will It Expose Weak Digital Strategies?",
+      description: "AI is making financial UX faster to produce.",
+      imageUrl: null,
+      releasedOn: "2026-11-06",
+    });
+  });
+
+  it("prefers article:published_time for the date", () => {
+    const html = `<meta property="article:published_time" content="2025-03-14T09:00:00+00:00"><time datetime="2020-01-01">`;
+    expect(parseLinkPreview(html, "https://example.com/").releasedOn).toBe("2025-03-14");
+  });
+});
+
+describe("parseDate", () => {
+  it("reads ISO and written-out dates, and nothing else", () => {
+    expect(parseDate("2026-11-06T10:00:00Z")).toBe("2026-11-06");
+    expect(parseDate("November 06, 2026")).toBe("2026-11-06");
+    expect(parseDate("someday")).toBeNull();
+    expect(parseDate(null)).toBeNull();
+  });
+});
+
+describe("publicLink", () => {
+  it("turns a Buzzsprout admin episode link into its public page", () => {
+    expect(publicLink(" https://www.buzzsprout.com/admin/942295/episodes/20082796-93-ai-in-banking/edit?tab=details ")).toBe(
+      "https://www.buzzsprout.com/942295/episodes/20082796-93-ai-in-banking",
+    );
+    expect(publicLink("https://buzzsprout.com/admin/942295/episodes/20082796")).toBe("https://www.buzzsprout.com/942295/episodes/20082796");
+  });
+
+  it("leaves other links alone", () => {
+    expect(publicLink("https://www.buzzsprout.com/942295/episodes/20082796")).toBe("https://www.buzzsprout.com/942295/episodes/20082796");
+    expect(publicLink("https://theuxda.com/admin/1/episodes/2")).toBe("https://theuxda.com/admin/1/episodes/2");
+    expect(publicLink("not a link")).toBe("not a link");
   });
 });
 

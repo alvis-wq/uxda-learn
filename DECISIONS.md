@@ -414,3 +414,4 @@
 - Podcasts are ordered by a stored release date (`released_on`, from the feed's <pubDate> or typed by an editor), not by `sort_key`: imported episodes had their number there and new ones the creation time, which only matched release order by accident.
 - "Reading now" is its own table (`academy_reading`), not a completion status: it's a personal marker anyone can switch back, has nothing to grade, and must never count as done. Leads see it through `team_academy_reading()`, like completions.
 - Academy search is a plain GET form (`?q=`), filtered on the server: the list is already loaded in full, and the search stays in the URL with the tab and filter.
+- Academy: a Buzzsprout admin link (buzzsprout.com/admin/…) is read and saved as the episode's public page — the admin page needs a login, and learners must land on the public player.

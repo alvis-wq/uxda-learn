@@ -107,6 +107,11 @@ describe("createResource", () => {
     ).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/release date/) });
   });
 
+  it("saves a Buzzsprout admin link as the episode's public page", async () => {
+    await actions.createResource({ kind: "podcast", title: "Ep", url: "https://www.buzzsprout.com/admin/942295/episodes/20082796-93-ai", image: { type: "none" } });
+    expect(db.writes.at(-1)).toMatchObject({ row: { kind: "podcast", url: "https://www.buzzsprout.com/942295/episodes/20082796-93-ai" } });
+  });
+
   it("needs a link for posts and podcasts, but not for books", async () => {
     await expect(actions.createResource({ kind: "blog", title: "x", url: "", image: { type: "none" } })).resolves.toMatchObject({ ok: false });
     await expect(actions.createResource({ kind: "book", title: "A book", url: "", image: { type: "none" } })).resolves.toMatchObject({ ok: true });

@@ -144,13 +144,44 @@ export function cleanTitle(title: string, pageUrl: string): string {
   return cut > 0 ? parts.slice(0, cut).join(" – ").trim() : title;
 }
 
-export type LinkPreview = { title: string | null; description: string | null; imageUrl: string | null };
+/**
+ * The public address of a link copied from a site's admin area: a Buzzsprout episode opened in Buzzsprout's admin
+ * (buzzsprout.com/admin/<podcast>/episodes/<episode>) → its public page, the same link the RSS import stores. Other
+ * links come back as they are.
+ */
+export function publicLink(url: string): string {
+  try {
+    const u = new URL(url.trim());
+    const m = u.pathname.match(/^\/admin\/(\d+)\/episodes\/([^/]+)/);
+    if (/^(www\.)?buzzsprout\.com$/i.test(u.hostname) && m) return `https://www.buzzsprout.com/${m[1]}/episodes/${m[2]}`;
+  } catch {
+    // not a URL: left for the caller's validation
+  }
+  return url.trim();
+}
 
-/** Title, description and picture of a page, from Open Graph / Twitter / plain meta tags. */
+/** A date (YYYY-MM-DD) from a meta or <time> value: ISO ("2026-11-06T…") or written out ("November 06, 2026"). */
+export function parseDate(value: string | null): string | null {
+  if (!value) return null;
+  const iso = value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (iso) return iso;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export type LinkPreview = { title: string | null; description: string | null; imageUrl: string | null; releasedOn: string | null };
+
+/**
+ * Title, description, picture and publish date of a page, from Open Graph / Twitter / plain meta tags. The <title>
+ * wins over og:title when og:title only adds a suffix to it ("#93 AI in Banking - UXDA | … Podcast" on Buzzsprout).
+ */
 export function parseLinkPreview(html: string, pageUrl: string): LinkPreview {
   const head = html.slice(0, 200_000);
   const titleTag = head.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
-  const title = meta(head, ["og:title", "twitter:title"]) ?? (titleTag ? decodeEntities(titleTag).replace(/\s+/g, " ").trim() : null);
+  const plainTitle = titleTag ? decodeEntities(titleTag).replace(/\s+/g, " ").trim() : null;
+  const ogTitle = meta(head, ["og:title", "twitter:title"]);
+  const title = plainTitle && ogTitle?.startsWith(plainTitle) ? plainTitle : (ogTitle ?? plainTitle);
   const description = meta(head, ["og:description", "twitter:description", "description"]);
   const image = meta(head, ["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"]);
   let imageUrl: string | null = null;
@@ -162,7 +193,9 @@ export function parseLinkPreview(html: string, pageUrl: string): LinkPreview {
       imageUrl = null;
     }
   }
-  return { title: title ? cleanTitle(title, pageUrl) : null, description: description || null, imageUrl };
+  const time = head.match(/<time\b[^>]*>/i)?.[0];
+  const releasedOn = parseDate(meta(head, ["article:published_time", "og:published_time", "datepublished"]) ?? (time ? attr(time, "datetime") : null));
+  return { title: title ? cleanTitle(title, pageUrl) : null, description: description || null, imageUrl, releasedOn };
 }
 
 /** The readable text of a page: <article> or <main> when there is one, without scripts, styles, nav and markup. */

@@ -64,7 +64,9 @@ export function ResourceForm({ base, kind, blogs, existing }: { base: string; ki
         return;
       }
       const p = res.data;
+      if (p.url) setUrl(p.url);
       if (p.title) setTitle(p.title);
+      if (p.releasedOn && kind !== "book") setReleasedOn(p.releasedOn);
       if (p.description) setDescription(p.description.slice(0, 1200));
       if (p.author) setAuthor(p.author);
       if (p.imageUrl) setPicture({ type: "remote", url: p.imageUrl });

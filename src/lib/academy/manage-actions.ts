@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { FetchError, IMAGE_TYPES, MAX_IMAGE_BYTES, downloadImage, lookupBook, readPage, sniffImageType, type ImageType } from "@/lib/academy/metadata";
+import { FetchError, IMAGE_TYPES, MAX_IMAGE_BYTES, downloadImage, lookupBook, publicLink, readPage, sniffImageType, type ImageType } from "@/lib/academy/metadata";
 import { quizDraftSchema, splitQuiz, type QuizDraft } from "@/lib/academy/quiz";
 import { QuizDraftError, draftQuiz } from "@/lib/academy/quiz-ai";
 import { BOOK_CATEGORIES, resourceKindSchema, type ResourceKind } from "@/lib/academy/resources";
@@ -24,6 +24,7 @@ const httpUrl = z
   .string()
   .trim()
   .max(2000)
+  .transform(publicLink)
   .refine((v) => {
     try {
       const u = new URL(v);
@@ -40,11 +41,21 @@ function revalidateAcademy() {
 
 // Link preview -------------------------------------------------------------------------------------------------
 
-export type Preview = { title: string | null; description: string | null; author: string | null; imageUrl: string | null };
+export type Preview = {
+  title: string | null;
+  description: string | null;
+  author: string | null;
+  imageUrl: string | null;
+  /** When the page says it came out (podcast episodes, some posts). */
+  releasedOn: string | null;
+  /** The link as it will be saved: an admin link (Buzzsprout) becomes the public page. */
+  url: string | null;
+};
 
 /**
  * Read a link's details for the add form: title, short description and picture from the page (blog posts and
  * podcast episodes), or from Open Library (books: by the ISBN in an Amazon link, else by title). Nothing is saved.
+ * A Buzzsprout admin link is read (and handed back) as the episode's public page.
  */
 export async function previewLink(kindInput: string, urlInput: string, titleInput?: string): Promise<ManageResult<Preview>> {
   if (!(await getAcademyEditorOrNull())) return NOT_EDITOR;
@@ -55,15 +66,18 @@ export async function previewLink(kindInput: string, urlInput: string, titleInpu
   try {
     if (kind.data === "book") {
       const book = await lookupBook({ url: url?.data, title });
-      if (book) return { ok: true, data: { title: book.title, description: book.description, author: book.author, imageUrl: book.coverUrl } };
+      if (book) return { ok: true, data: { title: book.title, description: book.description, author: book.author, imageUrl: book.coverUrl, releasedOn: null, url: url?.data ?? null } };
       if (!url) return { ok: false, error: "No book found with that title. Fill in the details by hand." };
       const page = await readPage(url.data).catch(() => null);
-      if (page) return { ok: true, data: { title: page.title, description: page.description, author: null, imageUrl: page.imageUrl } };
+      if (page) return { ok: true, data: { title: page.title, description: page.description, author: null, imageUrl: page.imageUrl, releasedOn: null, url: url.data } };
       return { ok: false, error: "Couldn't find details for this book. Fill them in by hand." };
     }
     if (!url) return { ok: false, error: "Enter the link first." };
     const page = await readPage(url.data);
-    return { ok: true, data: { title: page.title, description: page.description, author: null, imageUrl: page.imageUrl } };
+    return {
+      ok: true,
+      data: { title: page.title, description: page.description, author: null, imageUrl: page.imageUrl, releasedOn: page.releasedOn, url: url.data },
+    };
   } catch (error) {
     if (error instanceof FetchError) return { ok: false, error: `Couldn't read that link: ${error.message} Fill in the details by hand.` };
     return { ok: false, error: "Couldn't read that link. Fill in the details by hand." };
