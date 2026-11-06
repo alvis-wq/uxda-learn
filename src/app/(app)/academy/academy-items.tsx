@@ -2,7 +2,7 @@ import Image from "next/image";
 import { BookMarked, BookOpen, ExternalLink, Headphones, Newspaper } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LISTEN_LABEL, academyImageUrl, listenLinks, type AcademyItem } from "@/lib/academy/resources";
+import { LISTEN_LABEL, academyImageUrl, episodeUrl, listenLinks, type AcademyItem } from "@/lib/academy/resources";
 import { cn } from "@/lib/utils";
 import { DoneSwitch } from "./quiz-dialog";
 import { ReadingToggle } from "./reading-toggle";
@@ -11,9 +11,9 @@ const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short
 
 const KIND_ICON = { blog: Newspaper, podcast: Headphones, book: BookOpen } as const;
 
-/** Where a resource opens: its page, or for a podcast episode the first place to listen (Spotify, YouTube, Buzzsprout). */
+/** Where a resource opens: its page, or for a podcast episode the first link to that episode (Spotify, YouTube, Buzzsprout). */
 function openUrl(item: AcademyItem): string | null {
-  return item.kind === "podcast" ? (listenLinks(item)[0]?.url ?? null) : item.url;
+  return item.kind === "podcast" ? episodeUrl(item) : item.url;
 }
 
 /** The resource's title as a link to it (new tab), or plain text when it has no link. */
@@ -69,7 +69,7 @@ function CounterpartLink({ item }: { item: AcademyItem }) {
   );
 }
 
-/** "Listen on Spotify · YouTube · Buzzsprout": the places this episode can be heard, each in a new tab. */
+/** "Listen on Spotify · YouTube · Buzzsprout": where this episode can be heard (Spotify may be the show), each in a new tab. */
 function ListenLinks({ item }: { item: AcademyItem }) {
   const links = listenLinks(item);
   if (links.length < 2) return null;
@@ -87,7 +87,7 @@ function ListenLinks({ item }: { item: AcademyItem }) {
             data-service={l.service}
           >
             {LISTEN_LABEL[l.service]}
-            <span className="sr-only"> (opens in a new tab)</span>
+            <span className="sr-only">{l.show ? " (the podcast's page, opens in a new tab)" : " (opens in a new tab)"}</span>
           </a>
         </span>
       ))}

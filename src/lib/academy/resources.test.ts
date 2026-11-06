@@ -4,8 +4,10 @@ import {
   counterparts,
   filterBooks,
   groupBooks,
+  episodeUrl,
   listenLinks,
   listOf,
+  PODCAST_SHOWS,
   parseBookFilter,
   parseShowFilter,
   progressByKind,
@@ -113,12 +115,32 @@ describe("parseShowFilter / parseBookFilter / academyImageUrl", () => {
 });
 
 describe("listenLinks", () => {
+  const buzz = "https://www.buzzsprout.com/1/episodes/2";
+  const tube = "https://www.youtube.com/watch?v=xyz123";
   it("lists Spotify, YouTube, then Buzzsprout, leaving out the missing ones", () => {
-    const ep = { url: "https://www.buzzsprout.com/1/episodes/2", spotify_url: "https://open.spotify.com/episode/abc", youtube_url: null };
-    expect(listenLinks(ep).map((l) => l.service)).toEqual(["spotify", "buzzsprout"]);
-    expect(listenLinks({ url: null, spotify_url: null, youtube_url: "https://www.youtube.com/watch?v=xyz123" })).toEqual([
-      { service: "youtube", url: "https://www.youtube.com/watch?v=xyz123" },
+    const ep = { url: buzz, spotify_url: "https://open.spotify.com/episode/abc", youtube_url: null };
+    expect(listenLinks(ep).map((l) => [l.service, l.show])).toEqual([
+      ["spotify", false],
+      ["buzzsprout", false],
     ]);
+  });
+  it("falls back to the Spotify show when the episode has no Spotify link", () => {
+    expect(listenLinks({ url: buzz, spotify_url: null, youtube_url: tube })).toEqual([
+      { service: "spotify", url: PODCAST_SHOWS[0].url, show: true },
+      { service: "youtube", url: tube, show: false },
+      { service: "buzzsprout", url: buzz, show: false },
+    ]);
+  });
+});
+
+describe("episodeUrl", () => {
+  it("opens the episode itself: its Spotify episode, else YouTube, else Buzzsprout, never the show", () => {
+    expect(episodeUrl({ url: "https://b/1", spotify_url: "https://open.spotify.com/episode/abc", youtube_url: "https://y/1" })).toBe(
+      "https://open.spotify.com/episode/abc",
+    );
+    expect(episodeUrl({ url: "https://b/1", spotify_url: null, youtube_url: "https://y/1" })).toBe("https://y/1");
+    expect(episodeUrl({ url: "https://b/1", spotify_url: null, youtube_url: null })).toBe("https://b/1");
+    expect(episodeUrl({ url: null, spotify_url: null, youtube_url: null })).toBeNull();
   });
 });
 

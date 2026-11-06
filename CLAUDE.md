@@ -62,7 +62,8 @@ leaderboard split into groups of tracks (Strategists, Designers, Team — config
   (service role only). Podcast episodes have no quiz for now: the user switches them to done (and back), counted apart
   from the post they're about. Three tabs (Blog, Podcasts newest release first by `released_on`, Books); a post and its
   episode link to each other ("Listen to podcast" / "Read the blog"). Episodes can also link to Spotify and YouTube
-  (`spotify_url`, `youtube_url`; the import matches them by episode number) and open Spotify first. Books can be marked "Reading now"
+  (`spotify_url`, `youtube_url`; the import matches YouTube by episode number). Without an episode's own Spotify link,
+  its Spotify link is the show (no Spotify Web API: it needs Premium); the title opens the episode itself. Books can be marked "Reading now"
   (`academy_reading`, own rows, cleared on completion; leads/admins see it via `team_academy_reading()`). Separate
   from points and the leaderboard. Academy editors (`profiles.is_academy_editor`,
   switched in Admin → Users, audited) and admins manage it (Admin → Academy; editors at `/academy/manage`); Claude

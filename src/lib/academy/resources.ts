@@ -48,14 +48,24 @@ export const PODCAST_SHOWS = [
 export type ListenService = "spotify" | "youtube" | "buzzsprout";
 export const LISTEN_LABEL: Record<ListenService, string> = { spotify: "Spotify", youtube: "YouTube", buzzsprout: "Buzzsprout" };
 
-/** An episode's places to listen, in the order people most likely want them: Spotify, YouTube, then Buzzsprout. */
-export function listenLinks(item: Pick<AcademyItem, "url" | "spotify_url" | "youtube_url">): { service: ListenService; url: string }[] {
-  const links: { service: ListenService; url: string | null }[] = [
-    { service: "spotify", url: item.spotify_url },
-    { service: "youtube", url: item.youtube_url },
-    { service: "buzzsprout", url: item.url },
+export type ListenLink = { service: ListenService; url: string; /** The whole show, not this episode. */ show: boolean };
+
+/**
+ * An episode's places to listen, in the order people most likely want them: Spotify, YouTube, then Buzzsprout. Spotify
+ * is always there: the episode's own link when an editor set one, else the show (episode links need Spotify's Web API).
+ */
+export function listenLinks(item: Pick<AcademyItem, "url" | "spotify_url" | "youtube_url">): ListenLink[] {
+  const links: { service: ListenService; url: string | null; show: boolean }[] = [
+    { service: "spotify", url: item.spotify_url ?? PODCAST_SHOWS[0].url, show: !item.spotify_url },
+    { service: "youtube", url: item.youtube_url, show: false },
+    { service: "buzzsprout", url: item.url, show: false },
   ];
-  return links.filter((l): l is { service: ListenService; url: string } => !!l.url);
+  return links.filter((l): l is ListenLink => !!l.url);
+}
+
+/** Where an episode opens (its title, a post's "Listen to podcast"): the first link to this very episode. */
+export function episodeUrl(item: Pick<AcademyItem, "url" | "spotify_url" | "youtube_url">): string | null {
+  return listenLinks(item).find((l) => !l.show)?.url ?? null;
 }
 
 /** A Spotify episode link in its plain form (open.spotify.com/episode/<id>, no ?si=…), or null if it isn't one. */

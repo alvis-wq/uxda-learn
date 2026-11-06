@@ -85,11 +85,11 @@ test.describe("Academy", () => {
     const episode = page.getByTestId("podcast-list").getByTestId("academy-item").filter({ hasText: `${PREFIX} episode` });
     await expect(episode.getByText("1 Mar 2026")).toBeVisible();
     await expect(episode.getByRole("link", { name: /Read the blog/ })).toHaveAttribute("href", "https://example.com/e2e-academy-post");
-    // YouTube first (no Spotify link here), then Buzzsprout; the show links sit above the list.
+    // Spotify (the show: no episode link here), YouTube, then Buzzsprout; the show links also sit above the list.
     const listen = episode.getByTestId("listen-links");
     await expect(listen.getByRole("link", { name: /YouTube/ })).toHaveAttribute("href", "https://www.youtube.com/watch?v=e2eAcademy1");
     await expect(listen.getByRole("link", { name: /Buzzsprout/ })).toHaveAttribute("href", "https://example.com/e2e-academy-episode");
-    await expect(listen.getByRole("link", { name: /Spotify/ })).toHaveCount(0);
+    await expect(listen.getByRole("link", { name: /Spotify/ })).toHaveAttribute("href", /open\.spotify\.com\/show\//);
     await expect(page.getByTestId("podcast-shows").getByRole("link", { name: /Spotify/ })).toHaveAttribute("href", /open\.spotify\.com\/show\//);
 
     await sections.getByRole("link", { name: "Books" }).click();

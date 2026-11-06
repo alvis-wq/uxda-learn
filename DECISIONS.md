@@ -418,3 +418,4 @@
 - Podcast Spotify/YouTube links are two columns on `academy_resources`, matched by episode number — numbers are the same on every platform; a title match is only the fallback for videos posted without one.
 - The import never replaces a Spotify/YouTube link an editor set — an editor's correction outranks a guess; differences are listed instead.
 - Episode title and "Listen to podcast" open Spotify first, then YouTube, then Buzzsprout — most people listen there, not on Buzzsprout.
+- Episode cards link Spotify to the show when the episode has no Spotify link of its own — the Spotify Web API needs Premium, and Alvis chose the show link over hand-pasting 94 episode links; the title and "Listen to podcast" still open the episode itself (YouTube, else Buzzsprout).
