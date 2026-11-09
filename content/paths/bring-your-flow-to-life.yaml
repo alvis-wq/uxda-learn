@@ -1,0 +1,23 @@
+slug: bring-your-flow-to-life
+title: Bring your flow to life
+category: design-systems
+audiences: [designer]
+summary: Turn your screen into a named, linted flow with motion, wire it into a prototype and review a colleague's.
+sequential: true
+milestones:
+  - bfl-1-build-the-flow
+  - bfl-2-name-and-lint
+  - bfl-3-motion-ready
+  - bfl-4-add-motion
+  - bfl-5-prototype
+  - bfl-6-peer-review
+requires: [build-with-the-template]
+before_you_start: >-
+  This path has 6 parts and carries on from **Build a screen with the template**: you work in your
+  **Name-Screen** file and your **Name-DS-template** library. Update the **uxda-design-systems** plugin to
+  0.9.0 or later first, so **/ds-motion** and **/ds-motion-structure** are there. Do the parts in order.
+before_you_submit:
+  - Work in your own Sandbox files, never in a client file.
+  - Name your layers (lowercase role names, no "Frame 12" or "copy").
+  - Make every link openable by anyone at UXDA.
+status: draft
