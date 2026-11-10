@@ -2,7 +2,7 @@ slug: bring-your-flow-to-life
 title: Bring your flow to life
 category: design-systems
 audiences: [designer]
-summary: Turn your screen into a named, linted flow with motion, wire it into a prototype and review a colleague's.
+summary: Turn your screen into a named, linted flow with motion, wire it into a prototype, build it in Code Layers and review a colleague's.
 sequential: true
 milestones:
   - bfl-1-build-the-flow
