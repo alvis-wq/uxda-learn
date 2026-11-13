@@ -1,0 +1,25 @@
+slug: deliver-a-component-request
+title: Deliver a component request
+category: design-systems
+audiences: [designer]
+summary: Take one component request from draft to delivery with the uxda-component-requests plugin, on sandbox files.
+sequential: true
+milestones:
+  - dcr-1-gear-up
+  - dcr-2-set-up-the-client
+  - dcr-3-draft-and-plan
+  - dcr-4-build-and-check-modes
+  - dcr-5-deliver-and-close
+  - dcr-6-final-boss
+before_you_start: >-
+  This path has 6 parts. You'll take one component request end to end with the uxda-component-requests plugin,
+  on sandbox files only. Do them in order.
+
+
+  **Golden rules:** Claude never opens client files. Nothing delivered mentions Claude, Anthropic or AI. The
+  client's tokens are never overwritten. Themes and platforms are modes, never variants.
+before_you_submit:
+  - Work only in your own Sandbox folder, never in a file from the UXDA Clients folder.
+  - Use your invented client, never a real one.
+  - Start a new Claude Code chat for each request, opened in the client's workspace folder.
+status: draft
