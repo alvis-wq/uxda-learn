@@ -11,6 +11,7 @@ milestones:
   - dcr-4-build-and-check-modes
   - dcr-5-deliver-and-close
   - dcr-6-final-boss
+requires: [build-with-the-template]
 before_you_start: >-
   This path has 6 parts. You'll take one component request end to end with the uxda-component-requests plugin,
   on sandbox files only. Do them in order.
