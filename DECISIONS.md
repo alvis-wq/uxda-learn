@@ -420,3 +420,5 @@
 - Episode title and "Listen to podcast" open Spotify first, then YouTube, then Buzzsprout — most people listen there, not on Buzzsprout.
 - Episode cards link Spotify to the show when the episode has no Spotify link of its own — the Spotify Web API needs Premium, and Alvis chose the show link over hand-pasting 94 episode links; the title and "Listen to podcast" still open the episode itself (YouTube, else Buzzsprout).
 - Academy: the progress boxes are the section tabs (Blog · Podcasts · Books cards with done / total and a bar) — people took them for buttons; one control instead of boxes plus a pill row.
+- Home: "Continue where you left off" above Featured lists work in progress (challenges with saved work, paths started and not finished), newest first, and takes it out of the lists below — in-progress cards sat inside their category group, easy to miss; shown once, like Featured.
+- "View task" opens the brief (with how it's scored, and a milestone's path "Before you start") in a modal on stepped and instant-quiz forms, hidden on the Brief step itself — past step 1 the brief was behind the learner; a modal keeps them on their step.

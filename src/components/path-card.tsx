@@ -3,6 +3,7 @@ import { ArrowRight, FlaskConical, Lock, Route } from "lucide-react";
 import { ARTWORK_SIZE, ARTWORK_TEXT_WIDTH, CardArtwork } from "@/components/card-artwork";
 import { DraftBadge } from "@/components/draft-badge";
 import { RequiredBadges } from "@/components/required-badge";
+import { InProgressBadge } from "@/components/status-badge";
 import { TimeEstimate } from "@/components/time-estimate";
 import { Progress } from "@/components/ui/progress";
 import type { CardSpan } from "@/lib/challenges/card";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
  * path (`requires`) says what it waits for in place of the CTA; it still opens its page, where nothing can be started.
  * A path in a chain (paths linked by `requires`) says which step it is ("Step 1 of 3"). A tester on a draft sees the
  * same lock, plus "Open as tester": its page lets them open every draft milestone. Its time is its milestones' added up.
+ * A path that's started and not finished says "In progress" next to its progress line.
  * A required path shows "Required" and its due / overdue badge above the CTA, or above the lock ("Unlocks after …").
  *
  * Optional artwork is a true background in the bottom-right corner, as on a challenge card: the layout is the same
@@ -81,9 +83,12 @@ export function PathCard({
           {p.progress.time && <TimeEstimate time={p.progress.time} className="text-muted-foreground text-meta" />}
 
           <div className="mt-auto grid gap-2 pt-2">
-            <p className="text-meta font-medium tabular-nums" data-testid="path-progress">
-              {line}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-meta font-medium tabular-nums" data-testid="path-progress">
+                {line}
+              </p>
+              {p.inProgress && !p.lockedBy && <InProgressBadge />}
+            </div>
             <Progress value={percent} aria-label={`${p.title}: ${p.progress.done} of ${p.progress.total} milestones done`} />
           </div>
           {/* Required / due: a path's due date is met once every milestone is submitted. Shown next to a lock too. */}

@@ -213,5 +213,6 @@ export async function loadMilestonePlace(
       dueAt: draft ? null : progress.path.due_at,
       allSubmitted: progress.summary.allSubmitted,
     },
+    beforeYouStart: progress.path.before_you_start ?? null,
   };
 }

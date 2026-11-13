@@ -5,7 +5,8 @@ import { learnerStatus, type SubmissionStatus } from "@/lib/submissions/rules";
 const ICONS = { idle: Circle, pending: Clock, done: CheckCircle2, action: RotateCcw } as const;
 const VARIANTS = { idle: "outline", pending: "secondary", done: "default", action: "destructive" } as const;
 
-function InProgressBadge() {
+/** Saved, unsubmitted work (a challenge), or a path that's started and not finished. */
+export function InProgressBadge() {
   return (
     <Badge variant="secondary" data-status="in-progress">
       <PencilLine aria-hidden />

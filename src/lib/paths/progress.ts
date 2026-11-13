@@ -204,6 +204,8 @@ export type MilestonePlace = {
    * own). `allSubmitted`: every milestone of the path has an attempt, so the due date is met. Set by loadMilestonePlace.
    */
   pathRequirement?: { required: boolean; dueAt: string | null; allSubmitted: boolean };
+  /** The path's "Before you start" (markdown), shown again in the milestone's "View task". Set by loadMilestonePlace. */
+  beforeYouStart?: string | null;
 };
 
 export function milestonePlace(

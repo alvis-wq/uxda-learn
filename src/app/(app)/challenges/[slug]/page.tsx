@@ -31,6 +31,7 @@ import { BriefProvider, CollapsibleBrief } from "./collapsible-brief";
 import { FeedbackForm } from "./feedback-form";
 import { InstantQuizForm } from "./instant-quiz-form";
 import { SteppedChallengeForm } from "./stepped-challenge-form";
+import { TaskDialog } from "./task-dialog";
 
 export const metadata: Metadata = { title: "Challenge · UXDA Learn" };
 
@@ -72,9 +73,10 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   // has started, a stepped challenge shows only its first paragraph, with a toggle for the rest.
   const brief = briefView(challenge.body_md, challenge.title);
 
-  const rubric = challenge.rubric.length > 0 && (
-    <section aria-labelledby="rubric-heading" className="grid gap-3">
-      <h2 id="rubric-heading" className="text-lg font-semibold">
+  // The brief is also in "View task": its own heading id there, so the two never share one.
+  const rubricOf = (headingId: string) => challenge.rubric.length > 0 && (
+    <section aria-labelledby={headingId} className="grid gap-3">
+      <h2 id={headingId} className="text-lg font-semibold">
         How it&apos;s scored
       </h2>
       <ul className="grid gap-2">
@@ -88,15 +90,34 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
     </section>
   );
 
-  const briefFull = (
+  const briefOf = (rubricId: string) => (
     <div className="grid gap-8">
       <Markdown>{brief.body}</Markdown>
-      {rubric}
+      {rubricOf(rubricId)}
     </div>
   );
-  const briefShort = brief.hasMore || rubric ? <Markdown>{brief.first}</Markdown> : null;
+  const briefFull = briefOf("rubric-heading");
+  const briefShort = brief.hasMore || challenge.rubric.length > 0 ? <Markdown>{brief.first}</Markdown> : null;
   // A quiz-style stepper has no brief step: the brief sits above the form and shrinks as the learner gets going.
   const collapsibleBrief = <CollapsibleBrief full={briefFull} short={briefShort} />;
+  // Once into a stepper the brief is a step behind or folded above: "View task" brings it back (with a milestone's
+  // "Before you start") without leaving the step.
+  const task = (
+    <TaskDialog title={challenge.title}>
+      {milestone?.beforeYouStart && (
+        <aside aria-labelledby="task-before-start-heading" className="bg-muted/40 grid gap-2 rounded-lg border px-5 py-4">
+          <h3 id="task-before-start-heading" className="inline-flex items-center gap-2 font-semibold">
+            <Info className="size-4" aria-hidden />
+            Before you start · {milestone.pathTitle}
+          </h3>
+          <Markdown className="prose-sm text-muted-foreground prose-p:my-0 prose-strong:text-foreground prose-strong:whitespace-nowrap">
+            {milestone.beforeYouStart}
+          </Markdown>
+        </aside>
+      )}
+      {briefOf("task-rubric-heading")}
+    </TaskDialog>
+  );
 
   return (
     <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
@@ -276,16 +297,19 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
               {testing ? (attempts.length ? "Test again" : "Test it") : attempts.length ? "Submit again" : "Your submission"}
             </h2>
             {instant ? (
-              <InstantQuizForm
-                slug={challenge.slug}
-                version={challenge.version}
-                questions={questions}
-                initialRun={instantRun}
-                tip={tip}
-                helpLink={challenge.help_link}
-                attemptNumber={attemptNumber}
-                maxAttempts={maxAttempts}
-              />
+              <>
+                <div className="flex justify-end">{task}</div>
+                <InstantQuizForm
+                  slug={challenge.slug}
+                  version={challenge.version}
+                  questions={questions}
+                  initialRun={instantRun}
+                  tip={tip}
+                  helpLink={challenge.help_link}
+                  attemptNumber={attemptNumber}
+                  maxAttempts={maxAttempts}
+                />
+              </>
             ) : state.canSubmit && stepped ? (
               <SteppedChallengeForm
                 // A new attempt (after a submit) starts a new form: fresh state, autosave on again.
@@ -297,6 +321,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                 spec={challenge.submission_spec}
                 plan={plan}
                 brief={briefInStepper ? collapsibleBrief : undefined}
+                task={task}
                 tip={tip}
                 initialDraft={initialDraft}
                 attemptNumber={attemptNumber}

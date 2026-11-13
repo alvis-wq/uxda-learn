@@ -1031,3 +1031,7 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 - Migration `20261106140000_academy_podcast_links.sql` (`spotify_url`, `youtube_url`): written, not yet applied. Deploy only after `db:push` (the page reads the new columns).
 - Applied: `db:push` (links migration), `db:types` (no diff), `--links --apply`: 89 of 94 episodes linked to YouTube. Spotify waits for `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET`.
 - Spotify: no Web API (needs Premium). Each episode's "Spotify" link opens the show instead; an editor can still paste an episode's own Spotify link. Title and "Listen to podcast" open YouTube, else Buzzsprout.
+
+## In progress on Home + "View task" (2026-11-13)
+- Home: "Continue where you left off" section (in-progress challenges and paths, most recently saved first), not repeated in Featured or the category groups; a filter whose remaining items are all there says so. Path cards show an "In progress" badge.
+- Challenge page: "View task" button above stepped and instant-quiz forms (not on the Brief step) opens the brief + scoring in a modal; on a milestone it also shows the path's "Before you start". No migration.

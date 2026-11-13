@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, CircleCheckBig, FlaskConical, Star } from "lucide-react";
+import { BookOpen, CircleCheckBig, FlaskConical, PencilLine, Star } from "lucide-react";
 import { ChallengeCardGrid } from "@/components/challenge-card";
 import { EmptyState } from "@/components/empty-state";
 import { FilterMenu, type FilterOption } from "@/components/filter-menu";
@@ -14,6 +14,7 @@ import {
   groupByCategory,
   isCompletedOnHome,
   parseHomeFilter,
+  splitContinuing,
 } from "@/lib/challenges/home-order";
 import { splitFeatured } from "@/lib/challenges/featured";
 import type { CategoryProgress, HomeCard } from "@/lib/data/learner";
@@ -33,7 +34,11 @@ const PARAM = "category";
  * (the menu's done/total, the group labels) still includes them. A path chain loses its completed paths but keeps the
  * rest in order, each with its own "Step N of M". A filter with nothing left to do says so and points to the profile.
  *
- * Above it all, "Featured": the items an admin featured for the learner's track that are still on the list (not
+ * Above it all, "Continue where you left off": what the learner is part-way through (a challenge with saved work, a path
+ * started and not finished), the most recently worked on first (splitContinuing). It ignores the filter, is left out
+ * when empty, and its items aren't listed again below (not in Featured either); the counts don't change.
+ *
+ * Then "Featured": the items an admin featured for the learner's track that are still on the list (not
  * completed, never drafts), in the featured order (splitFeatured). It ignores the filter, is left out when empty, and
  * its items aren't listed again below; the counts don't change.
  */
@@ -80,17 +85,25 @@ export function HomeChallenges({
   };
 
   const label = options.find((o) => o.key === selected)?.label ?? "All";
-  const { featured, rest: open } = splitFeatured(challenges.filter((c) => !isCompletedOnHome(c)));
+  const { continuing, rest: notContinuing } = splitContinuing(challenges.filter((c) => !isCompletedOnHome(c)));
+  const { featured, rest: open } = splitFeatured(notContinuing);
   const shown = selected === DRAFTS_FILTER ? drafts : filterByCategory(open, selected);
   const groups = groupByCategory(open, categories);
-  // What's left here is all in "Featured" (as opposed to all completed, or nothing for this track at all).
+  // What's left here is all in the sections above (as opposed to all completed, or nothing for this track at all).
+  const allContinuing = selected !== DRAFTS_FILTER && filterByCategory(continuing, selected).length > 0;
   const allFeatured = selected !== DRAFTS_FILTER && filterByCategory(featured, selected).length > 0;
   // Something there, all of it completed.
   const allDone = selected !== DRAFTS_FILTER && filterByCategory(challenges, selected).length > 0;
-  const nothingLeft = allFeatured ? <AllFeatured /> : allDone ? <AllDone /> : null;
+  const nothingLeft = allContinuing || allFeatured ? <AllAbove featured={allFeatured} continuing={allContinuing} /> : allDone ? <AllDone /> : null;
 
   return (
     <>
+      {continuing.length > 0 && (
+        <section aria-labelledby="continue-heading" className="mt-12 grid gap-5" data-testid="continue-section">
+          <SectionLabel id="continue-heading">Continue where you left off</SectionLabel>
+          <ChallengeCardGrid items={continuing} headingLevel={3} now={now} detail="category" />
+        </section>
+      )}
       {featured.length > 0 && (
         <section aria-labelledby="featured-heading" className="mt-12 grid gap-5" data-testid="featured-section">
           <SectionLabel id="featured-heading">Featured</SectionLabel>
@@ -146,11 +159,16 @@ export function HomeChallenges({
   );
 }
 
-/** A filter (or All) whose remaining items are all featured: they are in the section above. */
-function AllFeatured() {
+/** A filter (or All) whose remaining items are all in progress or featured: they are in the sections above. */
+function AllAbove({ featured, continuing }: { featured: boolean; continuing: boolean }) {
+  const where = featured && continuing ? "in the sections above" : continuing ? "in progress above" : "in Featured above";
   return (
-    <div data-testid="all-featured">
-      <EmptyState icon={Star} title="Everything left is in Featured above." description="Completed challenges are in your profile." />
+    <div data-testid={continuing ? "all-continuing" : "all-featured"}>
+      <EmptyState
+        icon={continuing ? PencilLine : Star}
+        title={`Everything left is ${where}.`}
+        description="Completed challenges are in your profile."
+      />
     </div>
   );
 }

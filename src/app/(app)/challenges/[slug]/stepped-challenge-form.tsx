@@ -41,6 +41,8 @@ type Props = {
   plan: StepPlan;
   /** The brief (and how it's scored), rendered on the server; shown as the first step of a mixed challenge. */
   brief?: ReactNode;
+  /** "View task" (the brief in a modal); shown on every step but the Brief step. */
+  task?: ReactNode;
   /** The challenge's `tip`, rendered on the server; shown above the questions. */
   tip?: ReactNode;
   /** The learner's saved work, restored on the server (null: a fresh form). */
@@ -67,6 +69,7 @@ export function SteppedChallengeForm({
   spec,
   plan,
   brief,
+  task,
   tip,
   initialDraft,
   attemptNumber,
@@ -387,6 +390,7 @@ export function SteppedChallengeForm({
       {notice && (
         <DraftNotice savedAt={notice.savedAt} reset={notice.reset} busy={startingOver || pending} onStartOver={startOver} />
       )}
+      {task && current.kind !== "brief" && <div className="flex justify-end">{task}</div>}
       <Stepper
         step={step}
         onStepChange={goTo}

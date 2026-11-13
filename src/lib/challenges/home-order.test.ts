@@ -8,6 +8,7 @@ import {
   parseHomeFilter,
   pathChains,
   sortHomeChallenges,
+  splitContinuing,
   type ChainPlace,
   type HomeSortable,
 } from "./home-order";
@@ -269,5 +270,28 @@ describe("isCompletedOnHome", () => {
       ["brand", 2, 3],
       ["build", 3, 3],
     ]);
+  });
+});
+
+describe("splitContinuing", () => {
+  it("moves work in progress to the section, the most recently saved first, and out of the list", () => {
+    const list = [
+      c("one"),
+      c("older", { inProgress: true, savedAt: "2026-11-01T09:00:00Z" }),
+      c("two"),
+      c("newer", { inProgress: true, savedAt: "2026-11-12T09:00:00Z" }),
+    ];
+    const { continuing, rest } = splitContinuing(list);
+    expect(continuing.map((x) => x.slug)).toEqual(["newer", "older"]);
+    expect(rest.map((x) => x.slug)).toEqual(["one", "two"]); // the list keeps its own order
+  });
+
+  it("has nothing to show when nothing is in progress (the section is then left out)", () => {
+    expect(splitContinuing([c("one"), c("two", { done: true })]).continuing).toEqual([]);
+  });
+
+  it("puts work with no saved time last, by slug", () => {
+    const list = [c("b", { inProgress: true }), c("a", { inProgress: true }), c("x", { inProgress: true, savedAt: "2026-11-01T09:00:00Z" })];
+    expect(splitContinuing(list).continuing.map((x) => x.slug)).toEqual(["x", "a", "b"]);
   });
 });

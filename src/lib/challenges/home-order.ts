@@ -130,6 +130,23 @@ export function isCompletedOnHome(item: { done: boolean; inProgress: boolean; la
   return item.done && !item.inProgress && !OPEN_STATUSES.includes(item.latestStatus ?? "published");
 }
 
+const savedAt = (i: { savedAt: string | null }) => (i.savedAt ? new Date(i.savedAt).getTime() : 0);
+
+/**
+ * The home page's "Continue where you left off" section and the list below it: cards the learner is part-way through
+ * (a challenge with saved work, a path that's started and not finished) move to the section, the most recently worked
+ * on first, and are left out of the list, which keeps its own order. Comes before Featured: work in progress is shown
+ * once, there.
+ */
+export function splitContinuing<T extends Pick<HomeSortable, "slug" | "inProgress" | "savedAt">>(
+  items: readonly T[],
+): { continuing: T[]; rest: T[] } {
+  return {
+    continuing: items.filter((i) => i.inProgress).sort((a, b) => savedAt(b) - savedAt(a) || (a.slug < b.slug ? -1 : 1)),
+    rest: items.filter((i) => !i.inProgress),
+  };
+}
+
 /** The URL param of the "All" filter being absent. */
 export const ALL_CATEGORIES = "all";
 
