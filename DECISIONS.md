@@ -422,3 +422,4 @@
 - Academy: the progress boxes are the section tabs (Blog · Podcasts · Books cards with done / total and a bar) — people took them for buttons; one control instead of boxes plus a pill row.
 - Home: "Continue where you left off" above Featured lists work in progress (challenges with saved work, paths started and not finished), newest first, and takes it out of the lists below — in-progress cards sat inside their category group, easy to miss; shown once, like Featured.
 - "View task" opens the brief (with how it's scored, and a milestone's path "Before you start") in a modal on stepped and instant-quiz forms, hidden on the Brief step itself — past step 1 the brief was behind the learner; a modal keeps them on their step.
+- Podcast "Play" opens a floating, non-modal YouTube player in the (app) layout (not a modal, no queue) — people keep browsing while it plays; youtube-nocookie.com so YouTube sets no cookies until it plays.

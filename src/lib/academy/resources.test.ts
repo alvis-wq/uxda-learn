@@ -13,6 +13,7 @@ import {
   progressByKind,
   searchItems,
   spotifyEpisodeUrl,
+  youtubeEmbedUrl,
   youtubeVideoUrl,
   type AcademyItem,
 } from "./resources";
@@ -169,5 +170,18 @@ describe("youtubeVideoUrl", () => {
     expect(youtubeVideoUrl("https://youtube.evil.example/watch?v=dwopD7vNhCs")).toBeNull();
     expect(youtubeVideoUrl("javascript:alert(1)")).toBeNull();
     expect(youtubeVideoUrl("not a link")).toBeNull();
+  });
+});
+
+describe("youtubeEmbedUrl", () => {
+  it("plays the episode's video on youtube-nocookie.com", () => {
+    expect(youtubeEmbedUrl({ youtube_url: "https://youtu.be/dwopD7vNhCs?si=x" })).toBe(
+      "https://www.youtube-nocookie.com/embed/dwopD7vNhCs?autoplay=1&rel=0",
+    );
+  });
+  it("has no player without a YouTube video", () => {
+    expect(youtubeEmbedUrl({ youtube_url: null })).toBeNull();
+    expect(youtubeEmbedUrl({ youtube_url: "https://www.youtube.com/@uxda/videos" })).toBeNull();
+    expect(youtubeEmbedUrl({ youtube_url: "https://youtube.evil.example/watch?v=dwopD7vNhCs" })).toBeNull();
   });
 });

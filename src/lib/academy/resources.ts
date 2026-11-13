@@ -76,6 +76,21 @@ export function spotifyEpisodeUrl(input: string): string | null {
 
 /** A YouTube video link (watch?v=, youtu.be/, /live/ or /shorts/) as www.youtube.com/watch?v=<id>, or null. */
 export function youtubeVideoUrl(input: string): string | null {
+  const id = youtubeVideoId(input);
+  return id ? `https://www.youtube.com/watch?v=${id}` : null;
+}
+
+/**
+ * The episode's YouTube player URL (privacy-enhanced youtube-nocookie.com, starts playing, no other channels'
+ * videos at the end), or null when it has no YouTube video.
+ */
+export function youtubeEmbedUrl(item: Pick<AcademyItem, "youtube_url">): string | null {
+  const id = item.youtube_url ? youtubeVideoId(item.youtube_url) : null;
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0` : null;
+}
+
+/** The video id in a YouTube video link (watch?v=, youtu.be/, /live/ or /shorts/), or null. */
+function youtubeVideoId(input: string): string | null {
   let u: URL;
   try {
     u = new URL(input.trim());
@@ -89,7 +104,7 @@ export function youtubeVideoUrl(input: string): string | null {
   else if (["www.youtube.com", "youtube.com", "m.youtube.com"].includes(host)) {
     id = u.pathname === "/watch" ? u.searchParams.get("v") : (u.pathname.match(/^\/(?:live|shorts)\/([^/]+)/)?.[1] ?? null);
   }
-  return id && /^[A-Za-z0-9_-]{6,20}$/.test(id) ? `https://www.youtube.com/watch?v=${id}` : null;
+  return id && /^[A-Za-z0-9_-]{6,20}$/.test(id) ? id : null;
 }
 
 /** Public URL of a thumbnail or cover in the `academy` bucket. */

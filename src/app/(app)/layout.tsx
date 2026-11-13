@@ -1,17 +1,18 @@
+import { PodcastPlayerProvider } from "@/components/podcast-player";
 import { SignInLoaderGate } from "@/components/glass-x/sign-in-loader-gate";
 import { SiteHeader } from "@/components/site-header";
 import { requireOnboardedProfile } from "@/lib/auth/session";
 
-/** Everything in (app) needs a signed-in, onboarded UXDA user. */
+/** Everything in (app) needs a signed-in, onboarded UXDA user. The podcast player lives here so it keeps playing between pages. */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const profile = await requireOnboardedProfile();
   return (
-    <>
+    <PodcastPlayerProvider>
       <SiteHeader profile={profile} />
       <div id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         {children}
       </div>
       <SignInLoaderGate />
-    </>
+    </PodcastPlayerProvider>
   );
 }

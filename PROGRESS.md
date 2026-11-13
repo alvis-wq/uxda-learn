@@ -1035,3 +1035,6 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 ## In progress on Home + "View task" (2026-11-13)
 - Home: "Continue where you left off" section (in-progress challenges and paths, most recently saved first), not repeated in Featured or the category groups; a filter whose remaining items are all there says so. Path cards show an "In progress" badge.
 - Challenge page: "View task" button above stepped and instant-quiz forms (not on the Brief step) opens the brief + scoring in a modal; on a milestone it also shows the path's "Before you start". No migration.
+
+## Podcast player (2026-11-13)
+- Academy → Podcasts: "Play" on every episode with a YouTube video (89 of 94) opens a floating player (youtube-nocookie.com embed): top right under the header on desktop, along the bottom on phones. It lives in the (app) layout, so it keeps playing between pages; minimise hides the video and keeps the sound, ✕ closes it. One episode at a time; a reload or sign-out stops it. No migration.

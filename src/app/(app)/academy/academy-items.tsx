@@ -2,7 +2,8 @@ import Image from "next/image";
 import { BookMarked, BookOpen, ExternalLink, Headphones, Newspaper } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LISTEN_LABEL, academyImageUrl, episodeUrl, listenLinks, type AcademyItem } from "@/lib/academy/resources";
+import { PlayEpisodeButton } from "@/components/podcast-player";
+import { LISTEN_LABEL, academyImageUrl, episodeUrl, listenLinks, youtubeEmbedUrl, type AcademyItem } from "@/lib/academy/resources";
 import { cn } from "@/lib/utils";
 import { DoneSwitch } from "./quiz-dialog";
 import { ReadingToggle } from "./reading-toggle";
@@ -97,9 +98,10 @@ function ListenLinks({ item }: { item: AcademyItem }) {
 
 /**
  * One blog post or podcast episode: thumbnail left, text right. `counterpart`: the episode about this post, or the
- * post this episode is about.
+ * post this episode is about. An episode with a YouTube video gets "Play" (the floating player).
  */
 export function ResourceRowItem({ item, counterpart }: { item: AcademyItem; counterpart?: AcademyItem }) {
+  const embedUrl = item.kind === "podcast" ? youtubeEmbedUrl(item) : null;
   return (
     <article
       className={cn("bg-card flex gap-4 rounded-xl border p-3 sm:min-h-[164px]", item.done && "border-primary/40")}
@@ -119,7 +121,12 @@ export function ResourceRowItem({ item, counterpart }: { item: AcademyItem; coun
         {item.kind === "podcast" && <ListenLinks item={item} />}
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
           <DoneSwitch resourceId={item.id} title={item.title} done={item.done} hasQuiz={item.has_quiz} />
-          {counterpart && <CounterpartLink item={counterpart} />}
+          {(embedUrl || counterpart) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {embedUrl && <PlayEpisodeButton episode={{ id: item.id, title: item.title, embedUrl }} />}
+              {counterpart && <CounterpartLink item={counterpart} />}
+            </div>
+          )}
         </div>
       </div>
     </article>
