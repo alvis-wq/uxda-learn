@@ -52,12 +52,15 @@ function Thumb({ item, className, sizes }: { item: AcademyItem; className: strin
 
 /**
  * A small link to the other half of a post/episode pair: "Listen to podcast" on a post, "Read the blog" on an episode.
- * Opens the post's page, or the episode's first place to listen.
+ * Opens the post's page, or plays the episode in the floating player (its first place to listen when it has no
+ * YouTube video).
  */
 function CounterpartLink({ item }: { item: AcademyItem }) {
+  const isPodcast = item.kind === "podcast";
+  const embedUrl = isPodcast ? youtubeEmbedUrl(item) : null;
+  if (embedUrl) return <PlayEpisodeButton episode={{ id: item.id, title: item.title, embedUrl }} listen />;
   const href = openUrl(item);
   if (!href) return null;
-  const isPodcast = item.kind === "podcast";
   const Icon = isPodcast ? Headphones : Newspaper;
   return (
     <Button asChild variant="outline" size="sm" className="h-7 px-2.5 text-xs">

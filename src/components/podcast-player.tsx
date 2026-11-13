@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { AudioLines, Maximize2, Minimize2, Play, X } from "lucide-react";
+import { AudioLines, Headphones, Maximize2, Minimize2, Play, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -76,12 +76,15 @@ function PlayerDock({ episode, minimized, onToggle, onClose }: { episode: Episod
   );
 }
 
-/** "Play" on an episode card: opens it in the floating player. "Playing" while it's the one in the player (pressing it shows the video again). */
-export function PlayEpisodeButton({ episode }: { episode: Episode }) {
+/**
+ * "Play" on an episode card (`listen`: "Listen to podcast" on its blog post): opens the episode in the floating player.
+ * "Playing" while it's the one in the player (pressing it shows the video again).
+ */
+export function PlayEpisodeButton({ episode, listen = false }: { episode: Episode; listen?: boolean }) {
   const player = useContext(PlayerContext);
   if (!player) return null;
   const playing = player.episode?.id === episode.id;
-  const Icon = playing ? AudioLines : Play;
+  const Icon = playing ? AudioLines : listen ? Headphones : Play;
   return (
     <Button
       variant={playing ? "default" : "outline"}
@@ -91,7 +94,7 @@ export function PlayEpisodeButton({ episode }: { episode: Episode }) {
       data-testid="play-episode"
     >
       <Icon className="size-3.5" aria-hidden />
-      {playing ? "Playing" : "Play"}
+      {playing ? "Playing" : listen ? "Listen to podcast" : "Play"}
       <span className="sr-only"> {episode.title}</span>
     </Button>
   );
