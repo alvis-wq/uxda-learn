@@ -20,17 +20,17 @@ submission:
     prompt: Which rule does each of the three protect, and what could go wrong for a real client without it?
 rubric:
   - id: nothing-to-change
-    criterion: "Running the plugin again on the delivered layers says NOTHING TO CHANGE"
+    criterion: "Running the plugin again on the delivered layers and clicking Deliver says NOTHING TO CHANGE"
     points: 2
     levels:
-      full: "The plugin's result reads NOTHING TO CHANGE"
-      partial: "A plugin result, but not this one"
+      full: "The plugin's report reads Result: NOTHING TO CHANGE"
+      partial: "A plugin result, but not this one, e.g. Result: PREVIEW (Deliver wasn't clicked)"
       none: "Missing"
   - id: refused
     criterion: "/cr-request refuses the playground link"
     points: 2
     levels:
-      full: "Claude says it's a client file and the plugin never opens it"
+      full: "Claude says it's a client file and refuses to open it"
       partial: "Some other stop, e.g. it asks what the file is"
       none: "Missing, or Claude opened the file"
   - id: update
@@ -48,19 +48,21 @@ rubric:
       partial: "One or two matched, or no consequences"
       none: "No reflection, or unrelated"
 grader_notes: |
-  Milestone 6 of 6 in "Deliver a component request". (a) Select the delivered layers in Name-CR-playground and run
-  Token Deliver again: "NOTHING TO CHANGE" (running twice is safe; the client's tokens are never overwritten).
-  (b) /cr-request with the playground link: "That file is a client file. This plugin never opens it." (client files
-  are off limits). (c) /cr-request with the same section link as before: "That section was delivered as <folder>. To
+  Milestone 6 of 6 in "Deliver a component request". (a) Select the delivered layers in Name-CR-playground, run
+  Token Deliver again and click Deliver: the report reads "Result: NOTHING TO CHANGE" (running twice is safe; the
+  client's tokens are never overwritten). Before Deliver is clicked it reads "Result: PREVIEW".
+  (b) /cr-request with the playground link: "That file is a client file. This plugin never opens it." or "That's a
+  client file. Requests are built only in the private build file." Either is full marks (client files are off limits). (c) /cr-request with the same section link as before: "That section was delivered as <folder>. To
   change the component, run /cr-request --update <component>." (a closed request is never rebuilt over; an update has
   its own rules and an "Apply updates" tick).
   Common mistakes: (c) run before the request was closed (it resumes the request instead: milestone 5 not finished),
-  (b) with a link to the build file (it's allowed there), (a) with nothing selected in the playground.
+  (b) with a link to the build file (it's allowed there), (a) with nothing selected in the playground, or a screenshot of the preview
+  before Deliver was clicked (Result: PREVIEW, partial).
 ---
 Three quick tests: try to break the rules and watch the plugin hold.
 
 ### What to do
-1. **Run it twice.** In the **Figma desktop app**, select the delivered layers in **Name-CR-playground** and run **Plugins → Development → Token Deliver – \<your client\>** again. It says **NOTHING TO CHANGE**.
+1. **Run it twice.** In the **Figma desktop app**, select the delivered layers in **Name-CR-playground** and run **Plugins → Development → Token Deliver – \<your client\>** again. The preview lists nothing to add. Click **Deliver**: the report says **Result: NOTHING TO CHANGE**.
 2. **Knock on the client's door.** Start a new Claude Code chat in the client's workspace folder and run **/cr-request \<link to Name-CR-playground\>**. It refuses: the playground is on the client's off-limits list.
 3. **Rebuild a delivered component.** Run **/cr-request \<the section link from milestone 3\>** again. It says the section was delivered, and points you to **/cr-request --update \<component\>**. Don't run the update.
 

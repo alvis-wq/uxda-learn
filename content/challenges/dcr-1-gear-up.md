@@ -58,7 +58,7 @@ Get the tools ready and make three sandbox files to practise on.
 4. The plugin runs small Python scripts. If macOS offers to install the Command Line Tools the first time, accept.
 
 **Sandbox files**, all in your own folder in the **UXDA Sandbox** team (the one from "Build a screen with the template"):
-1. Open the [design system template](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82), duplicate it, move the copy into your folder and name it **Name-CR-tokens**. This is your invented client's design system. It has Light/Dark and Desktop/Mobile modes.
+1. Open the [design system template](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82), duplicate it, move the copy into your folder and name it **Name-CR-tokens**. This is your invented client's design system. It has Light/Dark and Desktop/Mobile modes, plus an Icon sizes collection with 8 modes.
 2. Create a blank design file named **Name-CR-build**. Components are built here.
 3. Create a blank design file named **Name-CR-playground**. This plays the client's file that you deliver into.
 

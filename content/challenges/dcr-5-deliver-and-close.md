@@ -54,7 +54,7 @@ Deliver the component into the playground, make one mistake on purpose to see th
 The playground plays the client's file. Every step here is yours: Claude never opens it.
 
 ### What to do
-1. In Claude Code, in the client's workspace folder, run **/cr-deliver**. It checks everything (no raw values, no duplicate layer names, nothing mentioning Claude, Anthropic or AI) and loads the plugin with this request.
+1. In Claude Code, in the client's workspace folder, run **/cr-deliver**. It first asks whether the file you'll deliver into is on the off-limits list (yes: the playground) and may ask your name. Then it checks everything (no raw values, no duplicate layer names, nothing mentioning Claude, Anthropic or AI) and loads the plugin with this request.
 2. In the **Figma desktop app**, open **Name-CR-build** and the request's section. Select the component and the **Mode examples** frame, **not the section itself**. Press **⌘C**.
 3. Open **Name-CR-playground** and press **⌘V**.
 4. **On purpose this once:** when Figma asks whether to add variables or styles, **accept**.

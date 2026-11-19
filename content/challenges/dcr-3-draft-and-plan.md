@@ -12,9 +12,9 @@ waiting_minutes: 10
 status: draft
 submission:
   screenshots:
-    min: 1
-    max: 4
-    label: plan.md with all five traps, and your approval of the plan
+    min: 3
+    max: 5
+    label: Your draft in its section, plan.md with all five traps, and your approval of the plan
   reflection:
     required: true
     min_words: 30
@@ -42,7 +42,9 @@ rubric:
       partial: "Only some traps covered, or no reasons"
       none: "No reflection, or unrelated"
 grader_notes: |
-  Milestone 3 of 6 in "Deliver a component request". The plan's sections: structure and variants (Theme=Light/Dark
+  Milestone 3 of 6 in "Deliver a component request". Screenshot 1: the draft card in its section on the "Component
+  requests" page of Name-CR-build, taken before /cr-request ran (the draft rubric line is scored from it). The other
+  screenshots: plan.md and the approval. The plan's sections: structure and variants (Theme=Light/Dark
   called out as modes: they become mode examples, not variants), layer cleanup (the duplicate names with a unique name
   each; "AI tip" as a forbidden term with a rename), new colour tokens, existing tokens to bind, flags needing a
   decision (the orange with its nearest colour and ΔE; the 13px padding with the steps below and above), nested
@@ -56,21 +58,23 @@ grader_notes: |
 Draft a small component with five planted mistakes, and see the plan catch every one.
 
 ### What to do
-1. Open **Name-CR-build** and go to the **Component requests** page.
-2. Add a section and draw a small **card component** in it, from plain layers (no instances of other components). Plant five traps:
+1. Open **Name-CR-build** and add a page named **Component requests** (or rename **Page 1**). A new file doesn't have it yet.
+2. On that page, add a section and draw a small **card component** in it, from plain layers (no instances of other components). Plant five traps:
    - **An off-system colour** that looks clearly different from the template's colours, for example bright orange **#FF6A00**. A colour that's only slightly off is matched quietly, so it must look clearly different.
    - **A padding that's off the spacing scale**, for example **13px**.
    - **Two sibling layers with the same name.**
    - **A layer named "AI tip".**
    - **A variant property Theme** with the values **Light** and **Dark**.
-3. Copy the section's link (right-click the section → **Copy link**).
-4. Start a new Claude Code chat in the client's workspace folder and run **/cr-request \<section link\>**.
-5. It reads every colour, size and text value, matches it to the client's system and writes **plan.md**. Then it stops for your OK.
-6. Read the plan. For the colour and the padding, choose: **use the nearest**, **keep the raw value** (on purpose, recorded), or **ask for a new token**. Then approve the plan.
+3. Take a screenshot of the section with your draft in it.
+4. Copy the section's link: select the section and press **⌘L**, or right-click it → **Copy link to selection** (it can sit under **Copy/Paste as**).
+5. Start a new Claude Code chat in the client's workspace folder and run **/cr-request \<section link\>**.
+6. It reads every colour, size and text value, matches it to the client's system and writes **plan.md**. Then it stops for your OK.
+7. Read the plan. For the colour and the padding, choose: **use the nearest**, **keep the raw value** (on purpose, recorded), or **ask for a new token**. Then approve the plan.
 
 After your OK it goes on to build. Send this milestone while it works, then carry on with the next one in the same chat.
 
 ### What to send
+- A screenshot of your draft in its section, taken before you ran **/cr-request**.
 - A screenshot of **plan.md** showing all five traps (several screenshots if it's long).
 - A screenshot of your approval.
 - For the colour and the padding, which option you picked and why. For the other three, what the plan said to do.

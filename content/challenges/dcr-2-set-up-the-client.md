@@ -40,11 +40,13 @@ rubric:
 grader_notes: |
   Milestone 2 of 6 in "Deliver a component request". /cr-setup asks for: the client name, the off-limits files
   (the playground), the build file, the workspace folder (default ~/Documents/UXDA Component Requests/), then runs
-  /cr-tokens (source: the Name-CR-tokens copy; confirm the architecture; confirm the policy; mirror and check), then
+  /cr-tokens (source: the Name-CR-tokens copy; check the collection roles; confirm the architecture; confirm the
+  policy; mirror and check), then
   gives the plugin to import. Screenshot 1: Claude's message after the mirror, saying the values were checked and how
   many (the template has about 700 variables plus text and effect styles). Screenshot 2: the Figma desktop app's
   Plugins → Development menu showing "Token Deliver – <client>".
-  Common mistakes: giving the build file as an off-limits file (setup stops and asks), the Figma browser app instead
+  Common mistakes: giving the build file as an off-limits file (setup stops and asks), a build file whose Figma plan
+  allows fewer modes per collection than the template needs (8; the mirror stops and names the collection), the Figma browser app instead
   of desktop (no Development menu), the plugin imported from a workspace folder that was later moved or renamed (it
   stops working; import it again), a real client's name.
 ---
@@ -60,9 +62,10 @@ Set up your invented client in the plugin: its workspace, a mirror of its tokens
    5. **The workspace folder**: keep the default. It creates the client's folder inside it.
 3. It then runs **/cr-tokens** for you:
    1. **Choose a source**: the owned duplicate, **Name-CR-tokens**. It asks which Figma folder it's in: your Sandbox folder.
-   2. **Confirm the architecture**: read its plain-words summary of the token system and confirm it.
-   3. **Confirm the policy**: how new tokens are made. Confirm it.
-   4. **Build the mirror**: it copies the whole system into **Name-CR-build** and checks every value. This is the long wait; do something else meanwhile.
+   2. **Check the roles**: it shows the role it guessed for each collection (primitives, semantic, size and so on). Correct any that look wrong.
+   3. **Confirm the architecture**: read its plain-words summary of the token system and confirm it.
+   4. **Confirm the policy**: how new tokens are made. Confirm it.
+   5. **Build the mirror**: it copies the whole system into **Name-CR-build** and checks every value. This is the long wait; do something else meanwhile.
 4. At the end, import the plugin in the **Figma desktop app**: open any file, then **Plugins → Development → Import plugin from manifest…** and choose **token-deliver/manifest.json** in the client's workspace folder.
 
 **Don't move or rename the workspace folder after importing.** Figma remembers the path, and a moved folder breaks the plugin. If it was moved, import it again from the new place.
