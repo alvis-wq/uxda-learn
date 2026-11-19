@@ -3,7 +3,7 @@ slug: dcr-1-gear-up
 title: Gear up and make the sandbox
 category: design-systems
 audiences: [designer]
-path: deliver-a-component-request
+path: set-up-a-component-request-client
 type: screenshot
 difficulty: 1
 points: 10
@@ -37,7 +37,7 @@ rubric:
       partial: "A copy, but of another file"
       none: "No copy, or the original template"
 grader_notes: |
-  Milestone 1 of 6 in "Deliver a component request". Screenshot 1: Claude Code with "/cr-" typed and the five
+  Milestone 1 of 2 in "Set up a client for component requests". Screenshot 1: Claude Code with "/cr-" typed and the five
   commands listed (/cr-setup, /cr-tokens, /cr-request, /cr-deliver, /cr-next). Screenshot 2: their own folder in the
   UXDA Sandbox team with three files: Name-CR-tokens (a copy of the UXDA Design System Template, key
   374PbreBmX1o0RkhwnJi1r for the original), Name-CR-build and Name-CR-playground. Other files in the folder are fine.
@@ -60,7 +60,7 @@ Get the tools ready and make three sandbox files to practise on.
 **Sandbox files**, all in your own folder in the **UXDA Sandbox** team (the one from "Build a screen with the template"):
 1. Open the [design system template](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82), duplicate it, move the copy into your folder and name it **Name-CR-tokens**. This is your invented client's design system. It has Light/Dark and Desktop/Mobile modes, plus an Icon sizes collection with 8 modes.
 2. Create a blank design file named **Name-CR-build**. Components are built here.
-3. Create a blank design file named **Name-CR-playground**. This plays the client's file that you deliver into.
+3. Create a blank design file named **Name-CR-playground**, or reuse the one from "Deliver a component request". This plays the client's file that you deliver into.
 
 Never use a file from the **UXDA Clients** folder. Make up a client name for the next step, for example **Acme Bank**.
 

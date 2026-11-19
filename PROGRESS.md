@@ -1038,3 +1038,6 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 ## Podcast player (2026-11-13)
 - Academy → Podcasts: "Play" on every episode with a YouTube video (89 of 94), and "Listen to podcast" on its blog post, opens a floating player (youtube-nocookie.com embed): top right under the header on desktop, along the bottom on phones. It lives in the (app) layout, so it keeps playing between pages; minimise hides the video and keeps the sound, ✕ closes it. One episode at a time; a reload or sign-out stops it. No migration.
+
+## Component request paths reshaped (2026-11-19)
+- "Deliver a component request": cr-1-know-the-flow (instant quiz, 10 pts) and cr-2-deliver-one-request (screenshots, 10 pts, 70 min with 35 waiting) on a shared training client. cr-2 has two placeholders (workspace folder, build file link), so it stays a draft. New path "Set up a client for component requests" keeps dcr-1 and dcr-2. dcr-3 to dcr-6 removed (archived on the next sync). Not synced yet; the shared training workspace is untested with several learners.

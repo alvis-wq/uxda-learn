@@ -3,7 +3,7 @@ slug: dcr-2-set-up-the-client
 title: Set up the client
 category: design-systems
 audiences: [designer]
-path: deliver-a-component-request
+path: set-up-a-component-request-client
 type: screenshot
 difficulty: 2
 points: 10
@@ -38,7 +38,7 @@ rubric:
       partial: "No client name visible"
       none: "A real client's name"
 grader_notes: |
-  Milestone 2 of 6 in "Deliver a component request". /cr-setup asks for: the client name, the off-limits files
+  Milestone 2 of 2 in "Set up a client for component requests". /cr-setup asks for: the client name, the off-limits files
   (the playground), the build file, the workspace folder (default ~/Documents/UXDA Component Requests/), then runs
   /cr-tokens (source: the Name-CR-tokens copy; check the collection roles; confirm the architecture; confirm the
   policy; mirror and check), then
@@ -70,7 +70,7 @@ Set up your invented client in the plugin: its workspace, a mirror of its tokens
 
 **Don't move or rename the workspace folder after importing.** Figma remembers the path, and a moved folder breaks the plugin. If it was moved, import it again from the new place.
 
-From now on, open Claude Code in the client's workspace folder (for example **UXDA Component Requests/acme-bank**).
+From now on, open Claude Code in the client's workspace folder (for example **UXDA Component Requests/acme-bank**). A request for this client runs the same way as in "Deliver a component request".
 
 ### What to send
 - A screenshot of Claude's message that every mirrored value was checked (it gives the number).

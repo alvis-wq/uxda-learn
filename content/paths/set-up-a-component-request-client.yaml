@@ -1,0 +1,20 @@
+slug: set-up-a-component-request-client
+title: Set up a client for component requests
+category: design-systems
+audiences: [designer]
+summary: Set up an invented client for component requests - sandbox files, a mirror of its tokens and its own Token Deliver plugin.
+sequential: true
+milestones:
+  - dcr-1-gear-up
+  - dcr-2-set-up-the-client
+requires: [deliver-a-component-request]
+before_you_start: >-
+  This path has 2 parts. You'll set up an invented client from scratch, the way it's done once for every real
+  client: three sandbox files, then /cr-setup. The token mirror takes about 40 minutes of waiting.
+
+
+  You only need this when you're the one starting component requests for a new client.
+before_you_submit:
+  - Work only in your own Sandbox folder, never in a file from the UXDA Clients folder.
+  - Use your invented client, never a real one.
+status: draft
