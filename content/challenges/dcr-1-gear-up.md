@@ -42,7 +42,7 @@ grader_notes: |
   UXDA Sandbox team with three files: Name-CR-tokens (a copy of the UXDA Design System Template, key
   374PbreBmX1o0RkhwnJi1r for the original), Name-CR-build and Name-CR-playground. Other files in the folder are fine.
   Slightly different names are fine if each file's role is clear.
-  Common mistakes: the plugin installed but Claude Code not restarted, so the commands don't show yet; files left in
+  The plugin comes through the Claude organisation; nobody installs it. Common mistakes: files left in
   Drafts; the original template used instead of a copy; any file from the UXDA Clients folder (score 0 on three-files
   and say why).
 ---
@@ -53,17 +53,9 @@ Get the tools ready and make three sandbox files to practise on.
 ### What to do
 **Tools**
 1. Install the **Figma desktop app**, if you don't have it. Development plugins don't run in the browser.
-2. In Claude Code, install the plugin:
-
-   ```
-   /plugin marketplace add https://github.com/UXDA-org/uxda-claude-skills.git
-   /plugin install uxda-component-requests@uxda-plugins
-   ```
-
-   Already added the marketplace for another UXDA plugin? Skip the first line. You need version **0.2.1** or later.
-3. Restart Claude Code, then type **/cr-**. The five commands should appear.
-4. Run **/mcp** and sign in to Figma, if you haven't yet.
-5. The plugin runs small Python scripts. If macOS offers to install the Command Line Tools the first time, accept.
+2. In Claude Code, type **/cr-**. The five commands should appear. The plugin comes with our Claude organisation, so there's nothing to install. If they don't show, restart Claude Code.
+3. Run **/mcp** and sign in to Figma, if you haven't yet.
+4. The plugin runs small Python scripts. If macOS offers to install the Command Line Tools the first time, accept.
 
 **Sandbox files**, all in your own folder in the **UXDA Sandbox** team (the one from "Build a screen with the template"):
 1. Open the [design system template](https://www.figma.com/design/374PbreBmX1o0RkhwnJi1r/UXDA-Design-System-Template-V1?node-id=2368-82), duplicate it, move the copy into your folder and name it **Name-CR-tokens**. This is your invented client's design system. It has Light/Dark and Desktop/Mobile modes.
