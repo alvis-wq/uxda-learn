@@ -1041,3 +1041,6 @@ sign-out and a second browser, In progress on the card, privacy, version change,
 
 ## Component request paths reshaped (2026-11-19)
 - "Deliver a component request": cr-1-know-the-flow (instant quiz, 10 pts) and cr-2-deliver-one-request (screenshots, 10 pts, 70 min with 35 waiting) on a shared training client. cr-2 has two placeholders (workspace folder, build file link), so it stays a draft. New path "Set up a client for component requests" keeps dcr-1 and dcr-2. dcr-3 to dcr-6 removed (archived on the next sync). Not synced yet; the shared training workspace is untested with several learners.
+
+## Security review fixes (2026-11-25)
+- `safeNext` (the post-login redirect guard) refused `//host` and `/\host` but let `/<tab>/host` through, which URL parsing turns into `//host`: it now refuses control characters and backslashes anywhere and re-checks the parsed origin. Next and eslint-config-next 16.4.3 → 16.4.6 (moderate advisories); `npm audit --omit=dev` is clean. Still open, in the Supabase dashboard: turn the Email provider off on the live project (sign-in is Google-only).

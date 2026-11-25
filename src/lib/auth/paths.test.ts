@@ -12,6 +12,20 @@ describe("safeNext", () => {
       expect(safeNext(value)).toBe("/");
     },
   );
+
+  // URL parsing drops tabs and newlines and reads "\" as "/", so each of these would resolve to //evil.com.
+  it.each(["/\t/evil.com", "/\n/evil.com", "/\r/evil.com", "/\t\\evil.com", "/\\/evil.com", "/ok\\..\\..//evil.com", "/\u0000/evil.com"])(
+    "falls back for a path that hides another host: %j",
+    (value) => {
+      expect(safeNext(value)).toBe("/");
+    },
+  );
+
+  it("never returns a path that leaves the origin", () => {
+    for (const value of ["/\t/evil.com", "/%09/evil.com", "/a?next=//evil.com", "/a#//evil.com", "/@evil.com", "/:evil.com"]) {
+      expect(new URL(safeNext(value), "https://learn.example").origin).toBe("https://learn.example");
+    }
+  });
 });
 
 describe("isPublicPath", () => {
